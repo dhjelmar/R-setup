@@ -1,8 +1,8 @@
 # R-setup
 
-# FUNCTIONS WRITTEN BY DAVID HJELMAR PLUS A FEW NOTES
+# MY FUNCTIONS PLUS A FEW NOTES
 
-## DLH FUNCTIONS
+## MY FUNCTIONS
 cd(directory) = unix cd  command instead of setwd
 
 estbound      = prints useful regression estimates into a table
