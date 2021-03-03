@@ -1,0 +1,773 @@
+#----------------------------------------------------------------------------
+
+# LOADS USEFUL LIBRARIES AND DEFINES USEFUL FUNCTIONS
+# See "INSTRUCTIONS" section below.
+#
+# DLH FUNCTIONS ARE:
+#   cd(directory) = unix cd  command instead of setwd
+#   pwd()         = unix pwd command instead of getwd
+#   ls(directory) = unix ls  command instead of list.files(directory)
+#   fastmerge(d1,d2) = merges 2 dataframes with potentially different columns
+#   estbound      = prints useful regression estimates into a table
+#   predictfit    = combine dataframe with regression output
+#   plotfit       = creates scatter plot with linear regression and 95% confidence bounds
+#   plotfitcol    = same as plotfit    but colors points based on a continuous variable
+#   plotfitcold   = same as plotfitcol but colors points based on a discrete variable
+#   set_plot_dimensions(width,height) = sets plot dimensions
+#   plotspace(r,c)= define plots per window by defining rows and columns
+#   printdf       = print specific # of rows and variables from dataframe
+#   pairsdf(df,var) = for dataframe df, plot all variables in vector var against eachother
+#   last(vector)  = returns last entry in vector (short for x(length(x))
+#   plot_interactive(df,'x','y') = interactive plot and table
+#   ggplotRegression(fit) = plot fit and supporting data
+#   histplus  = plot histogram with normal mean and limits <-- delete this?
+#   histplus2 = plot histogram with mean and limits for normal or Weibull
+#   scaledf   = scale (and center) a dataframe
+#   inv       = inverse of a matrix
+
+#  WORKS IN PROGRESS
+#   plotres
+#   plotxy
+
+# OTHER USEFUL FUNCTIONS IN SEPARATE .r FILES
+#   hitqual   = histogram with normal and Weibull distributions
+#               and upper tolerance limits
+#   qqplot    = side by side qqplots for normal and Weibull
+#   tolerance = not needed if can install R tolerance package
+#   ggcorplot(df) = better correlation plot than pairs(df)
+
+# OTHER USEFUL FUNCTIONS THAT ARE PART OF R
+#   library(help="package")  = useful for seeing info on a package
+#   names(df)     = lists all variables in dataframe
+#   nrow(df)      = returns number of rows in dataframe
+#   ncol(df)      = returns number of columns in dataframe
+#   df$name       = extracts vector name from dataframe df
+#   v1 <- c(1,2,3)
+#   df <- data.frame(v1,v2)
+#   merge(df1,df2,by='v1')
+#   left_join(df1,df2,by='v1')
+#   read_excel("data.xlsx", col_names=TRUE)
+#   df <- subset(df1, (!is.na(v1) & !is.na(v2)))   # create df from df1 but skip if v1 and v2 missing
+#   pairs(df)     = makes cross-plot of all variables in df
+#   interactive bar chart example
+#       plot_ly(diamonds, x = ~cut, color = ~clarity, colors = "Accent")
+#   FITS AND STATISTICS - see r_examples.r
+
+#
+# If using with internet access, type ? followed by command for help (e.g.: ?mean)
+# Also try help.search("trimmed mean")
+
+# if needed, set the working folder (make sure use / and not \)
+#setwd("C:/temp")
+#getwd()
+#list.files(".")
+
+#-----------------------------
+
+cd  <- function(directory)      { setwd(directory) }
+# usage: cd("C:/temp")
+#        cd("MD")
+#        cd("..")
+
+#-----------------------------
+
+pwd <- function()               { getwd()          }
+# usage: pwd()
+
+#-----------------------------
+
+ls  <- function(directory=pwd()) { list.files(directory) }
+# usage: ls()
+#        ls("MD")
+
+#-----------------------------
+
+# function to merge two dataframes with different columns
+fastmerge <- function(d1,d2) {
+  d1.names <- names(d1)
+  d2.names <- names(d2)
+  d1.add <- setdiff(d2.names,d1.names) # columns in d2 but not d1
+  d2.add <- setdiff(d1.names,d2.names) # columns in d1 but not d2
+  # add blank columns to d1
+  if(length(d1.add) > 0) {
+    for(i in 1:length(d1.add)) {
+      d1[d1.add[i]] <- NA
+    }
+  }
+  # add blank columns to d2
+  if(length(d2.add) > 0) {
+    for(i in 1:length(d2.add)) {
+      d2[d2.add[i]] <- NA
+    }
+  }
+  return(rbind(d1,d2))
+}
+
+#-----------------------------
+
+estbound <- function(model) {
+  # summary(model) prints estimates which can be accessed as model$coefficient[#]
+  # confint(model) prints 95% upper / lower bounds on estimates
+  # econfint(model) prints estimates and 95% upper / lower bounds on estimates
+  bounds <- confint(model)
+  estbound <- cbind( c(model$coefficient),
+                     bounds[,1:ncol(bounds)],
+                     summary(model)$coefficients[,"Pr(>|t|)"]
+  )
+  colnames(estbound)[1] <- "estimates"
+  colnames(estbound)[4] <- "Pr(>|t|)"
+  estbound
+}
+
+
+#-----------------------------
+
+predictfit <- function(df, fit) {
+    dffit <- data.frame(predict(fit, df, interval="conf", level=1-.05))
+    names(dffit) <- c("fit","lwr","upr")
+    dffit <- cbind(df, dffit)
+}
+
+#-----------------------------
+
+plotfit <- function(df,xx,yy,xlimspec=NULL,ylimspec=NULL,bg="grey90") {
+    ## create scatter plot with linear regression line and 95% confidence lines
+    ## xx and yy are variables within dataframe df
+    ## example usage: plotfit(df,hsub_in,power_ratio,ylimspec=c(0,1.1))
+    xlabel <- deparse(substitute(xx))
+    ylabel <- deparse(substitute(yy))
+    xx <- eval(substitute(xx),df)   # need to recognize name passed into function as xx
+    yy <- eval(substitute(yy),df)   # need to recognize name passed into function as yy
+    newdf <- data.frame(xx,yy)
+    xmin <- min(newdf$xx,na.rm=TRUE)
+    xmax <- max(newdf$xx,na.rm=TRUE)
+    ## xmax_plot <- xmax + (xmax-xmin)*1.2  # did this to make room for a legend
+    ymin <- min(newdf$yy,na.rm=TRUE)
+    ymax <- max(newdf$yy,na.rm=TRUE)
+    if (missing(xlimspec)) { xlimspec <- c(xmin,xmax) }
+    if (missing(ylimspec)) { ylimspec <- c(ymin,ymax) }
+    par(bg=bg)  # changes background of plot to specified color
+    ##plot(newdf$power_ratio~newdf$g_ave,type="n")
+    ##wx    <- par("usr")[1:2]
+    ##new.x <- seq(wx[1],wx[2],len=length(newdf$power_ratio))
+    ##new.x <- seq(min(log10(newdf$g_ave)),max(log10(newdf$g_ave)),len=100)
+    new.xx <- seq(min(newdf$xx,na.rm=TRUE),max(newdf$xx,na.rm=TRUE),len=100)
+    fit <- lm(yy~xx,data=newdf)
+    pred   <- predict(fit, new=data.frame(xx=new.xx), interval="conf", level=1-0.05)
+    intercept <- fit$coefficients[[1]]
+    slope <- fit$coefficients[[2]]
+    eq = paste0("y = ", round(intercept,4), "* x + ", round(slope,4))
+    plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
+         xlab=xlabel,ylab=ylabel,
+         main=eq)
+    lines(new.xx,pred[,"fit"],lwd=2)
+    lines(new.xx,pred[,"lwr"],lty=3)
+    lines(new.xx,pred[,"upr"],lty=3)
+    ## estbound(fit)
+    return( list(intercept = intercept, slope = slope) )
+}
+
+#-----------------------------
+
+plotfitcol <- function(df,xx,yy,byvar,ncol=2,xlimspec=NULL,ylimspec=NULL,bg="grey90",outputfile=NULL) {
+  # create scatter plot with linear regression line and 95% confidence lines
+  # xx and yy are variables within dataframe df
+  # color datapoints by continuous variable byvar
+  # required inputs: xx, yy, df, byvar
+  # example usage: plotfitcol(df,hsub_in,power_ratio_fb,kin_fwd)                        # to write to screen
+  #                plotfitcol(df,hsub_in,power_ratio_fb,kin_fwd,outputfile="trend.jpg") # to write to jpg file
+  #                plotfitcol(df,hsub_in,power_ratio_fb,kin_fwd,ncol=4)                 # 4 colors for byvar
+  xlabel  <- deparse(substitute(xx))
+  ylabel  <- deparse(substitute(yy))
+  bylabel <- deparse(substitute(byvar))
+  xx    <- eval(substitute(xx),df)    # need to recognize name passed into function as xx
+  yy    <- eval(substitute(yy),df)    
+  byvar <- eval(substitute(byvar),df) 
+  newdf <- data.frame(xx,yy,byvar)
+  #
+  ## debug
+  #ncol <- 2
+  #xlabel <- deparse("psyst")
+  #ylabel <- deparse("power_ratio")
+  #bylabel <- deparse("gin")
+  #xx    <- eval(substitute(psyst),df)    # need to recognize name passed into function as xx
+  #yy    <- eval(substitute(power_ratio),df)    
+  #byvar <- eval(substitute(gin),df)
+  #newdf <- data.frame(xx,yy,byvar)
+  ##
+  #cols <- c("blue","red")                         # define colors
+  #cols <- brewer.pal(ncol,"Spectral")             # Spectral color pallette has ncol=11 colors
+  #cols <- c("black","blue","green","grey","orange","red")
+  #cols <- c("black","blue","darkorchid2","darkturquoise","darkgreen","green","deeppink","magenta","red")
+  cols <- c("black","darkturquoise","pink","red")
+  pal  <- colorRampPalette(cols)                  # define color pallette
+  xmin <- min(newdf$xx,na.rm=TRUE)
+  xmax <- max(newdf$xx,na.rm=TRUE)
+  xmax_plot <- xmax + (xmax-xmin)*1.2  # did this to make room for a legend
+  ymin <- min(newdf$yy,na.rm=TRUE)
+  ymax <- max(newdf$yy,na.rm=TRUE)
+  if (missing(xlimspec)) { xlimspec <- c(xmin,xmax_plot) }
+  if (missing(ylimspec)) { ylimspec <- c(ymin,ymax) }
+  if (!missing(outputfile)) jpeg(filename=outputfile)
+  par(bg=bg)  # changes background of plot to specified color
+  # set min and max limits for plot ignoring NaN
+  plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
+       xlab=xlabel,ylab=ylabel,
+       col=pal(ncol)[as.numeric(cut(newdf$byvar,breaks=ncol))])
+  new.xx <- seq(min(newdf$xx,na.rm=TRUE),max(newdf$xx,na.rm=TRUE),len=100)
+  fit    <- lm(yy~xx,data=newdf)
+  pred   <- predict(fit, new=data.frame(xx=new.xx), interval="conf", level=1-0.05)
+  lines(new.xx,pred[,"fit"],lwd=2)
+  lines(new.xx,pred[,"lwr"],lty=3)
+  lines(new.xx,pred[,"upr"],lty=3)
+  low  <- min(newdf$byvar,na.rm=TRUE)
+  high <- max(newdf$byvar,na.rm=TRUE)
+  legendlabel <- seq( low, high, (high-low)/(ncol-1) )
+  #legend("right",title=bylabel,col=pal(ncol), pch=19,legend=round(legendlabel))
+  legend("right",title=bylabel,col=pal(ncol), pch=19,legend=signif(legendlabel,digits=4))
+  if (!missing(outputfile)) dev.off()
+  estbound(fit)
+}
+# examples
+#plotfitcol(df,kin_fwd,power_ratio_fb,byvar=kin_fwd,ncol=21)
+#plotfitcol(df,gin,    power_ratio_fb,byvar=kin_fwd,ncol=4,outputfile="junk2.jpg")
+#plotfitcol(df,gin,    power_ratio_fb,      kin_fwd)
+#plotfitcol(df,psyst, power_ratio,    gin,  ylimspec=c(0.7,1.1))
+#plotfitcol(df,psyst, power_ratio , gin, ncol=10, ylim=c(0.7,1.05))
+
+
+#-----------------------------
+
+plotfitcold <- function(df,xx,yy,byvar,xlimspec=NULL,ylimspec=NULL,bg="grey90",outputfile=NULL) {
+  # create scatter plot with linear regression line and 95% confidence lines
+  # xx and yy are variables within dataframe df
+  # color datapoints by DISCRETE variable byvar  <-- This is the distinction from plotfitcol
+  # required inputs: df, xx, yy, byvar
+  # example usage: plotfitcold(df,hsub_in,power_ratio_fb,TS_ID)                        # to write to screen
+  #                plotfitcold(df,hsub_in,power_ratio_fb,TS_ID,outputfile="trend.jpg") # to write to jpg file
+  #                plotfitcold(df,hsub_in,power_ratio_fb,TS_ID,ncol=4)                 # 4 colors for byvar
+  xlabel  <- deparse(substitute(xx))
+  ylabel  <- deparse(substitute(yy))
+  bylabel <- deparse(substitute(byvar))
+  xx    <- eval(substitute(xx),df)    # need to recognize name passed into function as xx
+  yy    <- eval(substitute(yy),df)    
+  byvar <- eval(substitute(byvar),df) 
+  ## debug
+  #xlabel <- deparse("gnom")
+  #ylabel <- deparse("average_g_ts")
+  #bylabel <- deparse("TS_ID")
+  #xx    <- eval(substitute(gnom),df)    # need to recognize name passed into function as xx
+  #yy    <- eval(substitute(average_g_ts),df)    
+  #byvar <- eval(substitute(TS_ID),df)
+  #
+  newdf <- data.frame(xx,yy,byvar)
+  #cols <- c("blue","red")                         # define colors
+  #cols <- brewer.pal(11,"Spectral")             # Spectral color pallette has ncol=11 colors
+  #cols <- c("black","blue","green","grey","orange","red")
+  #cols <- c("black","blue","darkorchid2","darkturquoise","darkgreen","green","deeppink","magenta","red")
+  #cols <- c("black","darkturquoise","pink","red")
+  #pal  <- colorRampPalette(cols)                  # define color pallette
+  xmin <- min(newdf$xx,na.rm=TRUE)
+  xmax <- max(newdf$xx,na.rm=TRUE)
+  xmax_plot <- xmax + (xmax-xmin)*1.2  # did this to make room for a legend
+  ymin <- min(newdf$yy,na.rm=TRUE)
+  ymax <- max(newdf$yy,na.rm=TRUE)
+  if (missing(xlimspec)) { xlimspec <- c(xmin,xmax_plot) }
+  if (missing(ylimspec)) { ylimspec <- c(ymin,ymax) }
+  if (!missing(outputfile)) jpeg(filename=outputfile)
+  cols <- data.frame(byvar=unique(c(as.character(newdf$byvar))))
+  ncol <- nrow(cols)
+  cols$color <- palette(rainbow(ncol))
+  newdf <- merge(newdf, cols, by="byvar")
+  par(bg=bg)  # changes background of plot to specified color
+  plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
+       xlab=xlabel,ylab=ylabel,
+       col=newdf$color)
+  new.xx <- seq(min(newdf$xx,na.rm=TRUE),max(newdf$xx,na.rm=TRUE),len=100)
+  fit    <- lm(yy~xx,data=newdf)
+  pred   <- predict(fit, new=data.frame(xx=new.xx), interval="conf", level=1-0.05)
+  lines(new.xx,pred[,"fit"],lwd=2)
+  lines(new.xx,pred[,"lwr"],lty=3)
+  lines(new.xx,pred[,"upr"],lty=3)
+  legendcolor <- unique(newdf$color)
+  legendlabel <- unique(newdf$byvar)
+  #legend("right",title=bylabel,col=pal(ncol), pch=19,legend=round(legendlabel))
+  #legend("bottomright",title=bylabel,col=newdf$byvar, pch=19,legend=legendlabel)
+  legend("bottomright",title=bylabel,col=legendcolor, pch=19,legend=legendlabel)
+  if (!missing(outputfile)) dev.off()
+  estbound(fit)
+}
+# example: plotfitcold(df,gnom,average_g_ts,TS_ID,bg="white")
+
+#----------------------------------------------------------------------------
+
+set_plot_dimensions <- function(width_choice, height_choice) {
+    options(repr.plot.width=width_choice, repr.plot.height=height_choice)
+}
+
+#----------------------------------------------------------------------------
+
+#   plotspace(r,c)= use to define plots per window by defining rows and columns
+plotspace <- function(rows,columns) par(mfrow=c(rows,columns))
+
+#----------------------------------------------------------------------------
+
+# printdf(df,nrows,var) where var is a vector of variable names.
+# var is a vector list of all variables in dataframe, df, to be printed.
+# Each variable needs to be in quotes, e.g.:
+#     printdf(df,18,c('ID','Work Item Type','Effort'))
+printdf <- function(df,nrows,var) {
+  df <- df[,var]
+  print(df,n=nrows)
+}
+
+## following is an alternate to the above
+#printdf_merge <- function(df,nrows,var) {
+#df <- df[,var]
+##print(df,na.print=NULL,n=nrows)
+#entries <- ncol(df) * nrows
+#print(df,na.print=NULL,max=entries)
+#}
+##printdf(df,5,c('TS_ID','Spacing'))
+
+#----------------------------------------------------------------------------
+
+pairsdf <- function(df,var) {
+  # usage: pairsdf(df,c('power_ratio','gin_fb','hsub_in','beta'))
+  dfcompare <- subset(df,select=var)
+  pairs(dfcompare)
+}
+
+#----------------------------------------------------------------------------
+
+last <- function(vector) {
+  # usage: last(df$beta)
+  vector(length(vector));
+}
+
+#--------------------------------
+
+plot_interactive <- function(df,xx,yy) {
+    ## interactive plot and table to find identified points by line # in df
+    ## Usage: plot_interactive(df, "xvar", "yvar")
+    ##
+    ## function does not work as well as this example
+    ## not sure how to replace aes(displ,hwy) with aes(xx,yy) where xx='displ'and yy='hwy'
+    ## ideas here: https://stackoverflow.com/questions/2641653/pass-a-data-frame-column-name-to-a-function
+    ##     df <- mpg
+    ##     m <- highlight_key(df)
+    ##     p <- ggplot(m, aes(displ, hwy)) + geom_point()
+    ##     gg <- highlight(ggplotly(p), "plotly_selected")
+    ##     crosstalk::bscols(gg, DT::datatable(m))
+    ##
+    m <- highlight_key(df)
+    p <- ggplot(m, aes(df[[xx]],df[[yy]])) + geom_point() +
+        xlab(xx) +  ylab(yy)
+    gg <- highlight(ggplotly(p), "plotly_selected")
+    ## DT package
+    crosstalk::bscols(gg, DT::datatable(m))
+}
+##plot_interactive(mpg,'displ','hwy')
+
+#--------------------------------
+
+ggplotRegression <- function (fit) {
+  require(ggplot2)
+  titlesigfig <- 5
+  ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+    geom_point() +
+    stat_smooth(method = "lm", col = "red") +
+    labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, titlesigfig),
+                       "Intercept =",signif(fit$coef[[1]],titlesigfig),
+                       " Slope =",signif(fit$coef[[2]], titlesigfig),
+                       " P =",signif(summary(fit)$coef[2,4], titlesigfig)))
+}
+#fit <- lm(hwy ~ displ, data=mpg)
+#ggplotRegression(fit)
+
+#--------------------------------
+
+# import a correlation plotting function I found online; better than pairs
+# an improvement would be to replace the diagonal with a histogram <-- Project for Brad?
+source("~/RSTUDIO/modules/ggcorplot.r")
+# usage: ggcorplot(df)
+
+#--------------------------------
+
+histplus <- function(x, breaks=NULL, sided=2, tol_coverage=0.95, confidence=0.95, nsigma=2) {
+    ## HISTOGRAM WITH MEAN AND LIMITS (confidence, #sigma, prediction, tolerance)
+    ## plot histogram and normal distribution
+
+    #### debug
+    ##x <- mtcars$mpg
+    ##sided  <- 2
+    ##tol_coverage <- 0.95
+    ##confidence <- 0.95
+    ##nsigma <- 2
+    ##breaks  <- NULL
+
+    ## set paramters
+    pvalue <- tol_coverage
+    alpha  <- 1-confidence
+    if (sided==1) {
+        alpha <- alpha/2    # also need to halve pvalue?                       # dlh to check
+    }
+    xmean <- mean(x)
+    xsd   <- sd(x)
+    
+    ## calculate limits
+    student_t <- abs(qt(alpha*sided, length(x)-1))
+    upper_conf_limit <- xmean + student_t*xsd*(  1/length(x))^0.5
+    upper_sigma      <- xmean +    nsigma*xsd
+    upper_pred_limit <- xmean + student_t*xsd*(1+1/length(x))^0.5
+#    tol_out_normal <- normtol.int(x, alpha = alpha, P=pvalue, side=sided)     # dlh to fix
+#    upper_tolerance_limit_norm <- tol_out$'1-sided.upper'                     # dlh to fix
+
+    ## generate distribution
+    xhist <- seq(min(x),max(x,upper_sigma,upper_pred_limit),by=0.001)          # dlh add upper tolerance limit to this when fix it
+    xdensity <- dnorm(xhist,xmean,xsd)                                         # dlh add option to input distribution?
+    xdensitymax <- max(xdensity)
+
+    ## make histogram
+    if (is.null(breaks)) {
+        hist(x,                freq=FALSE)
+    } else {
+        hist(x, breaks=breaks, freq=FALSE)
+    }
+    ## add distribution
+    lines(xhist, xdensity, col='red', lty=1)
+    ## add lines for mean and limits
+    abline(v=xmean,col="red")
+    abline(v=upper_conf_limit          ,col="blue")
+    abline(v=upper_sigma               ,col="darkviolet", lty=2)
+    abline(v=upper_pred_limit          ,col="darkviolet")
+#    abline(v=upper_tolerance_limit_norm,col="black")                          # dlh to fix
+    cat("mean                                      =", xmean, "\n")
+    cat(sided,  "sided upper", confidence, "confidence limit       =", upper_conf_limit,"\n")
+    cat(nsigma, "sigma upper limit                       =", upper_sigma     , "\n")
+    cat(sided,  "sided", confidence,"upper prediction limit       =", upper_pred_limit, "\n")
+    upper_tolerance_limit <- NULL                                              # dlh to fix
+    cat(sided,  "sided", confidence,"/",pvalue,"upper tolerance limit =", upper_tolerance_limit, "\n")
+}
+
+histplus2 <- function(x, breaks=NULL, distribution='normal', sided=2, alpha=0.05, pvalue=0.95, nsigma=2) {
+    ## plot histogram and normal distribution
+    ## distribution = normal or Weibull
+    ## sided  = -1 (lower), 1 (upper), or 2 sided interval
+    ## alpha  = 1 - confidence (used in confidence, prediction, and tolerance intervals)
+    ## pvalue = % of data to be covered (used in tolerance interval)
+    ## nsigma = number of standard deviations for mean +/- nsigma * standard deviation
+
+    #### debug
+    ## x <- mtcars$mpg
+    ## distribution <- 'normal'
+    ## sided  <- 2
+    ## alpha  <- 0.05
+    ## confidence <- 1-alpha
+    ## pvalue <- 0.95
+    ## nsigma <- 2
+    ## breaks <- NULL
+
+    ## calculate limits
+    if (distribution=='Weibull') {
+        ## not sure how to figure out other intervals for Weibull since mean and sd do not make sense
+        tol_out <-  exttol.int(x, alpha = alpha, P=pvalue, side=sided)
+        shape <- tol_out$'shape.1'
+        scale <- tol_out$'shape.2'
+        if (sided==-1) {
+            lower_conf_limit      <- NULL
+            lower_sigma           <- NULL
+            lower_pred_limit      <- NULL
+            lower_tolerance_limit <- tol_out$'1-sided.lower'
+            upper_conf_limit      <- NULL
+            upper_sigma           <- NULL
+            upper_pred_limit      <- NULL
+            upper_tolerance_limit <- NULL
+        } else if (sided==1) {
+            lower_conf_limit      <- NULL
+            lower_sigma           <- NULL
+            lower_pred_limit      <- NULL
+            lower_tolerance_limit <- NULL
+            upper_conf_limit      <- NULL
+            upper_sigma           <- NULL
+            upper_pred_limit      <- NULL
+            upper_tolerance_limit <- tol_out$'1-sided.upper'
+        } else {
+            lower_conf_limit      <- NULL
+            lower_sigma           <- NULL
+            lower_pred_limit      <- NULL
+            lower_tolerance_limit <- tol_out$'2-sided.lower'
+            upper_conf_limit      <- NULL
+            upper_sigma           <- NULL
+            upper_pred_limit      <- NULL
+            upper_tolerance_limit <- tol_out$'2-sided.upper'
+        }
+    } else {  # normal distribution (default)
+        xmean <- mean(x)
+        xsd   <- sd(x)
+        tol_out <- normtol.int(x, alpha = alpha, P=pvalue, side=abs(sided))
+        if (sided==-1) {
+            student_t <- abs(qt(alpha, length(x)-1))
+            lower_conf_limit      <- xmean - student_t*xsd*(  1/length(x))^0.5
+            lower_sigma           <- xmean -    nsigma*xsd
+            lower_pred_limit      <- xmean - student_t*xsd*(1+1/length(x))^0.5
+            lower_tolerance_limit <- tol_out$'1-sided.lower'
+            upper_conf_limit      <- NULL
+            upper_sigma           <- NULL
+            upper_pred_limit      <- NULL
+            upper_tolerance_limit <- NULL
+        } else if (sided==1) {
+            student_t <- abs(qt(alpha, length(x)-1))
+            lower_conf_limit      <- NULL
+            lower_sigma           <- NULL
+            lower_pred_limit      <- NULL
+            lower_tolerance_limit <- NULL
+            upper_conf_limit      <- xmean + student_t*xsd*(  1/length(x))^0.5
+            upper_sigma           <- xmean +    nsigma*xsd
+            upper_pred_limit      <- xmean + student_t*xsd*(1+1/length(x))^0.5
+            upper_tolerance_limit <- tol_out$'1-sided.upper'
+        } else {
+            student_t <- abs(qt(alpha/2, length(x)-1))
+            lower_conf_limit      <- xmean - student_t*xsd*(  1/length(x))^0.5
+            lower_sigma           <- xmean -    nsigma*xsd
+            lower_pred_limit      <- xmean - student_t*xsd*(1+1/length(x))^0.5
+            lower_tolerance_limit <- tol_out$'2-sided.lower'
+            upper_conf_limit      <- xmean + student_t*xsd*(  1/length(x))^0.5
+            upper_sigma           <- xmean +    nsigma*xsd
+            upper_pred_limit      <- xmean + student_t*xsd*(1+1/length(x))^0.5
+            upper_tolerance_limit <- tol_out$'2-sided.upper'
+        }
+    }        
+    
+    ## generate distribution
+    xmin <- min(x,lower_sigma,lower_pred_limit,lower_tolerance_limit)
+    xmax <- max(x,upper_sigma,upper_pred_limit,upper_tolerance_limit)
+    xhist <- seq(xmin,xmax,by=0.001)
+    if (distribution=='Weibull') {
+        xdensity <- dweibull(xhist,shape=shape,scale=scale)
+    } else {
+        xdensity <- dnorm(xhist,xmean,xsd)
+    }
+    xdensitymax <- max(xdensity)
+
+    ## make histogram
+    if (is.null(breaks)) {
+#        hist(x,                xlim=c(xmin,xmax), freq=FALSE)  # specifying xlim messes up axes
+        hist(x,                freq=FALSE)
+    } else {
+        hist(x, breaks=breaks, freq=FALSE)
+    }
+    ## add distribution
+    lines(x=xhist, y=xdensity, col='red', lty=1)
+    ## add lines for mean and limits
+    abline(v=xmean,col="red")
+    abline(v=lower_conf_limit          ,col="blue")
+    abline(v=lower_sigma               ,col="darkviolet", lty=2)
+    abline(v=lower_pred_limit          ,col="darkviolet")
+    abline(v=lower_tolerance_limit     ,col="black")
+    abline(v=upper_conf_limit          ,col="blue")
+    abline(v=upper_sigma               ,col="darkviolet", lty=2)
+    abline(v=upper_pred_limit          ,col="darkviolet")
+    abline(v=upper_tolerance_limit     ,col="black")
+    cat(sided,"sided", distribution,"distribution intervals\n")
+    cat("nsigma                 =",nsigma,"\n")
+    cat("confidence = 1 - alpha =",confidence,"\n")
+    cat("coverage   = pvalue    =",pvalue,"\n")
+    cat("mean                   =",xmean,"\n")
+    cat("standard deviation     =",xsd,"\n")
+    interval <- c("confidence", "mean +/- nsigma * sd", "prediction", "tolerance")
+    df <- data.frame(interval)
+    df$lower <- c(lower_conf_limit,lower_sigma,lower_pred_limit,lower_tolerance_limit)
+    df$upper <- c(upper_conf_limit,upper_sigma,upper_pred_limit,upper_tolerance_limit)
+    df
+    ##    cat("mean                                      =", xmean, "\n")
+    ##    cat(sided,  "sided upper", confidence, "confidence limit       =", upper_conf_limit,"\n")
+    ##    cat(nsigma, "sigma upper limit                       =", upper_sigma     , "\n")
+    ##    cat(sided,  "sided", confidence,"upper prediction limit       =", upper_pred_limit, "\n")
+    ##    cat(sided,  "sided", confidence,"/",pvalue,"upper tolerance limit =", upper_tolerance_limit, "\n")
+}
+# histplus2(mtcars$mpg)
+
+#--------------------------------
+
+scaledf <- function(df, meanvec = NULL, scaledata = NULL, scalefactor = 2) {
+    ## centers and scales a dataframe
+    ## df = dataframe of x variales
+    ## scaledata = if not provided, then uses range of df for scaling
+    ##           = if provided, uses this dataframe for the range for scaling (e.g., qual range)
+    ## scaledata must have the same columns as df
+    ## scalerange = 2 scales dataframe to a max range of 2 
+    ##              (-1 to +1 if ranges of original data are equal distant from mean)
+    ## suffix "_s" to be added to each variable to identify it is scaled
+    
+    ## center data
+    if (missing(meanvec))   meanvec <- apply(df, 2, mean)  # use mean of df  to center
+    # subtract meanvec from each row in df
+    dfcenter <- sweep(df,       2, meanvec,    "-")  
+    
+    ## scale centered data
+    if (missing(scaledata)) scaledata <- df                # use range of df to scale
+    scalerange <- (sapply(scaledata,max) - sapply(scaledata,min)) / scalefactor
+    dfs      <- sweep(dfcenter, 2, scalerange, "/")
+    
+    ## convert to dataframe and ad suffix to column names
+    dfs <- data.frame(dfs)
+    names(dfs) <- paste(names(dfs), "_s", sep = "")
+    
+    ## return parameters
+    return( list(dfs=dfs, meanvec=meanvec, scaledata=scaledata, scalefactor=scalefactor) )
+}
+# dfs.out <- scaledf(df)$dfs
+# dfs     <- dfs.out$dfs
+# summary(dfs)
+
+unscaledf <- function(dfs, meanvec, scaledata, scalefactor) {
+    ## reverses scaling
+    scalerange <- (sapply(scaledata,max) - sapply(scaledata,min)) / scalefactor
+    df <- sweep(dfs, 2, scalerange, "*")
+    df <- sweep(df,  2, meanvec,    "+")
+    df <- data.frame(df)
+    names(df) <- gsub("_s", "", names(df))
+    return(df)
+}
+# dfsu <- unscaledf(df, meanvec=dfs.out$meanvec, scaledata=dfs.out$scaledata, scalefactor=dfs.out$scalefactor)
+
+inv <- function(x) solve(x)
+
+#--------------------------------
+#
+# WORKS IN PROGRESS
+#
+
+## a <- c(1,2,3,4,5,6)
+## b <- c(4,5,6,6,7,8)
+## a <- data.frame(a,b)
+## names(a) <- c("test1","test2")
+
+## test <- function(df,xx) {
+##     xlabel <- deparse(substitute(xx))
+##     xx <- eval(substitute(xx),df)   # need to recognize name passed into function as xx
+##     if (typeof(substitute(xx)) == 'character') {
+##         cat(sprintf("input xx is character\n"))
+##         xlabel <- substitute(xx);
+##         newdf  <- data.frame(df$xx);
+##     } else {
+##         cat(sprintf("input xx not character\n"))
+##         xlabel  <- deparse(substitute(xx));
+##         xx    <- eval(substitute(xx),df);    # need to recognize name passed into function as xx
+##         newdf <- data.frame(xx);
+##     }
+##     ##cat(sprintf("xx type =\n"))
+##     ##cat(typeof(xx))
+##     ##cat(sprintf("\n"))
+##     newdf
+## }
+## test(a,'pbi_num')
+## 
+
+## returnstring <- function(xx) {
+##     if (!typeof(substitute(xx)) == 'character') {
+##         ## convert to character
+##         ## cat("input not as character\n")
+##         xx  <- deparse(substitute(xx))
+##         #xx    <- eval(substitute(xx),df);    # need to recognize name passed into function as xx
+##     }
+##     xx
+## }
+## returnstring("this is a string")
+## returnstring(notastring)
+
+## pf <- function(df,xx,yy) {
+##     x <- as.matrix(df[xx])
+##     y <- as.matrix(df[yy])
+##     plot(x,y)
+## }
+## pf(a,'test1','test2')
+## pf(a,test1,test2)
+
+## pfd <- function(df,xx,yy) {
+##     xx <- returnstring(xx)
+##     xy <- returnstring(xx)
+##     x <- as.matrix(df[xx])
+##     y <- as.matrix(df[yy])
+##     plotfit(df,xx,yy)
+## }
+## pfd(a,'test1','test2')
+
+## test <- function(df,xx,yy) {
+## #  xlabel <- deparse(substitute(xx))
+## #  ylabel <- deparse(substitute(yy))
+## #  xx <- eval(substitute(xx),df)   # need to recognize name passed into function as xx
+## #  yy <- eval(substitute(yy),df)   # need to recognize name passed into function as yy
+##     xx <- returnstring(xx)
+## #    x <- as.matrix(df[xx])
+## #    cat("x from test =",x,"\n")
+##     ##y <- as.matrix(df[yy])
+##     ##plot(x,y)
+##     ##plotfit(df, eval(substitute(xx)), eval(substitute(yy)))
+##     plotfit(df, as.name(xx), as.name(yy) )
+## }
+## c <- test(df=a,xx='test1',yy='test2')
+## c <- test(df=a,xx=test1,yy=test2)
+## c
+
+## function to plot residuals
+plotres <- function(fit, df, x) {
+    fitsum <- summary(fit)
+    residuals <- fitsum$residuals
+    dffit <- cbind(df, dffit, residuals)
+    #plotfit(dffit, logy, fit)
+    #abline(a=0,b=1,col="red")   # y = a + b x
+#
+#    plotfit(dffit, fit, residuals)
+#
+#    plot(dffit$fit, dffit$residuals)
+#    x <- dffit$fit
+#    y <- dffit$residuals
+#    smooth <- predict( lm(y ~ x + I(x^2) + I(x^3)) )
+#    smooth <- data.frame(x,y,smooth)
+#    smooth <- smooth[order(smooth$x),]
+#    lines(smooth$x,smooth$smooth)
+}
+
+
+plotxy <- function(df,xx,yy,model=1,xlimspec=NULL,ylimspec=NULL,bg="grey90") {
+    ## create scatter plot with linear regression line and 95% confidence lines
+    ## xx and yy are variables within dataframe df
+    ## example usage: plotfit(df,hsub_in,power_ratio,ylimspec=c(0,1.1))
+    xlabel <- deparse(substitute(xx))
+    ylabel <- deparse(substitute(yy))
+    xx <- eval(substitute(xx),df)   # need to recognize name passed into function as xx
+    yy <- eval(substitute(yy),df)   # need to recognize name passed into function as yy
+    newdf <- data.frame(xx,yy)
+    xmin <- min(newdf$xx,na.rm=TRUE)
+    xmax <- max(newdf$xx,na.rm=TRUE)
+    ## xmax_plot <- xmax + (xmax-xmin)*1.2  # did this to make room for a legend
+    ymin <- min(newdf$yy,na.rm=TRUE)
+    ymax <- max(newdf$yy,na.rm=TRUE)
+    if (missing(xlimspec)) { xlimspec <- c(xmin,xmax) }
+    if (missing(ylimspec)) { ylimspec <- c(ymin,ymax) }
+    par(bg=bg)  # changes background of plot to specified color
+    plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,xlab=xlabel,ylab=ylabel)
+    ##plot(newdf$power_ratio~newdf$g_ave,type="n")
+    ##wx    <- par("usr")[1:2]
+    ##new.x <- seq(wx[1],wx[2],len=length(newdf$power_ratio))
+    ##new.x <- seq(min(log10(newdf$g_ave)),max(log10(newdf$g_ave)),len=100)
+    new.xx <- seq(min(newdf$xx,na.rm=TRUE),max(newdf$xx,na.rm=TRUE),len=100)
+    if        (model==0) {
+        fit <- lm(yy~1,                      data=newdf)
+    } else if (model == 1) {
+        fit <- lm(yy~xx,                     data=newdf)
+    } else if (model == 2) {
+        fit <- lm(yy~xx + I(xx^2),           data=newdf)
+    } else {
+        fit <- lm(yy~xx + I(xx^2) + I(xx^3), data=newdf)
+    }
+    pred   <- predict(fit, new=data.frame(xx=new.xx), interval="conf", level=1-0.05)
+    lines(new.xx,pred[,"fit"],lwd=2)
+    if (model==1) {
+        lines(new.xx,pred[,"lwr"],lty=3)
+        lines(new.xx,pred[,"upr"],lty=3)
+    }
+    estbound(fit)
+}

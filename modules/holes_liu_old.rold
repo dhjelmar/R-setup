@@ -1,0 +1,216 @@
+holes_liu <- function(space, data, sidesmall, requirebounded='yes', reorder='yes') {
+    ## Finds MHR (maximal empty hyper-rectangle) in a defined space
+    ## Inputs should potentially be transposed and scaled if it is desired that:
+    ## (1) an extent at a low value is equal to an extent at a high value
+    ##     (e.g., pressure = 200, 400, 800, 1600 should be input as
+    ##      log(pressure) if holes at 200 and 1600 should be considered
+    ##      the same distance from 400 and 800, respectively)
+    ## (2) an extent in 1 parameter is considered equal to the
+    ##     same extent in another parameter (e.g., scale from 0 to 1)
+    ##
+    ## Input:  data      = dataframe containing datapoints
+    ##                     format: 1st column = name of datapoint
+    ##                             nth column = parameter values
+    ##         space     = 2 row dataframe defining region of interest
+    ##                     format: same as for data except name of "datapoint"
+    ##                             in is SL in 1st row for the lower bound
+    ##                             and   SU in 2nd row for the upper bound
+    ##         sidesmall = MHR is too small to consider if
+    ##                     volume < sidesmall^(# of parameters)
+    ##         requirebounded = yes removes unbounded MHRs during search as recommended in Liu paper
+    ##                          this is the faster option but I am not convinced it will not drop a valid MHR
+    ##                        = no removes unbounded MHRs after completion of search
+    ## Output: MHR         = sorted list of candidate MHRs from largest to smallest
+    ##         MHRdropped  = sorted list of deleted because of being too small or unbounded
+    ##         MHRreplaced = list of MHRs deleted because a datapoint exists inside it so not empty
+    ##         volumesmall = sidesmall^(# of parameters)
+    
+
+    ## ## debug
+    ## space <- spaces
+    ## data  <- dfs
+    ## sidesmall <- 0.1
+    ## requirebounded <- 'yes'
+    ## reorder <- 'yes'
+
+    ## rename data to df for use within function
+    df <- data
+
+    ## number of parameters
+    nparam <- ncol(space) - 1
+    end    <- nparam * 2
+    
+    ## Define first MHR h as the entire space and insert into the set of MHRs t
+    ## MHR to be defined using lower and upper bounds
+    hL <- data.frame(t(rep('SL', nparam)), stringsAsFactors=FALSE)
+    names(hL) <- names(space[2:(nparam+1)])
+    names(hL) <- paste(names(hL), "_l", sep="")
+    hU <- data.frame(t(rep('SU', nparam)), stringsAsFactors=FALSE)
+    names(hU) <-  names(space[2:(nparam+1)])
+    names(hU) <- paste(names(hU), "_u", sep="")
+    h <- cbind(hL,hU)
+    t <- h
+
+    ## define size for an MHR that is too small to consider
+    ## sidesmall <- 0.1
+    volumesmall <- sidesmall^nparam
+
+    ## For each point in database, search whether it is in t
+    hcount <- 1
+    treplaced <- delete(t, t[1,])
+    tdropped   <- treplaced
+    ## # for each datapoint i in x
+    for (irow in 1:nrow(df)) {
+        ## browser()
+        pname <- as.character(df$name[irow])
+        ## print(pname)
+        ## identify list of MHRs (each is an h) in the set of MHRs t that contain x
+        ## for loop will modify t so need a temporary dataframe tprev with the previous values of t
+        ## that the for loop can work through
+        tprev <- t
+        for ( hi in 1:nrow(tprev) ) {
+            ## browser()
+            h <- tprev[hi,1:end]  # 1:end strips off trailing info if included in t and tprev
+            testloc <- ContainmentSearch(h, pname, df, space)
+            if (testloc == 'on boundary') {
+                ## insert x into set of bounding points in that surface
+                ## still need to figure this out
+            } else if (testloc == 'inside') {
+                ## line 9
+                ## break MHR h into 2 separate smaller MHRs along each parameter
+                ## add the two new MHRs, ha and hb, to the set of MHRs t
+                ## for each dimension
+                for (jdim in 1:nparam) {
+                    ## print(pname)
+                    ## print(jdim)
+                    ## start with the MHR of interest
+                    ha <- h
+                    hb <- h
+                    ## print(h)
+
+                    ## split h in each dimension, jdim
+                    ## first assign location to the split location
+                    ## if pname is on the boundary, swap location for pname
+                    datapoint <- df[df$name == pname,]
+                    ha[jdim+nparam] <- datapoint[1 + jdim]
+                    hb[jdim]        <- datapoint[1 + jdim]
+                    ## print(ha)
+                    ## print(hb)
+                    if (ContainmentSearch(ha, pname, df, space) == 'on boundary')
+                        ha[jdim+nparam] <- pname
+                    if (ContainmentSearch(hb, pname, df, space) == 'on boundary')
+                        hb[jdim]        <- pname
+                    ## print(ha)
+                    ## print(hb)
+
+                    for (jjdim in 1:nparam) {
+                        ## already addressed jdim so can skip
+                        if (jjdim != jdim) {
+                            ha[jjdim]        <- pbound(ha, jjdim,        df, space)
+                            ha[jjdim+nparam] <- pbound(ha, jjdim+nparam, df, space)
+                            hb[jjdim]        <- pbound(hb, jjdim,        df, space)
+                            hb[jjdim+nparam] <- pbound(hb, jjdim+nparam, df, space)
+                        }
+                    }
+                    
+                    ## add new MHRs if big enough and bounded
+                    haloc  <- hlocation(ha, df, space)
+                    sizeha <- size(haloc)
+                    parent <- stri_split_fixed(str = row.names(h), pattern = "_", n = 2)[[1]][1]
+                    ## if (pname == 'point3' & jdim == 2) browser()
+                    if ( sizeha >= volumesmall & bounded(ha) == TRUE) {
+                        ## row.names(ha) <- paste(pname, '__parent_',row.names(h),
+                        ##                        '__jdim_',jdim, '__L', sep="")
+                        hcount <- hcount+1
+                        row.names(ha) <- paste(hcount, '_jdim', jdim, "L", "_parent_", parent, sep="")
+                        t <- rbind(t, ha)
+                    } else {
+                        ## too small or unbounded by datapoint
+                        ## if the latter, the MHR should be picked up elsewhere
+                        row.names(ha) <- paste('num_jdim', jdim, "L", "_parent_", parent, sep="")
+                        tdropped <- rbind(tdropped, ha)                   
+                    }
+                    hbloc  <- hlocation(hb, df, space)
+                    sizehb <- size(haloc)
+
+                    ## if ( sizehb >= volumesmall & bounded(hb) == TRUE ) {
+                    ##     hcount <- hcount+1
+                    ##     row.names(hb) <- paste(hcount, '_jdim', jdim, "U", "_parent_", parent, sep="")
+                    ##     t <- rbind(t, hb)
+                    ## } else {
+                    ##     ## if (row.names(hb) == 'num_jdim1U_parent_171') browser()
+                    ##     ## if (jdim == 'L' & parent == '17') browser()
+                    ##     row.names(hb) <- paste('num_jdim', jdim, "U", "_parent_", parent, sep="")
+                    ##     tdropped <- rbind(tdropped, hb)                                       
+                    ## }
+
+                    if ( sizehb >= volumesmall & (requirebounded == 'no' | bounded(hb) == TRUE) ) {
+                        ## big enough and either do not care if bounded or it is bounded
+                        hcount <- hcount+1
+                        row.names(hb) <- paste(hcount, '_jdim', jdim, "U", "_parent_", parent, sep="")
+                        t <- rbind(t, hb)
+                    } else {
+                        ## if (row.names(hb) == 'num_jdim1U_parent_171') browser()
+                        ## if (jdim == 'L' & parent == '17') browser()
+                        row.names(hb) <- paste('num_jdim', jdim, "U", "_parent_", parent, sep="")
+                        tdropped <- rbind(tdropped, hb)                                       
+                    }
+
+                }
+                ## delete MHR h from collection of MHRs t
+                t     <- delete(t, h)
+                ## add MHR h to list of deleted MHRs for later tracing if needed
+                treplaced <- insert(treplaced, h)
+            }        
+            ## else testloc == 'outside' so look at the next MHR in t 
+        }
+    }
+
+    if (requirebounded == 'no') {
+        ## chose option to not remove unbounded MHRs above so doing it now
+        for ( hi in 1:nrow(t) ) {
+            ## browser()
+            h <- t[hi,]
+            if (bounded(h) == FALSE) t <- delete(t, h)
+            browser()
+            tdropped <- insert(tdropped, h)
+        }
+    }
+
+    ## identify location of each side of MHRs
+    tloc <- t
+    for (i in 1:nrow(tloc)) {
+        ## tloc <- apply(t, 1, function(h) hlocation(h, df, space))
+        h     <- tloc[i,]
+        tloc[i,] <- as.numeric( hlocation(h, df, space) )
+    }
+    tloc
+    ## tloc was still all character for some reason so need to convert to numeric
+    tloc[] <- lapply(tloc, as.numeric)   
+
+    ## add column of MHR sizes
+    tloc$size <- size(tloc)
+    t$size    <- tloc$size
+
+    ## reorder by size
+    if (reorder == 'yes') {
+        tloc     <- tloc    [order(tloc$size,     decreasing=TRUE),]
+        t        <- t       [order(t$size,        decreasing=TRUE),]
+    }
+
+    ## do the same for the dataframe of too small or unbounded MHRs, if any
+    if (nrow(tdropped) > 0) {
+        tlocdropped <- tdropped
+        for (i in 1:nrow(tlocdropped)) {
+            h     <- tlocdropped[i,]
+            tlocdropped[i,] <- as.numeric( hlocation(h, df, space) )
+        }
+        tlocdropped[] <- lapply(tlocdropped, as.numeric)   # tlocdropped was all character
+        tdropped$size <- size(tlocdropped)
+        if (reorder == 'yes') tdropped <- tdropped[order(tdropped$size, decreasing=TRUE),]
+    }
+
+    return(list(MHRloc=tloc, MHR=t, MHRdropped=tdropped,
+                MHRreplaced=treplaced, volumesmall=volumesmall))
+            
+}
