@@ -77,6 +77,7 @@ library(superml)
 ## library(FrF2)          # fractional factorial design of experiments; will not install on chrome
 library(DT)
 library(stringi)       # need for stri_split_fixed function
+library(stringr)       # need for str_extract function
 
 (.packages())          # shows packages that are loaded
 ##search()              # little different from above but not sure how (includes more)
