@@ -4,7 +4,11 @@
 ##     On Windows
 ##          source('~/Engineering/GitHub_repos/R-setup/setup.r')
 ##     On Chromebook
- ##         source('~/GitHub_repos/R-setup/setup.r')
+##          source('~/GitHub_repos/R-setup/setup.r')
+##     On Colab
+##          Not sure yet. Likely need to run under Python to access Google Drive.
+##          GitHub repo with setup.r file is here:
+##             /content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules
 ##
 ## What it does
 ##    
@@ -93,13 +97,18 @@ library(stringi)       # need for stri_split_fixed function
 ##
 ##     Source my own .r files in ~/RSTUDIO/modules
 
-### source all files in specified folders herein
-##  On Windows
-        path <- c("~/Engineering/GitHub_repos/R-setup/modules")
-##  On Chromebook
-##      path <- c("~/GitHub_repos/R-setup/modules",
-##                "~/ProgramFiles/R_packages/tolerance/R",
-##                "~/ProgramFiles/R_packages/rgl/R"      )
+## source all files in specified folders herein
+os <- .Platform$os.type
+if (os == "windows") {
+    path <- c("~/Engineering/GitHub_repos/R-setup/modules")
+} else if (os == 'unix') {
+    path <- c("~/GitHub_repos/R-setup/modules",
+              "~/ProgramFiles/R_packages/tolerance/R",
+              "~/ProgramFiles/R_packages/rgl/R"      )
+} else {
+    # assume Colab (.Platform returns NULL)
+    path <- c("/content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules")
+}
 r_files <- list.files(path, pattern="*.[rR]$", full.names=TRUE)
 for (f in r_files) {
   ## cat("f =",f,"\n")
