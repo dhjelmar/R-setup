@@ -61,8 +61,8 @@ readall <- function(datasource,
         print(names(df))
     }
 
-    ## use regular expression to replace space, parenthesis, /, +, -, .., and . with _
-    names(df) <- gsub(" |\\(|\\)|\\+|\\-|\\.\\.|\\.", "_", names(df))
+    ## use regular expression to replace space, parenthesis, /, +, -, ., and comma with _
+    names(df) <- gsub(" |\\(|\\)|\\+|\\-|\\.|\\,", "_", names(df))
 
     if (suppress == FALSE) {
         cat('Output dataframe names:\n')
