@@ -1,7 +1,10 @@
 ### INSTRUCTIONS
 ##
 ## Run this script with
-##     source('~/Engineering/RSTUDIO/setup.r')
+##     On Windows
+##          source('~/Engineering/GitHub_repos/R-setup/setup.r')
+##     On Chromebook
+ ##         source('~/GitHub_repos/R-setup/setup.r')
 ##
 ## What it does
 ##    
@@ -91,10 +94,12 @@ library(stringi)       # need for stri_split_fixed function
 ##     Source my own .r files in ~/RSTUDIO/modules
 
 ### source all files in specified folders herein
-##path <- c("~/RSTUDIO/modules",
-##          "~/ProgramFiles/R_packages/tolerance/R",
-##          "~/ProgramFiles/R_packages/rgl/R"      )
-path <- c("F:/Documents/01_Dave's Stuff/Engineering/RSTUDIO/modules")
+##  On Windows
+        path <- c("~/Engineering/GitHub_repos/R-setup/modules")
+##  On Chromebook
+##      path <- c("~/GitHub_repos/R-setup/modules",
+##                "~/ProgramFiles/R_packages/tolerance/R",
+##                "~/ProgramFiles/R_packages/rgl/R"      )
 r_files <- list.files(path, pattern="*.[rR]$", full.names=TRUE)
 for (f in r_files) {
   ## cat("f =",f,"\n")
