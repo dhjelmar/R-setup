@@ -98,7 +98,7 @@ library(stringi)       # need for stri_split_fixed function
 ##     Source my own .r files in ~/RSTUDIO/modules
 
 ## source all files in specified folders herein
-os <- .Platform$os.type
+os <- .Platform$OS.type
 if (os == "windows") {
     path <- c("~/Engineering/GitHub_repos/R-setup/modules")
 } else if (os == 'unix') {
