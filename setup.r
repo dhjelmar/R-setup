@@ -105,7 +105,7 @@ library(tolerance)
 
 ## source all files in specified folders herein
 if (os == "windows") {
-    path <- c("~/Engineering/GitHub_repos/R-setup/modules")
+    path <- c("~/Programs/GitHub_home/R-setup/modules")
 } else if (os == 'unix') {
     path <- c("~/GitHub_repos/R-setup/modules",
               "~/ProgramFiles/R_packages/tolerance/R",
