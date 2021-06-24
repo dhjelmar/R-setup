@@ -52,7 +52,7 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     slope <- fit$coefficients[[2]]
 
     ## plot points and fit
-    if (main == 'equation') main = paste0("y = ", signif(intercept,4), "* x + ", signif(slope,4))
+    if (main == 'equation') main = paste0("y = ", signif(slope,4), "* x + ", signif(intercept,4))
     plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
          xlab=xlabel,ylab=ylabel,
          main=main)
