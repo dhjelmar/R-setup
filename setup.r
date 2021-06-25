@@ -71,6 +71,7 @@ os <- .Platform$OS.type
 ##    may also have installed plotly inside R
 library(qualityTools)
 library(matlib)
+library(tibble)
 library(readxl)
 library(ggplot2)       # alternative to base plots (used by plotly)
 library(plotly)        # interactive plots
