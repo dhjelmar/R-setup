@@ -72,6 +72,7 @@ plotfitcold <- function(df,xx,yy,byvar,xlimspec=NULL,ylimspec=NULL,bg="grey90",o
     plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
          xlab=xlabel,ylab=ylabel,main=eq,
          col=newdf$color)
+    grid(col='gray70')
 
     ## add fit to plot
     new.xx <- seq(min(newdf$xx,na.rm=TRUE),max(newdf$xx,na.rm=TRUE),len=100)

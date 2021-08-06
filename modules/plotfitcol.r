@@ -73,6 +73,7 @@ plotfitcol <- function(df,xx,yy,byvar,ncol=2,xlimspec=NULL,ylimspec=NULL,bg="gre
     plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
          xlab=xlabel,ylab=ylabel, main=eq,
          col=pal(ncol)[as.numeric(cut(newdf$byvar,breaks=ncol))])
+    grid(col='gray70')
 
     ## add fit lines
     new.xx <- seq(min(newdf$xx,na.rm=TRUE),max(newdf$xx,na.rm=TRUE),len=100)
