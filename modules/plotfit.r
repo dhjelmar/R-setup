@@ -26,9 +26,22 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     if (missing(xlabel)) xlabel <- deparse(substitute(xx))
     if (missing(ylabel)) ylabel <- deparse(substitute(yy))
 
-    ## extract xx and yy from df and create dataframe
+    ## extract xx and yy from df
     xx <- eval(substitute(xx),df)   # need to recognize name passed into function as xx
     yy <- eval(substitute(yy),df)   # need to recognize name passed into function as yy
+    
+    ## if xx and yy were passed in without quotes, xx and yy will be vectors to be plotted
+    ## if xx and yy were passed in with quotes, xx and yy will be name of vector to be plotted
+    if (typeof(xx) == 'character') {
+        xxcol <- which(grepl(xx, names(df)))  
+        xx    <- df[, xxcol]
+    }
+    if (typeof(yy) == 'character')  {
+        yycol <- which(grepl(yy, names(df)))  
+        yy    <- df[, yycol]
+    }
+    
+    ## put xx and yy into dataframe
     newdf <- data.frame(xx,yy)
 
     ## set min and max for plot if not specified

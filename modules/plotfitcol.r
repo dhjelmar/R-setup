@@ -13,6 +13,23 @@ plotfitcol <- function(df,xx,yy,byvar,ncol=2,xlimspec=NULL,ylimspec=NULL,bg="gre
     xx    <- eval(substitute(xx),df)    # need to recognize name passed into function as xx
     yy    <- eval(substitute(yy),df)    
     byvar <- eval(substitute(byvar),df) 
+    
+    ## if xx and yy were passed in without quotes, xx and yy will be vectors to be plotted
+    ## if xx and yy were passed in with quotes, xx and yy will be name of vector to be plotted
+    if (typeof(xx) == 'character') {
+        xxcol <- which(grepl(xx, names(df)))  
+        xx    <- df[, xxcol]
+    }
+    if (typeof(yy) == 'character')  {
+        yycol <- which(grepl(yy, names(df)))  
+        yy    <- df[, yycol]
+    }
+    if (typeof(byvar) == 'character')  {
+        bycol <- which(grepl(byvar, names(df)))  
+        byvar <- df[, bycol]
+    }
+    
+    ## put xx, yy, and byvar into dataframe
     newdf <- data.frame(xx,yy,byvar)
 
     ## debug

@@ -18,15 +18,22 @@ plotfitcold <- function(df,xx,yy,byvar,xlimspec=NULL,ylimspec=NULL,bg="grey90",o
     yy    <- eval(substitute(yy),df)    
     byvar <- eval(substitute(byvar),df) 
 
-    ## debug
-    ##xlabel <- deparse("gnom")
-    ##ylabel <- deparse("average_g_ts")
-    ##bylabel <- deparse("TS_ID")
-    ##xx    <- eval(substitute(gnom),df)    ## need to recognize name passed into function as xx
-    ##yy    <- eval(substitute(average_g_ts),df)    
-    ##byvar <- eval(substitute(TS_ID),df)
-
-    ## create dataframe with parameters to be plotted
+    ## if xx and yy were passed in without quotes, xx and yy will be vectors to be plotted
+    ## if xx and yy were passed in with quotes, xx and yy will be name of vector to be plotted
+    if (typeof(xx) == 'character') {
+        xxcol <- which(grepl(xx, names(df)))  
+        xx    <- df[, xxcol]
+    }
+    if (typeof(yy) == 'character')  {
+        yycol <- which(grepl(yy, names(df)))  
+        yy    <- df[, yycol]
+    }
+    if (typeof(byvar) == 'character')  {
+        bycol <- which(grepl(byvar, names(df)))  
+        byvar <- df[, bycol]
+    }
+    
+    ## put xx, yy, and byvar into dataframe
     newdf <- data.frame(xx,yy,byvar)
 
     ## perform regression
