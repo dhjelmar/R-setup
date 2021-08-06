@@ -45,8 +45,8 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     newdf <- data.frame(xx,yy)
 
     ## set min and max for plot if not specified
-    xmin <- min(newdf$xx,na.rm=TRUE)
-    xmax <- max(newdf$xx,na.rm=TRUE)
+    xmin <- min(newdf$xx, xlimspec, na.rm=TRUE)
+    xmax <- max(newdf$xx, xlimspec, na.rm=TRUE)
     ## xmax_plot <- xmax + (xmax-xmin)*1.2  # did this to make room for a legend
     ymin <- min(newdf$yy,na.rm=TRUE)
     ymax <- max(newdf$yy,na.rm=TRUE)
@@ -57,18 +57,26 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     par(bg=bg)  
 
     ## perform regrssion
-    new.xx <- seq(min(newdf$xx,na.rm=TRUE),max(newdf$xx,na.rm=TRUE),len=100)
+    new.xx <- seq(min(newdf$xx, vlines, na.rm=TRUE),max(newdf$xx, vlines, na.rm=TRUE), len=100)
     fit <- lm(yy~xx,data=newdf)
     ## estbound(fit)
     pred   <- predict(fit, new=data.frame(xx=new.xx), interval=interval, level=1-0.05/sided)
     intercept <- fit$coefficients[[1]]
     slope <- fit$coefficients[[2]]
+    ## calculate rise of fit over range bounds if supplied, otherwise calculate rise over range of data
+    if ( !is.null(vlines) ) {
+        rise <- (vlines[2] - vlines[1]) * slope
+    } else {
+        rise <- (xmax - xmin) * slope
+    }        
 
     ## plot points and fit
-    if (main == 'equation') main = paste0("y = ", signif(slope,4), "* x + ", signif(intercept,4))
+    if (main == 'equation') main = paste0("y = ", signif(slope,4), "* x + ", signif(intercept,4),
+                                          ", ", expression(Delta), " = ", signif(rise,4))
     plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
          xlab=xlabel,ylab=ylabel,
          main=main)
+    grid(col='gray70')
     lines(new.xx,pred[,"fit"],lwd=1, col='red')
 
     ## if request confidence bounds, add to plot
@@ -78,16 +86,19 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     }
 
     ## if request upper/lower range bounds, add to plot
-    ## return rise of fit over range bounds if supplied, otherwise return rise over range of data
     if ( !is.null(vlines) ) {
         abline(v=vlines[1], col='black', lty='dashed')
         abline(v=vlines[2], col='black', lty='dashed')
-        rise <- (vlines[2] - vlines[1]) * slope
-    } else {
-        rise <- (xmax - xmin) * slope
     }        
 
     if (suppress != 'yes')
         return( list(intercept = intercept, slope = slope, rise = rise, pred = as_tibble(pred)) )
     
+}
+testplots <- function() {
+    source('/home/dlhjel/GitHub_repos/R-setup/setup.r')
+    plotfit(mtcars, cyl, 'mpg')
+    plotfit(mtcars, cyl, 'mpg', vlines=c(2,9), xlimspec=c(0, 10))
+    plotfitcol(mtcars, cyl, 'mpg', byvar='cyl', ncol=3)
+    plotfitcold(mtcars, cyl, 'mpg', byvar=cyl)
 }
