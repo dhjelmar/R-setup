@@ -1,7 +1,7 @@
 plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
                     main = 'equation', xlabel = NULL, ylabel = NULL,
                     interval='conf', alpha=0.05, sided=2, bg="grey90",
-                    suppress='no') {
+                    suppress='no', outputfile=NULL) {
     ## create scatter plot with linear regression line and 95% confidence lines
     ## xx and yy are variables within dataframe df
     ## xlimspec and ylimspec can be used to force the range of the plot
@@ -53,14 +53,15 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     if (missing(xlimspec)) { xlimspec <- c(xmin,xmax) }
     if (missing(ylimspec)) { ylimspec <- c(ymin,ymax) }
 
+    ## setup for output jpeg file
+    if (!missing(outputfile)) jpeg(filename=outputfile)
+    
     ## change background of plot to specified color
     par(bg=bg)  
 
     ## perform regrssion
-    new.xx <- seq(min(newdf$xx, vlines, na.rm=TRUE),max(newdf$xx, vlines, na.rm=TRUE), len=100)
     fit <- lm(yy~xx,data=newdf)
     ## estbound(fit)
-    pred   <- predict(fit, new=data.frame(xx=new.xx), interval=interval, level=1-0.05/sided)
     intercept <- fit$coefficients[[1]]
     slope <- fit$coefficients[[2]]
     ## calculate rise of fit over range bounds if supplied, otherwise calculate rise over range of data
@@ -73,6 +74,8 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     ## plot points and fit
     if (main == 'equation') main = paste0("y = ", signif(slope,4), "* x + ", signif(intercept,4),
                                           ", ", expression(Delta), " = ", signif(rise,4))
+    new.xx <- seq(min(newdf$xx, vlines, na.rm=TRUE),max(newdf$xx, vlines, na.rm=TRUE), len=100)
+    pred   <- predict(fit, new=data.frame(xx=new.xx), interval=interval, level=1-0.05/sided)
     plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
          xlab=xlabel,ylab=ylabel,
          main=main)
@@ -91,14 +94,23 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
         abline(v=vlines[2], col='black', lty='dashed')
     }        
 
-    if (suppress != 'yes')
+    ## for output jpeg file
+    if (!missing(outputfile)) dev.off()
+
+    if (suppress == 'no')
         return( list(intercept = intercept, slope = slope, rise = rise, pred = as_tibble(pred)) )
     
 }
 testplots <- function() {
     source('/home/dlhjel/GitHub_repos/R-setup/setup.r')
     plotfit(mtcars, cyl, 'mpg')
+    plotfit(mtcars, cyl, 'mpg', vlines=c(5,7))
+    plotfit(mtcars, cyl, 'mpg', vlines=c(3.9,8.1))
     plotfit(mtcars, cyl, 'mpg', vlines=c(2,9), xlimspec=c(0, 10))
+    plotfit(mtcars, cyl, 'mpg', outputfile='junk.jpg')
     plotfitcol(mtcars, cyl, 'mpg', byvar='cyl', ncol=3)
     plotfitcold(mtcars, cyl, 'mpg', byvar=cyl)
+    plotfitcold(mtcars, cyl, 'mpg', byvar=cyl,                xlimspec=c(0,10))
+    plotfitcold(mtcars, cyl, 'mpg', byvar=cyl, vlines=c(2,9), xlimspec=c(0,10))
+    plotfitcold(mtcars, cyl, 'mpg', byvar=cyl, vlines=c(5,7))
 }
