@@ -46,7 +46,7 @@ plotfitcol <- function(df,xx,yy,byvar,ncol=2,xlimspec=NULL,ylimspec=NULL,bg="gre
     fit       <- lm(yy~xx,data=newdf)
     intercept <- fit$coefficients[[1]]
     slope     <- fit$coefficients[[2]]
-    eq = paste0("y = ", signif(intercept,4), "* x + ", signif(slope,4))
+    eq = paste0("y = ", signif(slope,4), " * x + ", signif(intercept,4))
 
     ## set min and max limits for plot ignoring NaN
     xmin <- min(newdf$xx,na.rm=TRUE)
