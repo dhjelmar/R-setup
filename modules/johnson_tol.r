@@ -1,29 +1,35 @@
-johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1) {
+johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all') {
 
     ## xall = data set
     ## alpha  = 1 - confidence
     ## P = pvalue = coverage (tolerance interval only)
     pvalue <- P
     
-    ## install.packages('tolerance')
-    library(tolerance)
-    ## install.packages('SuppDists')
-    library(SuppDists)
-
-    ## Johnson distribution calculations from SuppDists package
-    jparms  <- JohnsonFit(xall)
+    if (jfit == 'all') {
+        ## let R figure out which Johnson distribution fits best
+        jparms  <- SuppDists::JohnsonFit(xall)
+    } else if (jfit == 'SU') {
+        ## force the Johnson SU distribution
+        jparms <- ExtDist::eJohnsonSU(xall)
+        jparms$type <- 'SU'
+    } else {
+        ## use Johnson parameters specified in jfit
+        ## needs to be in same list format as created by SuppDists::JohnsonFit
+        jparms <- jfit
+    }
     ## transform xall dataset to normally distributed z using Johnson distribution
     zall <- john_z(xall, jparms)
     df <- as_tibble( data.frame(x=xall, z=zall) )
 
     na_rows <- df[is.na(df$z),]
-    if (nrow(na_rows) != 0) {
+    if (nrow(na_rows) != 0 | type == 'SB') {
 
         ## z values could not be calculated for all x values
         cat('\n')
         cat('##############################\n')
         cat('  ERROR IN JOHNSON_TOL  \n')
         cat('  z(x) = NA for some x values \n')
+        cat('  and/or type == "SB"         \n')
         cat('##############################\n')
         print(jparms)
         print(na_rows)
