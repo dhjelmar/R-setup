@@ -85,7 +85,7 @@ library(superml)
 library(DT)
 library(stringi)       # need for stri_split_fixed function
 library(stringr)       # need for str_extract function
-library(tolerance)
+if (os != 'unix') library(tolerance)
 
 (.packages())          # shows packages that are loaded
 ##search()              # little different from above but not sure how (includes more)

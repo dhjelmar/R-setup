@@ -13,6 +13,23 @@ plotfitcol <- function(df,xx,yy,byvar,ncol=2,xlimspec=NULL,ylimspec=NULL,bg="gre
     xx    <- eval(substitute(xx),df)    # need to recognize name passed into function as xx
     yy    <- eval(substitute(yy),df)    
     byvar <- eval(substitute(byvar),df) 
+    
+    ## if xx and yy were passed in without quotes, xx and yy will be vectors to be plotted
+    ## if xx and yy were passed in with quotes, xx and yy will be name of vector to be plotted
+    if (typeof(xx) == 'character') {
+        xxcol <- which(grepl(xx, names(df)))  
+        xx    <- df[, xxcol]
+    }
+    if (typeof(yy) == 'character')  {
+        yycol <- which(grepl(yy, names(df)))  
+        yy    <- df[, yycol]
+    }
+    if (typeof(byvar) == 'character')  {
+        bycol <- which(grepl(byvar, names(df)))  
+        byvar <- df[, bycol]
+    }
+    
+    ## put xx, yy, and byvar into dataframe
     newdf <- data.frame(xx,yy,byvar)
 
     ## debug
@@ -29,7 +46,7 @@ plotfitcol <- function(df,xx,yy,byvar,ncol=2,xlimspec=NULL,ylimspec=NULL,bg="gre
     fit       <- lm(yy~xx,data=newdf)
     intercept <- fit$coefficients[[1]]
     slope     <- fit$coefficients[[2]]
-    eq = paste0("y = ", signif(intercept,4), "* x + ", signif(slope,4))
+    eq = paste0("y = ", signif(slope,4), " * x + ", signif(intercept,4))
 
     ## set min and max limits for plot ignoring NaN
     xmin <- min(newdf$xx,na.rm=TRUE)
@@ -56,6 +73,7 @@ plotfitcol <- function(df,xx,yy,byvar,ncol=2,xlimspec=NULL,ylimspec=NULL,bg="gre
     plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
          xlab=xlabel,ylab=ylabel, main=eq,
          col=pal(ncol)[as.numeric(cut(newdf$byvar,breaks=ncol))])
+    grid(col='gray70')
 
     ## add fit lines
     new.xx <- seq(min(newdf$xx,na.rm=TRUE),max(newdf$xx,na.rm=TRUE),len=100)
