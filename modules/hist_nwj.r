@@ -50,13 +50,18 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, suppress='no') {
     xdensity_norm <- dnorm(xrange,xmean,xsd)    
     xdensity_weib <- dweibull(xrange,shape=shape,scale=scale)
     xdensity_john <- dJohnson(xrange, jparms)
-    maxdensity <- max(xdensity_norm, xdensity_weib, xdensity_john, na.rm=TRUE)
 
     ## make histogram
     ## warning: xlim range can mess up x-axis
     ## obtain histogram parameters but suppress plot
-    out <- hist(x, plot=FALSE)
-    if (is.null(breaks)) breaks <- length(out$breaks)
+    if (is.null(breaks)) {
+        ## breaks not specified so figure out what to use
+        out <- hist(x, plot=FALSE)
+        breaks <- length(out$breaks)
+    }
+    ## hist needed with number of breaks to be used to get density for max height of histogram
+    out <- hist(x, breaks=breaks, plot=FALSE)
+    maxdensity <- max(xdensity_norm, xdensity_weib, xdensity_john, out$density, na.rm=TRUE)
     ymax <- max(out$density, maxdensity)
     ## create plot
     hist(x, breaks=breaks,
