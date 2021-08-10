@@ -60,7 +60,7 @@ plotfitcold <- function(df,xx,yy,byvar,xlimspec=NULL,ylimspec=NULL, vlines=NULL,
     }        
 
     ## plot points and fit
-    if (main == 'equation') main = paste0("y = ", signif(slope,4), "* x + ", signif(intercept,4),
+    if (main == 'equation') main = paste0("y = ", signif(slope,4), " * x + ", signif(intercept,4),
                                           ", ", expression(Delta), " = ", signif(rise,4))
 
     ## setup for output jpeg file
