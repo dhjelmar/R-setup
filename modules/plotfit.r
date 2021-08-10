@@ -22,6 +22,9 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     ##                plotfit(mtcars, disp, mpg, vlines=c(100, 400))
     ##                plotfit(mtcars, disp, mpg, vlines=c(100, 400), interval='none')
 
+    ## test idea
+    ## outcols <- getcols(df, xx, yy)
+  
     ## extract the names of xx and yy for plot axis labels if not defined
     if (missing(xlabel)) xlabel <- deparse(substitute(xx))
     if (missing(ylabel)) ylabel <- deparse(substitute(yy))
