@@ -9,16 +9,24 @@ qqplot_nwj <- function(x, type='nw') {
         qualityTools::qqPlot(x, "normal",  col='black')
         qualityTools::qqPlot(x, "Weibull", col='black')
         library(SuppDists) # need for Johnson distribution
+        x <- sort(x, na.last=NA)
         jparms  <- JohnsonFit(x)
-        quantiles_john <- qJohnson(ppoints(length(x)), jparms)
-        stats::qqplot(
-            x = x,
-            xlab = "Data",
-            y = quantiles_john,
-            ylab = 'Quantiles from "Johnson" Distribution',
-            main = expression('Q-Q plot for "Johnson" Distribution'),
-            col='black')
-        qqline(x, distribution = function(p) qJohnson(p, jparms), col=2)
+        xth <- qJohnson(ppoints(length(x)), jparms)
+        plot(x, xth, xlab='Observed value, x', ylab='Expected Value', main='Johnson Distribution')
+        abline(0,1, col='red')
+
+        ## quantiles_john <- qJohnson(ppoints(length(x)), jparms)
+        ## stats::qqplot(
+        ##     x = x,
+        ##     xlab = "Data",
+        ##     y = quantiles_john,
+        ##     ylab = 'Quantiles from "Johnson" Distribution',
+        ##     main = expression('Q-Q plot for "Johnson" Distribution'),
+        ##     col='black')
+        ## stats::qqline(x, distribution = function(p) qJohnson(p, jparms), col='red')
+        ## abline(0,1, col='blue', lty=2)
+        ## legend("bottomright",col=c('red', 'blue'), lty=c(1,2), legend=c('qqline', '45 degree line'))
+
     }
 }
 ## qqplot_nwj(mtcars$mpg)
