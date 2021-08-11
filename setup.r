@@ -48,7 +48,7 @@ os <- .Platform$OS.type
 ##
 ## Following list would not install so will source r functions instead
 ## conda install r-rgl
-## conda install r-tolerance
+## conda install r-tolerance    # finally available on ChromeOS in 8/2021
 ## conda install r-IAPWS95
 ##
 ## Following not tried with Conda but installed inside JL
@@ -85,7 +85,7 @@ library(superml)
 library(DT)
 library(stringi)       # need for stri_split_fixed function
 library(stringr)       # need for str_extract function
-if (os != 'unix') library(tolerance)
+library(tolerance)
 
 (.packages())          # shows packages that are loaded
 ##search()              # little different from above but not sure how (includes more)
@@ -111,7 +111,7 @@ if (os == "windows") {
     path <- c("~/Programs/GitHub_home/R-setup/modules")
 } else if (os == 'unix') {
     path <- c("~/GitHub_repos/R-setup/modules",
-              "~/ProgramFiles/R_packages/tolerance/R",
+              ##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS
               "~/ProgramFiles/R_packages/rgl/R"      )
 } else {
     # assume Colab (.Platform returns NULL)
