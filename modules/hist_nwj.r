@@ -4,13 +4,8 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, suppress='no') {
     ## alpha  = 1 - confidence
     ## pvalue = coverage (tolerance interval only)
 
-    ## install.packages('tolerance')
-    library(tolerance)
-    ## install.packages('SuppDists')
-    library(SuppDists)
-    
     ## normal distribution calculations
-    tol_out_norm <- normtol.int(x, alpha = alpha, P=pvalue, side=1)
+    tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=pvalue, side=1)
     upper_tolerance_limit_norm <- tol_out_norm$'1-sided.upper'
 
     ## Weibull distribution calculations
@@ -21,7 +16,7 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, suppress='no') {
         cat('              Some day I should add logic to skip if that is the case\n')
         cat('#####################################################################\n')
     } else {
-        tol_out_weib <-  exttol.int(x, alpha=alpha, P=pvalue, side=1, dist="Weibull")
+        tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=pvalue, side=1, dist="Weibull")
         shape   <- tol_out_weib$'shape.1'
         scale   <- tol_out_weib$'shape.2'
         upper_tolerance_limit_weib <- tol_out_weib$'1-sided.upper'
@@ -47,9 +42,9 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, suppress='no') {
     xrange  <- seq(xmin,xmax,by=chuncks)
     xmean   <- mean(x)
     xsd     <- sd(x)
-    xdensity_norm <- dnorm(xrange,xmean,xsd)    
-    xdensity_weib <- dweibull(xrange,shape=shape,scale=scale)
-    xdensity_john <- dJohnson(xrange, jparms)
+    xdensity_norm <- stats::dnorm(xrange,xmean,xsd)    
+    xdensity_weib <- stats::dweibull(xrange,shape=shape,scale=scale)
+    xdensity_john <- SuppDists::dJohnson(xrange, jparms)
 
     ## make histogram
     ## warning: xlim range can mess up x-axis
