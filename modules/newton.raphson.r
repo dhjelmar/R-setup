@@ -13,7 +13,11 @@ newton.raphson <- function(f, ..., xguess=0, tol = 1e-5, n = 1000) {
 
     ## Check to see if xguess result in 0
     ## if (f(x0, ...) == 0.0) return(x0)
-    if (length(args) == 1) 
+    if (length(args) == 1) {
+        if (f(x0) == 0.0) return(x0)
+    } else {
+        if (f(x0, ...) == 0.0) return(x0)
+    }
     
     ## iterate to find where f(x, ...) = 0
     for (i in 1:n) {
