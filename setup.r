@@ -1,7 +1,3 @@
-## comment added to check git merge - test 2
-
-## comment added in local repo to check merge using SourceGear diffmerge
-
 ### INSTRUCTIONS
 ##
 ## Run this script with
@@ -24,8 +20,6 @@
 ##     Source local .r and .R scripts
 ##        Some of these are R packages that wold not install with conda
 ##        Some of these are R functions I wrote
-
-## comment2 added in local repo to check merge
 
 #----------------------------------------------------------------------------
 
