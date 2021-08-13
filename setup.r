@@ -1,5 +1,7 @@
 ## comment added to check git merge
 
+## comment added in local repo to check merge using SourceGear diffmerge
+
 ### INSTRUCTIONS
 ##
 ## Run this script with
