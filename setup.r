@@ -1,4 +1,4 @@
-## comment removed to test2 git status
+## comment added to check git merge
 
 ### INSTRUCTIONS
 ##
