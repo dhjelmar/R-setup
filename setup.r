@@ -1,4 +1,4 @@
-## comment added to check git merge
+## comment added to check git merge - test 2
 
 ### INSTRUCTIONS
 ##
