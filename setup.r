@@ -1,4 +1,4 @@
-## comment added to test SSH
+## comment removed to test git status
 
 ### INSTRUCTIONS
 ##
