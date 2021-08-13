@@ -25,6 +25,8 @@
 ##        Some of these are R packages that wold not install with conda
 ##        Some of these are R functions I wrote
 
+## comment2 added in local repo to check merge
+
 #----------------------------------------------------------------------------
 
 ## identify operating system
