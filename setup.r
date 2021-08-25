@@ -21,6 +21,8 @@
 ##        Some of these are R packages that wold not install with conda
 ##        Some of these are R functions I wrote
 
+## line adced on GitHub to experiment with merge conflitc
+
 #----------------------------------------------------------------------------
 
 ## identify operating system
