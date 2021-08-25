@@ -1,5 +1,7 @@
 ### INSTRUCTIONS
 ##
+##  line added on Chrome to experiment with merge conflicts
+##
 ## Run this script with
 ##     On Windows
 ##          source('~/Engineering/GitHub_repos/R-setup/setup.r')
