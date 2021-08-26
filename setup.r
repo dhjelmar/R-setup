@@ -1,6 +1,5 @@
 ### INSTRUCTIONS
 ##
-##  line modified on Chrome to experiment with merge conflicts
 ##
 ## Run this script with
 ##     On Windows
@@ -22,8 +21,6 @@
 ##     Source local .r and .R scripts
 ##        Some of these are R packages that wold not install with conda
 ##        Some of these are R functions I wrote
-
-## line adced on GitHub to experiment with merge conflitc
 
 #----------------------------------------------------------------------------
 
