@@ -1,6 +1,6 @@
 ### INSTRUCTIONS
 ##
-##  line added on Chrome to experiment with merge conflicts
+##  line added on Chrome to experiment with merge conflicts; same line modified on Chrome and GitHub to test merge conflict
 ##
 ## Run this script with
 ##     On Windows
