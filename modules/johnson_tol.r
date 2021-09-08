@@ -10,8 +10,12 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all') {
         jparms  <- SuppDists::JohnsonFit(xall)
     } else if (jfit == 'SU') {
         ## force the Johnson SU distribution
-        jparms <- ExtDist::eJohnsonSU(xall)
-        jparms$type <- 'SU'
+        jparms.out <- ExtDist::eJohnsonSU(xall)
+        jparms <- list(gamma   = jparms.out$jparms$gamma,
+                       delta   = jparms.out$jparms$delta,
+                       xi      = jparms.out$jparms$xi,
+                       lambda  = jparms.out$jparms$lambda,
+                       type <- 'SU')
     } else {
         ## use Johnson parameters specified in jfit
         ## needs to be in same list format as created by SuppDists::JohnsonFit
@@ -22,7 +26,7 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all') {
     df <- as_tibble( data.frame(x=xall, z=zall) )
 
     na_rows <- df[is.na(df$z),]
-    if (nrow(na_rows) != 0 | type == 'SB') {
+    if (nrow(na_rows) != 0 | jparms$type == 'SB') {
 
         ## z values could not be calculated for all x values
         cat('\n')
