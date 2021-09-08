@@ -3,7 +3,7 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
 
     ## make room for 1, 2 or 3 plots depending on length of string 'type'
     nplots <- nchar(type)
-    par(mfrow=c(1, nplots))
+    if (nplots != 1) par(mfrow=c(1, nplots))
 
     nparms <- NULL
     wparms <- NULL
