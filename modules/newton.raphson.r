@@ -1,4 +1,4 @@
-newton.raphson <- function(f, ..., xguess=0, tol = 1e-5, n = 1000) {
+newton.raphson <- function(f, ..., xguess=0, tol = 1e-5, n = 1000, plot='no') {
     ## use newton raphson to find x where f(x, ...) = 0
     ## where "..." is a list of additional arguments needed by f, if any
     ## starts search from xguess
@@ -8,8 +8,9 @@ newton.raphson <- function(f, ..., xguess=0, tol = 1e-5, n = 1000) {
     ## following modified from https://rpubs.com/aaronsc32/newton-raphson-method
     library(numDeriv) # Package for computing f'(x)
 
-    x0 <- xguess # Set start value to supplied guess
-    k <- n       # Initialize for iteration results
+    x0 <- xguess      # Set start value to supplied guess
+    xvalue <- n       # Initialize for iteration results
+    yvalue <- n       # Initialize for iteration results
 
     ## Check to see if xguess result in 0
     ## if (f(x0, ...) == 0.0) return(x0)
@@ -20,56 +21,123 @@ newton.raphson <- function(f, ..., xguess=0, tol = 1e-5, n = 1000) {
     }
     
     ## iterate to find where f(x, ...) = 0
-    for (i in 1:n) {
+    xvalue[1] <- x0          # store x values
+    yvalue[1] <- f(x0, ...)  # store y values
+    for (i in 2:(n+1)) {
         dx <- genD(func = f, ..., x = x0)$D[1] # First-order derivative f'(x0)
         x1 <- x0 - (f(x0, ...) / dx)           # Calculate next guess x1
-        k[i] <- x1                        # Store x1
         ## Once the difference between x0 and x1 becomes sufficiently small, output the results.
         if (abs(x1 - x0) < tol) {
-            root.approx <- tail(k, n=1)
-            res <- list('root' = root.approx, 'iterations' = k)
+            root.approx <- tail(xvalue, n=1)
+            res <- list('root' = root.approx, 'iterations' = xvalue)
+            if (plot != 'no') {
+                main <- 'Solution found within tolerance'
+                plot(xvalue, yvalue, col='red', main=main)
+                points(xvalue[1], yvalue[1], col='black', pch=19)  # solid black initial guess
+                last <- length(xvalue)
+                points(xvalue[last], yvalue[last], col='red', pch=19)  # solid red final result
+                x <- seq(min(xvalue), max(xvalue), (max(xvalue)-min(xvalue))/100)
+                y <- f(x, ...)
+                points(x,y,type='l')
+                legend('bottomright',
+                       legend=c('initial guess', 'intermediate steps', 'final result'),
+                       col   =c('black',         'red',                'red'),
+                       pch   =c(19,              1,                    19))
+            }
             return(res)
         }
-        ## If Newton-Raphson has not yet reached convergence set x1 as x0 and continue
-        x0 <- x1
+        
+        ## save new valeus of x and y
+        xvalue[i] <- x1
+        yvalue[i] <- f(x1, ...)
+        
+        ## If search has not yet reached convergence, set new x0 guess
+        ## check whether solution is bracketed
+        if (yvalue[i] / yvalue[i-1] < 0) {
+            ## bracketed solution since successive y values have opposite sign
+            ## use bisection to keep solution from diverging
+            x0 <- (x0 + x1)/2
+        } else {
+            ## have not bracketed solution so use X1 as next guess
+            x0 <- x1
+        }
     }
-    print('Too many iterations in method')
+    main <- 'Too many iterations in method'
+    plot(xvalue, yvalue, col='red', main=main)
+    points(xvalue[1], yvalue[1], col='black', pch=19)  # solid black initial guess
+    last <- length(xvalue)
+    points(xvalue[last], yvalue[last], col='red', pch=19)  # solid red final result
+    x <- seq(min(xvalue), max(xvalue), (max(xvalue)-min(xvalue))/100)
+    y <- f(x, ...)
+    points(x,y,type='l')
+    legend('bottomright',
+           legend=c('initial guess', 'intermediate steps', 'final result'),
+           col   =c('black',         'red',                'red'),
+           pch   =c(19,              1,                    19))
 }
 
-## example: this works
-## x <- rnorm(1000)
-## jparms  <- JohnsonFit(x)
-## zero <- function(x, parms, z)  john_z(x, parms) - z
-## x.out <- newton.raphson(
-##     zero,
-##     parms = jparms,
-##     z=2.4,
-##     xguess = mean(x),
-##     tol=1E-10
-## )
-## x.out$root
+test_newton.raphson <- function() {
+    set.seed(1)
+  
+    ## example: this works
+    x <- rnorm(1000)
+    jparms  <- SuppDists::JohnsonFit(x)
+    zero <- function(x, parms, z)  john_z(x, parms) - z
+    x.out <- newton.raphson(
+        zero,
+        parms = jparms,
+        z=2.4,
+        xguess = mean(x),
+        tol=1E-10,
+        plot='yes'
+    )
+    x.out$root
+    
+    ## example: this works
+    set.seed(1)
+    x <- rnorm(1000)
+    zero <- function(x, parm1, parm2, z)  (x^2 + parm1 + parm2) - z
+    plotspace(2,1)
+    x.out <- newton.raphson(
+      zero,
+      parm1 = 11,
+      parm2 = mean(x),
+      z=30,
+      xguess = 30,
+      tol=1E-10,
+      plot='yes'
+    )
+    x.out$root
+    plot(x, y = x^2 + 11 + mean(x), main='wider view of function')
+    
+    ## example: this works
+    x <- rnorm(1000)
+    zero <- function(x, mean, sd, z)  (x - mean)/sd - z
+    x.out <- newton.raphson(
+        zero,
+        mean=mean(x),
+        sd=sd(x),
+        z=2.4,
+        xguess = mean(x),
+        tol=1E-10,
+        plot='yes'
+    )
+    x.out$root
 
-## ## example: this works
-## x <- rnorm(1000)
-## zero <- function(x, mean, sd, z)  (x - mean)/sd - z
-## x.out <- newton.raphson(
-##     zero,
-##     mean=mean(x),
-##     sd=sd(x),
-##     z=2.4,
-##     xguess = mean(x),
-##     tol=1E-10
-## )
-## x.out$root
-
-## ## example: this fails because only 1 x is given to z at a time so sd(x) is NA
-## ##          (mean(x) = x but that does not make the function abort
-## x <- rnorm(1000)
-## zero <- function(x, z)  (x - mean(x))/sd(x) - z
-## x.out <- newton.raphson(
-##     zero,
-##     z=2.4,
-##     xguess = mean(x),
-##     tol=1E-10
-## )
-## x.out$root
+    ## example: This fails because only 1 xguess is passed into the function so sd(xguess) is NA
+    ##          It aborts when the newton.raphson function tries using the zero function
+    ##          e.g., zero(x=2, z=3) returns NA
+    ##                zero(x=c(2,4), z=3) returns -3.71 and -2.29
+    ##          Note that mean(x) = x also does not make much sense for a single x value, 
+    ##          but that does not make the function abort
+    x <- rnorm(1000)
+    zero <- function(x, z)  (x - mean(x))/sd(x) - z
+    x.out <- newton.raphson(
+        zero,
+        z=2.4,
+        xguess = mean(x),
+        tol=1E-10,
+        plot='yes'
+    )
+    x.out$root
+}
