@@ -1,4 +1,4 @@
-hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, suppress='no') {
+hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, jfit='all', suppress='no') {
     ## plot histogram and normal, Weibull, and Johnson distributions
     ## add lines for upper tolerance limits for given alpha and pvalue
     ## alpha  = 1 - confidence
@@ -23,7 +23,7 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, suppress='no') {
     }
         
     ## Johnson distribution calculations
-    tol_out_john <- johnson_tol(x, alpha=alpha, P=pvalue, side=1)
+    tol_out_john <- johnson_tol(x, alpha=alpha, P=pvalue, side=1, jfit=jfit)
     jparms   <- tol_out_john$jparms
     if (jparms$type == 'SB') {
         upper_tolerance_limit_john <- NA
