@@ -24,13 +24,14 @@ plotfitcol <- function(df,xx,yy,byvar,ncol=2,xlimspec=NULL,ylimspec=NULL,bg="gre
         yycol <- which(grepl(yy, names(df)))  
         yy    <- df[, yycol]
     }
-    if (typeof(byvar) == 'character')  {
+    if (typeof(byvar) == 'character' & length(byvar)==1)  {
         bycol <- which(grepl(byvar, names(df)))  
         byvar <- df[, bycol]
     }
     
     ## put xx, yy, and byvar into dataframe
     newdf <- data.frame(xx,yy,byvar)
+    names(newdf) <- c('xx', 'yy', 'byvar')
 
     ## debug
     ##ncol <- 2

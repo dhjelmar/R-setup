@@ -31,13 +31,14 @@ plotfitcold <- function(df,xx,yy,byvar,xlimspec=NULL,ylimspec=NULL, vlines=NULL,
         yycol <- which(grepl(yy, names(df)))  
         yy    <- df[, yycol]
     }
-    if (typeof(byvar) == 'character')  {
+    if (typeof(byvar) == 'character' & length(byvar)==1)  {
         bycol <- which(grepl(byvar, names(df)))  
         byvar <- df[, bycol]
     }
     
     ## put xx, yy, and byvar into dataframe
     newdf <- data.frame(xx,yy,byvar)
+    names(newdf) <- c('xx', 'yy', 'byvar')
 
     ## determine x and y range for plot
     xmin <- min(newdf$xx, xlimspec, na.rm=TRUE)

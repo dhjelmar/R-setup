@@ -46,7 +46,8 @@ plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
     
     ## put xx and yy into dataframe
     newdf <- data.frame(xx,yy)
-
+    names(newdf) <- c('xx', 'yy')
+    
     ## set min and max for plot if not specified
     xmin <- min(newdf$xx, xlimspec, na.rm=TRUE)
     xmax <- max(newdf$xx, xlimspec, na.rm=TRUE)
