@@ -11,10 +11,10 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all') {
     } else if (jfit == 'SU') {
         ## force the Johnson SU distribution
         jparms.out <- ExtDist::eJohnsonSU(xall)
-        jparms <- list(gamma   = jparms.out$jparms$gamma,
-                       delta   = jparms.out$jparms$delta,
-                       xi      = jparms.out$jparms$xi,
-                       lambda  = jparms.out$jparms$lambda,
+        jparms <- list(gamma   = jparms.out$gamma,
+                       delta   = jparms.out$delta,
+                       xi      = jparms.out$xi,
+                       lambda  = jparms.out$lambda,
                        type <- 'SU')
     } else {
         ## use Johnson parameters specified in jfit

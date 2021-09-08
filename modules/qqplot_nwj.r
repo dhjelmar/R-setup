@@ -10,13 +10,13 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
     jparms <- NULL
     if (grepl('n', type)) {
         ## make normal QQ plot
-        main <- paste('Normal QQ Plot', mainadder, sep="")
+        main <- paste('Normal QQ Plot', mainadder, sep=" ")
         nparms <- qualityTools::qqPlot(x, "normal",  col='black', main=main)
     }
     
     if (grepl('w', type)) {        
         ## make Weibull QQ plot
-        main <- paste('Weibull QQ Plot', mainadder, sep="")
+        main <- paste('Weibull QQ Plot', mainadder, sep=" ")
         wparms <- qualityTools::qqPlot(x, "Weibull", col='black', main=main)
     }
 
@@ -29,8 +29,12 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
             main <- paste('Johnson QQ Plot', mainadder, '; Type=', jparms$type, sep=" ")
         } else if (jfit == 'SU') {
             ## force the Johnson SU distribution
-            jparms <- ExtDist::eJohnsonSU(x)
-            jparms$type <- 'SU'
+            jparms.out <- ExtDist::eJohnsonSU(x)
+            jparms <- list(gamma   = jparms.out$gamma,
+                           delta   = jparms.out$delta,
+                           xi      = jparms.out$xi,
+                           lambda  = jparms.out$lambda,
+                           type <- 'SU')
             main <- paste('JohnsonSU QQ Plot', mainadder, sep=" ")
         } else if (jfit == 'SB') {
             ## force the Johnson SB distribution
@@ -96,3 +100,14 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
 ##            main = expression('Q-Q plot for Weibull Distribution'),
 ##            col='black')
 ## qqline(x, distribution = function(p) qweibull(p, shape = shape, scale = scale), col=2)
+
+## ## test method of using qJohnson by using same method for qnorm
+## plotspace(1,2)
+## x <- sort(mtcars$mpg)
+## ## by hand
+## probabilities <- ppoints(length(x))
+## xtheoretical  <- qnorm(probabilities, mean=mean(x), sd=sd(x))
+## plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value')
+## abline(0,1,col='red')
+## ## using Rfunction
+## qualityTools::qqPlot(x)
