@@ -14,10 +14,13 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
         nparms <- qualityTools::qqPlot(x, "normal",  col='black', main=main)
     }
     
-    if (grepl('w', type)) {        
+    if (grepl('w', type) & min(x)>0) {        
         ## make Weibull QQ plot
         main <- paste('Weibull QQ Plot', mainadder, sep=" ")
         wparms <- qualityTools::qqPlot(x, "Weibull", col='black', main=main)
+    } else if (grepl('w', type)) {
+        ## some values are negative or zero so Weibull is not appropriate
+        cat('Weibull plot not made because not appropriate; some values not > 0\n')
     }
 
     if (grepl('j', type)) {        
