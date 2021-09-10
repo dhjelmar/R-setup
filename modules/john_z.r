@@ -18,10 +18,10 @@ john_z <- function(x, parms) {
         fu <- exp(u)
     } else {
         cat('\n')
-        cat('#####################################\n')
-        cat('  ERROR IN JOHNSON_TOL         \n')
-        cat('  no type returned from fit attempt  \n')
-        cat('#####################################\n')
+        cat('#############################\n')
+        cat('  ERROR                      \n')
+        cat('  no type provided in parms  \n')
+        cat('#############################\n')
         print(jparms)
         ## stop()
     }
