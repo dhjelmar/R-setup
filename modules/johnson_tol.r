@@ -1,9 +1,12 @@
-johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all') {
+johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no') {
 
     ## xall = data set
     ## alpha  = 1 - confidence
-    ## P = pvalue = coverage (tolerance interval only)
-    pvalue <- P
+    ## P = proportion = coverage (tolerance interval only)
+    proportion <- P
+    
+    ##--------------------------------------------------------
+    ## determine Johnson parameters
     
     if (jfit == 'all') {
         ## let R figure out which Johnson distribution fits best
@@ -15,85 +18,139 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all') {
                        delta   = jparms.out$delta,
                        xi      = jparms.out$xi,
                        lambda  = jparms.out$lambda,
-                       type <- 'SU')
+                       type    = 'SU')
     } else {
         ## use Johnson parameters specified in jfit
         ## needs to be in same list format as created by SuppDists::JohnsonFit
         jparms <- jfit
     }
-    ## transform xall dataset to normally distributed z using Johnson distribution
-    zall <- john_z(xall, jparms)
+    gamma  <- jparms$gamma
+    delta  <- jparms$delta
+    xi     <- jparms$xi
+    lambda <- jparms$lambda
+    type   <- jparms$type
+
+    
+    ##--------------------------------------------------------
+    ## transform to normal, xnall
+    ## https://www.sigmamagic.com/blogs/how-do-i-transform-data-to-normal-distribution/
+
+    if (type == 'SU') {
+        ## xn[1] <- gamma + delta * asinh((x[1] - xi)/lambda)
+        ## xnall[1] <- gamma + delta * asinh( (xall[1] - xi)/ lambda )
+        ## xn[1]
+        ## xnall[1]
+        xnall <- gamma + delta * asinh( (xall - xi)/ lambda )
+    } else if (type == 'SB') {
+        xnall <- gamma + delta *   log( (xall - xi)/(lambda + xi - xall) )
+    } else {
+        ## type == 'SL'
+        xnall <- gamma + delta *   log( (xall - xi)/ lambda )
+    }
+        
+    ##--------------------------------------------------------
+    ## transform to standard normal, zall
+
+    ## ## transform xall dataset to normally distributed z using Johnson distribution
+    ## zall <- john_z(xall, jparms)
+    zall <- (xnall - mean(xnall)) / sd(xnall)
     df <- as_tibble( data.frame(x=xall, z=zall) )
 
+    if (plots != 'no') {
+        plotspace(2,2)
+        hist(xall)
+        hist(xnall)
+        hist(zall)
+    }
+
+    
+    ##--------------------------------------------------------
+    ## error check then proceed
     na_rows <- df[is.na(df$z),]
-    if (nrow(na_rows) != 0 | jparms$type == 'SB') {
+    if (nrow(na_rows) != 0) {
 
         ## z values could not be calculated for all x values
         cat('\n')
         cat('##############################\n')
         cat('  ERROR IN JOHNSON_TOL  \n')
         cat('  z(x) = NA for some x values \n')
-        cat('  and/or type == "SB"         \n')
         cat('##############################\n')
         print(jparms)
         print(na_rows)
-        ztol_out <- normtol.int(zall, alpha = alpha, P=pvalue, side=side)
+        ztol_out <- normtol.int(zall, alpha = alpha, P=proportion, side=side)
         ztol_upper <- NA
         xtol_upper <- NA
         
     } else {
-        
         ## johnson fit returned z values for all x values so possibly a decent fit
-
-        ## xz_plot <- plot(xall, zall)
         
-        ## define function to find x for a given z
-        ## zero <- function(x, parms=jparms, ztarget) john_z(x, parms) - ztarget
-        zero <- function(x, parms, z) john_z(x, parms) - z
-        
-        ## check use of uniroot
-        ## xcheck <- 13
-        ## ztarget <- john_z(xcheck)
-        ## ztox <- uniroot(zero, lower=min(xall), tol=1E-10, upper=2*max(xall), ztarget=ztarget)$root
-        ## x_from_z <- uniroot(zero, ztarget=ztarget,
-        ##                     lower=min(xall), upper=2*max(xall), tol=1E-10)$root
-        
-        ## find tolerance limits using normal distribution calculations on z
-        ztol_out <- normtol.int(zall, alpha = alpha, P=pvalue, side=side)
+        ##--------------------------------------------------------
+        ## calculate tolerance limit, ztol (i.e., for standard normal)
+    
+        ztol_out <- normtol.int(zall, alpha = alpha, P=proportion, side=side)
         xmin <- min(xall)
         xmax <- max(xall)
         if (side == 1) {
-            ztol_upper <- ztol_out$'1-sided.upper'
             ztol_lower <- ztol_out$'1-sided.lower'
+            ztol_upper <- ztol_out$'1-sided.upper'
         } else if (side == 2) {
-            ztol_upper <- ztol_out$'2-sided.upper'
             ztol_lower <- ztol_out$'2-sided.lower'
+            ztol_upper <- ztol_out$'2-sided.upper'
         }
 
-        ## transform z back to u
-        ##  uniroot is not very robust so try newton raphson
-        ##  xrange <- max(xall) - min(xall)
-        ##  xtol_upper <- uniroot(zero, ztarget=ztol_upper,
-        ##                        lower=xmax, upper=xmax + xrange, tol=1E-10)$root
 
-        if (jparms$type == 'SB') {
+        ##-----------------------------------------------------------------------------        
+        ## transform ztol back to normal distrition, xntol
+        xntol_lower <- mean(xnall) + sd(xnall) * ztol_lower # lower z is negative
+        xntol_upper <- mean(xnall) + sd(xnall) * ztol_upper
+
+        
+        ##-----------------------------------------------------------------------------        
+        ## transform xntol back to xtol
+        
+        if (type == 'SB') {
             ## Not sure tolerance limits have meaning for a bounded fit
             xtol_lower <- NA
             xtol_upper <- NA
+            
         } else {
             ## Tolerance limits should have meaning for SU and SN
             ## Upper tolerance limit should have meaning for SL
-            xtol_upper <- newton.raphson(zero, parms=jparms, z=ztol_upper, xguess=mean(xall), tol=1E-10)
-            if (jparms$type == 'SL') {
-                xtol_lower <- NA
+
+            if (type == 'SU') {
+                ## xnall <- gamma + delta * asinh( (xall - xi)/ lambda )
+                xtol_lower = xi + lambda * sinh( (xntol_lower - gamma)/delta )
+                xtol_upper = xi + lambda * sinh( (xntol_upper - gamma)/delta )
+
+            } else if (type == 'SB') {
+                ## xnall <- gamma + delta *   log( (xall - xi)/(lambda + xi - xall) )
+                zero <- function(x, gamma, delta, xi, xntol) {
+                    ## find where xntol_calc == xntol
+                    xntol_calc <- gamma + delta *   log( (xntol - xi)/(lambda + xi - xntol) )
+                    zero <- xntol_calc - xntol
+                }
+                xtol_lower <- newton.raphson(zero, parms=jparms, xntol=xntol_lower, xguess=mean(xall))
+                xtol_upper <- NA
+                                                                                           
             } else {
-                xtol_lower <- newton.raphson(zero, parms=jparms, z=ztol_lower, xguess=mean(xall), tol=1E-10)
+                ## type == 'SL'
+                ## xnall <- gamma + delta *   log( (xall - xi)/ lambda )
+                xtol_lower <- NA
+                xtol_upper <- xi + lambda * exp( (xntol_upper - gamma)/delta )
+                
             }
+
         }
     }
-    return(list(xz=df, jparms=jparms, ztol_out=ztol_out, 
-                ztol_upper=ztol_upper, xtol_upper=xtol_upper,
-                ztol_lower=ztol_lower, xtol_lower=xtol_lower))
+    bounds <- data.frame(sided = c(side, side),
+                         ztol  = c(ztol_lower, ztol_upper),
+                         xntol = c(xntol_lower, xntol_upper),
+                         xtol  = c(xtol_lower, xtol_upper))
+    ## return(list(xz=df, jparms=jparms, ztol_out=ztol_out, 
+    ##             ztol_lower=ztol_lower, xntol_lower=xntol_lower, xtol_lower=xtol_lower,
+    ##             ztol_upper=ztol_upper, xntol_upper=xntol_upper, xtol_upper=xtol_upper))
+    return(list(xz=df, jparms=jparms, ztol_out,
+                bounds=bounds))
 }
 
 ## ## test
