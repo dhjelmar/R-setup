@@ -4,6 +4,16 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
     ## alpha  = 1 - confidence
     ## P = proportion = coverage (tolerance interval only)
     proportion <- P
+
+    ##--------------------------------------------------------
+    ## initialize tolerance limits
+    ztol_lower   = NA
+    ztol_upper   = NA
+    xntol_lower  = NA
+    xntol_upper  = NA
+    xtol_lower   = NA
+    xtol_upper   = NA
+
     
     ##--------------------------------------------------------
     ## determine Johnson parameters
@@ -32,7 +42,7 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
 
     
     ##--------------------------------------------------------
-    ## transform to normal, xnall
+    ## transform xall to normal distribution, xnall
     ## https://www.sigmamagic.com/blogs/how-do-i-transform-data-to-normal-distribution/
 
     if (type == 'SU') {
@@ -42,17 +52,15 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
         ## xnall[1]
         xnall <- gamma + delta * asinh( (xall - xi)/ lambda )
     } else if (type == 'SB') {
-        xnall <- gamma + delta *   log( (xall - xi)/(lambda + xi - xall) )
+        xnall <- try( gamma + delta *   log( (xall - xi)/(lambda + xi - xall) ) )
     } else {
         ## type == 'SL'
-        xnall <- gamma + delta *   log( (xall - xi)/ lambda )
+        xnall <- try( gamma + delta *   log( (xall - xi)/ lambda ) )  
     }
         
     ##--------------------------------------------------------
     ## transform to standard normal, zall
 
-    ## ## transform xall dataset to normally distributed z using Johnson distribution
-    ## zall <- john_z(xall, jparms)
     zall <- (xnall - mean(xnall)) / sd(xnall)
     df <- as_tibble( data.frame(x=xall, z=zall) )
 
@@ -71,21 +79,19 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
 
         ## z values could not be calculated for all x values
         cat('\n')
-        cat('##############################\n')
+        cat('####################################\n')
         cat('  ERROR IN JOHNSON_TOL  \n')
-        cat('  z(x) = NA for some x values \n')
-        cat('##############################\n')
+        cat('  z(x) = NA or NaN for some x values \n')
+        cat('####################################\n')
         print(jparms)
         print(na_rows)
         ztol_out <- normtol.int(zall, alpha = alpha, P=proportion, side=side)
-        ztol_upper <- NA
-        xtol_upper <- NA
         
     } else {
         ## johnson fit returned z values for all x values so possibly a decent fit
         
         ##--------------------------------------------------------
-        ## calculate tolerance limit, ztol (i.e., for standard normal)
+        ## calculate standard normal tolerance limit, ztol (i.e., for standard normal)
     
         ztol_out <- normtol.int(zall, alpha = alpha, P=proportion, side=side)
         xmin <- min(xall)
@@ -100,13 +106,13 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
 
 
         ##-----------------------------------------------------------------------------        
-        ## transform ztol back to normal distrition, xntol
+        ## transform ztol back to normal tolerance limit, xntol
         xntol_lower <- mean(xnall) + sd(xnall) * ztol_lower # lower z is negative
         xntol_upper <- mean(xnall) + sd(xnall) * ztol_upper
 
         
         ##-----------------------------------------------------------------------------        
-        ## transform xntol back to xtol
+        ## transform xntol back to johnson tolerance limit, xtol
         
         if (type == 'SB') {
             ## Not sure tolerance limits have meaning for a bounded fit
@@ -146,11 +152,7 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
                          ztol  = c(ztol_lower, ztol_upper),
                          xntol = c(xntol_lower, xntol_upper),
                          xtol  = c(xtol_lower, xtol_upper))
-    ## return(list(xz=df, jparms=jparms, ztol_out=ztol_out, 
-    ##             ztol_lower=ztol_lower, xntol_lower=xntol_lower, xtol_lower=xtol_lower,
-    ##             ztol_upper=ztol_upper, xntol_upper=xntol_upper, xtol_upper=xtol_upper))
-    return(list(xz=df, jparms=jparms, ztol_out,
-                bounds=bounds))
+    return(list(xz=df, jparms=jparms, ztol_out, bounds=bounds))
 }
 
 ## ## test
