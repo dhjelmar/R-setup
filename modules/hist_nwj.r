@@ -28,7 +28,7 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, jfit='all', suppre
     if (jparms$type == 'SB') {
         upper_tolerance_limit_john <- NA
     } else {
-        upper_tolerance_limit_john <- tol_out_john$xtol_upper$root
+        upper_tolerance_limit_john <- tol_out_john$bounds$xtol[2]
     } 
        
     ## create vectors with density distributions
