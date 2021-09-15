@@ -1,6 +1,6 @@
-johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no') {
+johnson_tol <- function(x, alpha=0.01, P=0.99, side=1, jfit='all', plots='no') {
 
-    ## xall = data set
+    ## x = data set
     ## alpha  = 1 - confidence
     ## P = proportion = coverage (tolerance interval only)
     proportion <- P
@@ -20,10 +20,10 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
     
     if (jfit == 'all') {
         ## let R figure out which Johnson distribution fits best
-        jparms  <- SuppDists::JohnsonFit(xall)
+        jparms  <- SuppDists::JohnsonFit(x)
     } else if (jfit == 'SU') {
         ## force the Johnson SU distribution
-        jparms.out <- ExtDist::eJohnsonSU(xall)
+        jparms.out <- ExtDist::eJohnsonSU(x)
         jparms <- list(gamma   = jparms.out$gamma,
                        delta   = jparms.out$delta,
                        xi      = jparms.out$xi,
@@ -42,75 +42,55 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
 
     
     ##--------------------------------------------------------
-    ## transform xall to normal distribution, xnall
+    ## transform x to normal distribution, xn
     ## https://www.sigmamagic.com/blogs/how-do-i-transform-data-to-normal-distribution/
 
     if (type == 'SU') {
-        ## xn[1] <- gamma + delta * asinh((x[1] - xi)/lambda)
-        ## xnall[1] <- gamma + delta * asinh( (xall[1] - xi)/ lambda )
-        ## xn[1]
-        ## xnall[1]
-        xnall <- gamma + delta * asinh( (xall - xi)/ lambda )
+        xn <- gamma + delta * asinh( (x - xi)/ lambda )
     } else if (type == 'SB') {
-        xnall <- try( gamma + delta *   log( (xall - xi)/(lambda + xi - xall) ) )
+        xn <- try( gamma + delta *   log( (x - xi)/(lambda + xi - x) ) )
     } else {
         ## type == 'SL'
-        xnall <- try( gamma + delta *   log( (xall - xi)/ lambda ) )  
+        xn <- try( gamma + delta *   log( (x - xi)/ lambda ) )  
     }
-        
-    ##--------------------------------------------------------
-    ## transform to standard normal, zall
-
-    zall <- (xnall - mean(xnall)) / sd(xnall)
-    df <- as_tibble( data.frame(x=xall, z=zall) )
-
+    df <- data.frame(x, xn)
+    
     if (plots != 'no') {
-        plotspace(2,2)
-        hist(xall)
-        hist(xnall)
-        hist(zall)
+        plotspace(1,2)
+        hist(x)
+        hist(xn)
     }
-
     
     ##--------------------------------------------------------
     ## error check then proceed
-    na_rows <- df[is.na(df$z),]
+    na_rows <- df[is.na(df$xn),]
     if (nrow(na_rows) != 0) {
 
         ## z values could not be calculated for all x values
         cat('\n')
-        cat('####################################\n')
+        cat('#####################################\n')
         cat('  ERROR IN JOHNSON_TOL  \n')
-        cat('  z(x) = NA or NaN for some x values \n')
-        cat('####################################\n')
+        cat('  xn(x) = NA or NaN for some x values \n')
+        cat('#####################################\n')
         print(jparms)
         print(na_rows)
-        ztol_out <- normtol.int(zall, alpha = alpha, P=proportion, side=side)
-        
+        xntol_out <- tolerance::normtol.int(xn, alpha = alpha, P=proportion, side=side)
+
     } else {
-        ## johnson fit returned z values for all x values so possibly a decent fit
+        ## johnson fit returned xn values for all x values so possibly a decent fit
         
         ##--------------------------------------------------------
-        ## calculate standard normal tolerance limit, ztol (i.e., for standard normal)
+        ## calculate normal tolerance limit, ztol (i.e., for standard normal)
     
-        ztol_out <- normtol.int(zall, alpha = alpha, P=proportion, side=side)
-        xmin <- min(xall)
-        xmax <- max(xall)
+        xntol_out <- tolerance::normtol.int(xn, alpha = alpha, P=proportion, side=side)
         if (side == 1) {
-            ztol_lower <- ztol_out$'1-sided.lower'
-            ztol_upper <- ztol_out$'1-sided.upper'
+            xntol_lower <- xntol_out$'1-sided.lower'
+            xntol_upper <- xntol_out$'1-sided.upper'
         } else if (side == 2) {
-            ztol_lower <- ztol_out$'2-sided.lower'
-            ztol_upper <- ztol_out$'2-sided.upper'
+            xntol_lower <- xntol_out$'2-sided.lower'
+            xntol_upper <- xntol_out$'2-sided.upper'
         }
 
-
-        ##-----------------------------------------------------------------------------        
-        ## transform ztol back to normal tolerance limit, xntol
-        xntol_lower <- mean(xnall) + sd(xnall) * ztol_lower # lower z is negative
-        xntol_upper <- mean(xnall) + sd(xnall) * ztol_upper
-
-        
         ##-----------------------------------------------------------------------------        
         ## transform xntol back to johnson tolerance limit, xtol
         
@@ -124,23 +104,23 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
             ## Upper tolerance limit should have meaning for SL
 
             if (type == 'SU') {
-                ## xnall <- gamma + delta * asinh( (xall - xi)/ lambda )
+                ## xn <- gamma + delta * asinh( (x - xi)/ lambda )
                 xtol_lower = xi + lambda * sinh( (xntol_lower - gamma)/delta )
                 xtol_upper = xi + lambda * sinh( (xntol_upper - gamma)/delta )
 
             } else if (type == 'SB') {
-                ## xnall <- gamma + delta *   log( (xall - xi)/(lambda + xi - xall) )
+                ## xn <- gamma + delta *   log( (x - xi)/(lambda + xi - x) )
                 zero <- function(x, gamma, delta, xi, xntol) {
                     ## find where xntol_calc == xntol
                     xntol_calc <- gamma + delta *   log( (xntol - xi)/(lambda + xi - xntol) )
                     zero <- xntol_calc - xntol
                 }
-                xtol_lower <- newton.raphson(zero, parms=jparms, xntol=xntol_lower, xguess=mean(xall))
+                xtol_lower <- newton.raphson(zero, parms=jparms, xntol=xntol_lower, xguess=mean(x))
                 xtol_upper <- NA
                                                                                            
             } else {
                 ## type == 'SL'
-                ## xnall <- gamma + delta *   log( (xall - xi)/ lambda )
+                ## xn <- gamma + delta *   log( (x - xi)/ lambda )
                 xtol_lower <- NA
                 xtol_upper <- xi + lambda * exp( (xntol_upper - gamma)/delta )
                 
@@ -148,15 +128,23 @@ johnson_tol <- function(xall, alpha=0.01, P=0.99, side=1, jfit='all', plots='no'
 
         }
     }
-    bounds <- data.frame(sided = c(side, side),
-                         ztol  = c(ztol_lower, ztol_upper),
-                         xntol = c(xntol_lower, xntol_upper),
-                         xtol  = c(xtol_lower, xtol_upper))
-    return(list(xz=df, jparms=jparms, ztol_out, bounds=bounds))
+    return(list(sided=side, 
+                alpha=alpha,
+                P=P,
+                jfit=jfit,
+                jparms=jparms, 
+                xtol_lower=xtol_lower, 
+                xtol_upper=xtol_upper))
 }
 
 ## ## test
-##
+
+## johnson_tol(mtcars$mpg)
+
+## out <- johnson_tol(mtcars$mpg)
+## upper_tolerance_limit_john <- out$xtol_upper
+## upper_tolerance_limit_john
+
 ## set.seed(1)
 ## x                          <- rnorm(n=1E5, mean=10, sd=1)
 ## tol_out_john               <- johnson_tol(x, alpha=0.1, P=0.99, side=1)
