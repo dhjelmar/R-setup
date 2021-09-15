@@ -1,3 +1,11 @@
+plotdf2 <- function() {
+    fits <- lme4::lmList(mpg ~ disp | cyl, data=mtcars)    
+    coefs <- data.frame(coef(fits)); names(coefs) = c("Int", "slopes")
+    plot(mpg ~ disp, data = mtcars)
+    lapply(fits, abline)
+}
+
+
 plotdf <- function(df, xx, yy,
                    byvar      = NA,
                    byvar_type = 'discrete',
