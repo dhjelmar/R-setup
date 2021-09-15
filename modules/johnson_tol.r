@@ -1,8 +1,24 @@
-johnson_tol <- function(x, alpha=0.01, P=0.99, side=1, jfit='all', plots='no') {
+johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
 
-    ## x = data set
-    ## alpha  = 1 - confidence
-    ## P = proportion = coverage (tolerance interval only)
+    ## input:   x     = data set
+    ##          alpha = 1 - confidence
+    ##          P     = proportion = coverage (tolerance interval only)
+    ##          side  = 1 = 1-sided tolerance limit
+    ##                = 2 = 2-sided tolerance limit
+    ##          jfit  = 'all' = uses SuppDists::JohnsonFit to determine parameters
+    ##                = 'SU'  = uses ExtDist::eJohnsonSU to determine parameters
+    ##                = list of user specified parameters
+    ##                  e.g., jparms <- list(gamma   = -1.039,
+    ##                                       delta   = 1.66,
+    ##                                       xi      = 14.46,
+    ##                                       lambda  = 6.95,
+    ##                                       type    = 'SU',
+    ##                       johnson_tol(mtcars$mpg, jfit=jparms)
+    ##
+    ## output:  jparms = Johnson fit parameters used in tolerance limit calculation
+    ##          xtol_lower = lower bound tolerance limit
+    ##          xtol_upper = upper bound tolerance limit
+    
     proportion <- P
 
     ##--------------------------------------------------------
@@ -18,10 +34,10 @@ johnson_tol <- function(x, alpha=0.01, P=0.99, side=1, jfit='all', plots='no') {
     ##--------------------------------------------------------
     ## determine Johnson parameters
     
-    if (jfit == 'all') {
+    if (jfit[1] == 'all') {
         ## let R figure out which Johnson distribution fits best
         jparms  <- SuppDists::JohnsonFit(x)
-    } else if (jfit == 'SU') {
+    } else if (jfit[1] == 'SU') {
         ## force the Johnson SU distribution
         jparms.out <- ExtDist::eJohnsonSU(x)
         jparms <- list(gamma   = jparms.out$gamma,
@@ -144,18 +160,6 @@ johnson_tol <- function(x, alpha=0.01, P=0.99, side=1, jfit='all', plots='no') {
 ## out <- johnson_tol(mtcars$mpg)
 ## upper_tolerance_limit_john <- out$xtol_upper
 ## upper_tolerance_limit_john
+## jparms <- out$jparms
 
-## set.seed(1)
-## x                          <- rnorm(n=1E5, mean=10, sd=1)
-## tol_out_john               <- johnson_tol(x, alpha=0.1, P=0.99, side=1)
-## jparms                     <- tol_out_john$jparms
-## ztol_upper                <- tol_out_john$ztol_upper
-## ztol_upper
-## upper_tolerance_limit_john <- tol_out_john$xtol_upper$`root approximation`
-## upper_tolerance_limit_john
-## 
-## xz <- tol_out_john$xz
-## plotspace(1,3)
-## hist(xz$x)
-## hist(xz$z)
-## plot(xz$x, xz$z)
+## johnson_tol(mtcars$mpg, jfit=jparms)
