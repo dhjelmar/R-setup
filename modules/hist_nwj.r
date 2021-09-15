@@ -1,11 +1,32 @@
-hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, jfit='all', suppress='no') {
+hist_nwj <- function(x, alpha=0.01, P=0.99, breaks=NULL, jfit='all',
+                     main=NULL, subtitle='yes', suppress='no') {
     ## plot histogram and normal, Weibull, and Johnson distributions
-    ## add lines for upper tolerance limits for given alpha and pvalue
+    ## adds lines for upper tolerance limits for given alpha and proportion
     ## alpha  = 1 - confidence
-    ## pvalue = coverage (tolerance interval only)
-
+    ## P = coverage proportion (tolerance interval only)
+    proportion = P
+    ## breaks = number of bins used in the histogram (default auto determines number)
+    ## jfit  = 'all' = uses SuppDists::JohnsonFit to determine parameters
+    ##       = 'SU'  = uses ExtDist::eJohnsonSU to determine parameters
+    ##       = list of user specified parameters
+    ##         e.g., jparms <- list(gamma   = -1.039,
+    ##                              delta   = 1.66,
+    ##                              xi      = 14.46,
+    ##                              lambda  = 6.95,
+    ##                              type    = 'SU')
+    ##              johnson_tol(mtcars$mpg, jfit=jparms)
+    ## main = title for histogram (default is "Histogram of ...")
+    ## subtitle = 'yes' = puts description of lines in subtitle
+    ##          = 'no'  = subtitle is blank
+    ##          = user specified, single line subtitle
+    ## suppress = 'yes' creates plot but does not return calculated values to the screen
+    ##            (e.g., fit parameters and tolerance limits)
+    
+    ## name of variable passed in
+    xname <- deparse(substitute(x))
+    
     ## normal distribution calculations
-    tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=pvalue, side=1)
+    tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=1)
     upper_tolerance_limit_norm <- tol_out_norm$'1-sided.upper'
 
     ## Weibull distribution calculations
@@ -13,22 +34,25 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, jfit='all', suppre
         cat('\n')
         cat('#####################################################################\n')
         cat('Skip Weibull: Negative values cannot be fit with Weibull distribution\n')
-        cat('              Some day I should add logic to skip if that is the case\n')
-        cat('#####################################################################\n')
+        cat('#####################################################################\n\n')
+        tol_out_weib <- NA
+        shape <- NA
+        scale <- NA
+        upper_tolerance_limit_weib <- NA
     } else {
-        tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=pvalue, side=1, dist="Weibull")
+        tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=proportion, side=1, dist="Weibull")
         shape   <- tol_out_weib$'shape.1'
         scale   <- tol_out_weib$'shape.2'
         upper_tolerance_limit_weib <- tol_out_weib$'1-sided.upper'
     }
         
     ## Johnson distribution calculations
-    tol_out_john <- johnson_tol(x, alpha=alpha, P=pvalue, side=1, jfit=jfit)
+    tol_out_john <- johnson_tol(x, alpha=alpha, P=proportion, side=1, jfit=jfit)
     jparms   <- tol_out_john$jparms
     if (jparms$type == 'SB') {
         upper_tolerance_limit_john <- NA
     } else {
-        upper_tolerance_limit_john <- tol_out_john$bounds$xtol[2]
+        upper_tolerance_limit_john <- tol_out_john$xtol_upper
     } 
        
     ## create vectors with density distributions
@@ -59,11 +83,24 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, jfit='all', suppre
     maxdensity <- max(xdensity_norm, xdensity_weib, xdensity_john, out$density, na.rm=TRUE)
     ymax <- max(out$density, maxdensity)
     ## create plot
+    if (is.null(main)) main <- paste('Histogram of', xname, sep=" ")
     hist(x, breaks=breaks,
+         xlab = xname,
          xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
          ylim=c(0,maxdensity),
-         freq=FALSE)
-
+         freq=FALSE,
+         main=main)
+    if (subtitle == 'yes') {
+        subtitle <- list('line color: red = normal, blue = Weibull, black = Johnson',
+                         'line type: solid = distribution or mean, dashed = 1-sided upper bound')
+        mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col='black')
+    } else if (subtitle == 'no') {
+        ## skip subitile
+    } else {
+        ## use user specified subitile
+        mtext(subtitle)
+    }
+    
     ## add distributions
     lines(x=xrange, y=xdensity_norm, col='red',   lty=1)
     lines(x=xrange, y=xdensity_weib, col='blue',  lty=1)
@@ -77,32 +114,45 @@ hist_nwj <- function(x, alpha=0.01, pvalue=0.99, breaks=NULL, jfit='all', suppre
 
     ## print to screen
     if (suppress == 'no') {
-        cat("Tolerance limit input parameters:\n")
-        cat("   upper, 1-sided,", pvalue*100,"/",(1-alpha)*100,"\n")
+        cat("Upper, 1-Sided Tolerance Limits\n")
+        cat("-------------------------------")
         cat("\n")
         cat("Normal distribution (red):\n")
-        cat("   mean               =",xmean,"\n")
-        cat("   standard deviation =",xsd,"\n")
-        cat("   tolerance limit    =",upper_tolerance_limit_norm,"\n")
+        cat("   mean                =",xmean,"\n")
+        cat("   standard deviation  =",xsd,"\n")
+        cat("   confidence          =",1-alpha,"\n")
+        cat("   tolerance limit     =",upper_tolerance_limit_norm,"\n")
         cat("\n")
         cat("Weibull distribution (blue):\n")
-        cat("   shape              =",shape,"\n")
-        cat("   scale              =",scale,"\n")
-        cat("   tolerance limit    =",upper_tolerance_limit_weib,"\n")
+        cat("   shape               =",shape,"\n")
+        cat("   scale               =",scale,"\n")
+        cat("   confidence          =",1-alpha,"\n")
+        cat("   tolerance limit     =",upper_tolerance_limit_weib,"\n")
         cat("\n")
         cat("Johnson distribution (black):\n")
-        cat("   gamma              =",jparms$gamma ,"\n")
-        cat("   delta              =",jparms$delta ,"\n")
-        cat("   xi                 =",jparms$xi    ,"\n")
-        cat("   lambda             =",jparms$lambda,"\n")
-        cat("   type               =",jparms$type  ,"\n")
-        cat("   tolerance limit    =",upper_tolerance_limit_john,"\n")
+        cat("   gamma               =",jparms$gamma ,"\n")
+        cat("   delta               =",jparms$delta ,"\n")
+        cat("   xi                  =",jparms$xi    ,"\n")
+        cat("   lambda              =",jparms$lambda,"\n")
+        cat("   type                =",jparms$type  ,"\n")
+        cat("   confidence          =",1-alpha,"\n")
+        cat("   coverage proportion =", proportion, "\n")
+        cat("   tolerance limit     =",upper_tolerance_limit_john,"\n")
     }    
 
-    return(list(tol_out_norm=tol_out_norm,
+    return(list(sided = '1-sided, upper limits',
+                proportion = proportion,
+                alpha = alpha,
+                nparms = list(mean = xmean, sd=xsd),
+                wparms = list(shape = shape, scale = scale),
+                jparms = jparms,
+                tol_out_norm=tol_out_norm,
                 tol_out_weib=tol_out_weib,
                 tol_out_john=tol_out_john))
 
 }
-## out   <- hist_nwj(mtcars$mpg)
-## gamma <- out$tol_out_john$jparms$gamma
+
+## jparms <- list(gamma = -1.039, delta = 1.66, xi = 14.46, lambda = 6.95, type    = 'SU')
+## xjohn <- SuppDists::rJohnson(999, parms=jparms) + 2
+## out   <- hist_nwj(xjohn, jfit=jparms)
+
