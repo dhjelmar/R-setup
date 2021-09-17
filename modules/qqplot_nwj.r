@@ -68,6 +68,18 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
         ## abline(0,1, col='blue', lty=2)
         ## legend("bottomright",col=c('red', 'blue'), lty=c(1,2), legend=c('qqline', '45 degree line'))
     }
+
+    if (grepl('k', type)) {
+        ## alternate approach for Johnson QQ plot to get confidence intervals
+
+        ## transpose Johnson distributed data to normal
+        out <- johnson_tol(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no')
+        xn <- out$xn
+        
+        ## now make normal QQ plot using 
+        main <- paste('Johnson Transposed to Normal QQ Plot', mainadder, sep=" ")
+        nparms <- qualityTools::qqPlot(xn, "normal",  col='black', main=main)        
+    }
     
     return(list(nparms=nparms, wparms=wparms, jparms=jparms))
     
