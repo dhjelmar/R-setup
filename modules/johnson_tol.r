@@ -23,8 +23,6 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
 
     ##--------------------------------------------------------
     ## initialize tolerance limits
-    ztol_lower   = NA
-    ztol_upper   = NA
     xntol_lower  = NA
     xntol_upper  = NA
     xtol_lower   = NA
@@ -96,7 +94,7 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
         ## johnson fit returned xn values for all x values so possibly a decent fit
         
         ##--------------------------------------------------------
-        ## calculate normal tolerance limit, ztol (i.e., for standard normal)
+        ## calculate normal tolerance limit, xntol
     
         xntol_out <- tolerance::normtol.int(xn, alpha = alpha, P=proportion, side=side)
         if (side == 1) {
@@ -148,7 +146,9 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
                 alpha=alpha,
                 P=P,
                 jfit=jfit,
-                jparms=jparms, 
+                jparms=jparms,
+                x=x,
+                xn=xn,
                 xtol_lower=xtol_lower, 
                 xtol_upper=xtol_upper))
 }
