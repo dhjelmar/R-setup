@@ -49,11 +49,7 @@ hist_nwj <- function(x, alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     ## Johnson distribution calculations
     tol_out_john <- johnson_tol(x, alpha=alpha, P=proportion, side=1, jfit=jfit)
     jparms   <- tol_out_john$jparms
-    if (jparms$type == 'SB') {
-        upper_tolerance_limit_john <- NA
-    } else {
-        upper_tolerance_limit_john <- tol_out_john$xtol_upper
-    } 
+    upper_tolerance_limit_john <- tol_out_john$xtol_upper
        
     ## create vectors with density distributions
     xmin    <- min(x)
@@ -115,18 +111,17 @@ hist_nwj <- function(x, alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     ## print to screen
     if (suppress == 'no') {
         cat("Upper, 1-Sided Tolerance Limits\n")
+        cat("confidence =", 1-alpha, ", coverage proportion", proportion, '\n')
         cat("-------------------------------")
         cat("\n")
         cat("Normal distribution (red):\n")
         cat("   mean                =",xmean,"\n")
         cat("   standard deviation  =",xsd,"\n")
-        cat("   confidence          =",1-alpha,"\n")
         cat("   tolerance limit     =",upper_tolerance_limit_norm,"\n")
         cat("\n")
         cat("Weibull distribution (blue):\n")
         cat("   shape               =",shape,"\n")
         cat("   scale               =",scale,"\n")
-        cat("   confidence          =",1-alpha,"\n")
         cat("   tolerance limit     =",upper_tolerance_limit_weib,"\n")
         cat("\n")
         cat("Johnson distribution (black):\n")
@@ -135,9 +130,8 @@ hist_nwj <- function(x, alpha=0.01, P=0.99, breaks=NULL, jfit='all',
         cat("   xi                  =",jparms$xi    ,"\n")
         cat("   lambda              =",jparms$lambda,"\n")
         cat("   type                =",jparms$type  ,"\n")
-        cat("   confidence          =",1-alpha,"\n")
-        cat("   coverage proportion =", proportion, "\n")
         cat("   tolerance limit     =",upper_tolerance_limit_john,"\n")
+        cat("   (tolerance limit is the distribution bound if type SB or SL)\n")
     }    
 
     return(list(sided = '1-sided, upper limits',
