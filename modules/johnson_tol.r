@@ -80,7 +80,7 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
     na_rows <- df[is.na(df$xn),]
     if (nrow(na_rows) != 0) {
 
-        ## z values could not be calculated for all x values
+        ## xn values could not be calculated for all x values
         cat('\n')
         cat('#####################################\n')
         cat('  ERROR IN JOHNSON_TOL  \n')
@@ -89,59 +89,50 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
         print(jparms)
         print(na_rows)
         xntol_out <- tolerance::normtol.int(xn, alpha = alpha, P=proportion, side=side)
-
-    } else {
-        ## johnson fit returned xn values for all x values so possibly a decent fit
-        
-        ##--------------------------------------------------------
-        ## calculate normal tolerance limit, xntol
-    
-        xntol_out <- tolerance::normtol.int(xn, alpha = alpha, P=proportion, side=side)
-        if (side == 1) {
-            xntol_lower <- xntol_out$'1-sided.lower'
-            xntol_upper <- xntol_out$'1-sided.upper'
-        } else if (side == 2) {
-            xntol_lower <- xntol_out$'2-sided.lower'
-            xntol_upper <- xntol_out$'2-sided.upper'
-        }
-
-        ##-----------------------------------------------------------------------------        
-        ## transform xntol back to johnson tolerance limit, xtol
-        
-        if (type == 'SB') {
-            ## Not sure tolerance limits have meaning for a bounded fit
-            xtol_lower <- NA
-            xtol_upper <- NA
-            
-        } else {
-            ## Tolerance limits should have meaning for SU and SN
-            ## Upper tolerance limit should have meaning for SL
-
-            if (type == 'SU') {
-                ## xn <- gamma + delta * asinh( (x - xi)/ lambda )
-                xtol_lower = xi + lambda * sinh( (xntol_lower - gamma)/delta )
-                xtol_upper = xi + lambda * sinh( (xntol_upper - gamma)/delta )
-
-            } else if (type == 'SB') {
-                ## xn <- gamma + delta *   log( (x - xi)/(lambda + xi - x) )
-                zero <- function(x, gamma, delta, xi, xntol) {
-                    ## find where xntol_calc == xntol
-                    xntol_calc <- gamma + delta *   log( (xntol - xi)/(lambda + xi - xntol) )
-                    zero <- xntol_calc - xntol
-                }
-                xtol_lower <- newton.raphson(zero, parms=jparms, xntol=xntol_lower, xguess=mean(x))
-                xtol_upper <- NA
-                                                                                           
-            } else {
-                ## type == 'SL'
-                ## xn <- gamma + delta *   log( (x - xi)/ lambda )
-                xtol_lower <- NA
-                xtol_upper <- xi + lambda * exp( (xntol_upper - gamma)/delta )
-                
-            }
-
-        }
     }
+
+    ##--------------------------------------------------------
+    ## calculate normal tolerance limit, xntol
+    
+    xntol_out <- tolerance::normtol.int(xn, alpha = alpha, P=proportion, side=side)
+    if (side == 1) {
+        xntol_lower <- xntol_out$'1-sided.lower'
+        xntol_upper <- xntol_out$'1-sided.upper'
+    } else if (side == 2) {
+        xntol_lower <- xntol_out$'2-sided.lower'
+        xntol_upper <- xntol_out$'2-sided.upper'
+    }
+
+    ##-----------------------------------------------------------------------------        
+    ## transform xntol back to johnson tolerance limit, xtol
+    
+    if (type == 'SU') {
+        ## xn <- gamma + delta * asinh( (x - xi)/ lambda )
+        xtol_lower = xi + lambda * sinh( (xntol_lower - gamma)/delta )
+        xtol_upper = xi + lambda * sinh( (xntol_upper - gamma)/delta )
+
+    } else if (type == 'SB') {
+        ## Not sure tolerance limits have meaning for a bounded fit,
+        ## but can define lower and upper bounds.
+
+        ## Given xn <- gamma + delta *   log( (x - xi)/(lambda + xi - x) )
+        ## Johnson SB undefined for (x - xi)/(lambda + xi - x) <= 0
+
+        ## Based on aboove and knowing lambda > 0 by definition:
+        ## On low end, need x-xi > 0
+        xtol_lower <- xi
+        ## On high end, need lambda + xi - x > 0
+        xtol_upper <- lambda + xi
+        
+    } else {
+        ## type == 'SL'
+        ## xn <- gamma + delta *   log( (x - xi)/ lambda )
+        ## On low end, need x-xi > 0 since lambda is defined as > 0
+        xtol_lower <- xi
+        xtol_upper <- xi + lambda * exp( (xntol_upper - gamma)/delta )
+        
+    }
+
     return(list(sided=side, 
                 alpha=alpha,
                 P=P,
