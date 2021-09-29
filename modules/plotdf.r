@@ -9,7 +9,6 @@ plotdf2 <- function() {
 plotdf <- function(df, xx, yy,
                    bycol      = NA,
                    byfit      = NA,
-                   type       = NA,
                    ncol       = NA,
                    vlines     = NA,
                    xlimspec   = NA, ylimspec = NA,
@@ -30,18 +29,10 @@ plotdf <- function(df, xx, yy,
 
     ## options (defaults shown in function definition above):
     ##    bycol    = variable to use to color code datapoints (NA is default)
-    ##    type     = NA is the default and behaves as if bycol = NA
-    ##             = 'continuous'     = data colored using bycol as continuous parameter
-    ##                                  single fit for all data combined
-    ##             = 'discrete combined' = data colored using bycol as discrete label
-    ##                                  single fit for all data combined
-    ##             = 'discrete separate' = data colored using bycol as discrete label
-    ##                                  separate fits for each discrete bycol
-
-    ##    bycol    = variable to use to color code datapoints (NA is default)
-    ##    byfit    = 'combined' specifies single fit to all data (default)
-    ##             = 'bycol' specifies separate fit for each bycol
-
+    ##    byfit    = NA specifies single fit to all data (default)
+    ##             = 'bycol' (or just not NA) specifies separate fit for each bycol
+    ##    ncol     = NA to use bycol to set number of colors
+    ##             = # to specify # colors (only used for numeric data)
     ##    vlines   = vector of vertical lines to be added (e.g., c(0.5, 2.0))
     ##    xlimspec = vector defining xlimits of plot (e.g., c(-2, 11.5))
     ##    ylimspec = vector defining ylimits of plot
@@ -116,7 +107,7 @@ plotdf <- function(df, xx, yy,
         ncol      <- 1
         fitgroups <- 1
     } else {
-        ## variable specified for datapoint colors
+        ## bycol variable used to determine datapoint colors
         
         if (is.na(ncol)) {
             ## number of colors not specified
@@ -137,13 +128,16 @@ plotdf <- function(df, xx, yy,
     cols <- c("black","darkturquoise","pink","red")
     pal  <- colorRampPalette(cols)                  # define color pallette
     if (ncol == 1) {
+        bycolnumeric <- TRUE
         newdf$color <- 'black'
     } else {
         if (is.numeric(newdf$bycol)) {
             ## continuous variable for color
+            bycolnumeric <- TRUE
             newdf$color <- pal(ncol)[as.numeric(cut(newdf$bycol,breaks=ncol))]
         } else {
             ## discrete variable (e.g., label) for color
+            bycolnumeric <- FALSE
             cols  <- data.frame(bycol=unique(c(as.character(newdf$bycol))))
             ncol  <- nrow(cols)
             color <- rainbow(ncol)
@@ -158,7 +152,6 @@ plotdf <- function(df, xx, yy,
     ##-----------------------------------------------------------------------------
     ## SPLIT DATAFRAME BY BYCOL IF MULTIPLE FITS ARE NEEDED
     if (fitgroups == 1) {
-        ncol <- 1
         ## put newdf into list so can handle the same as in more complicated case for ncol > 1
         newdfl <- list(newdf)
     } else {
@@ -200,6 +193,12 @@ plotdf <- function(df, xx, yy,
     ## add grid
     grid(col='gray70')
 
+    ## add points
+    for (i in 1:fitgroups) {
+        points(newdfl[[i]]$xx, newdfl[[i]]$yy, col=newdfl[[i]]$color)
+    }
+
+    
     ## if request upper/lower range bounds, add to plot
     if ( !is.na(vlines) ) {
         abline(v=vlines[1], col='black', lty='dashed')
@@ -209,7 +208,7 @@ plotdf <- function(df, xx, yy,
 
 
     ##-----------------------------------------------------------------------------
-    ## PERFORM REGRESSION AND PLOT FOR EACH BYCOL
+    ## PERFORM REGRESSION AND PLOT fit FOR EACH FITGROUP
 
     fit <- NA
     intercept <- NA
@@ -221,6 +220,8 @@ plotdf <- function(df, xx, yy,
     
     for (ifit in 1:fitgroups) {
         fit             <- lm(yy~xx, data=newdfl[[ifit]])
+        ## print results of fit
+        estbound(fit)
         intercept[ifit] <- fit$coefficients[[1]]
         slope[ifit]     <- fit$coefficients[[2]]
         ## calculate rise of fit over range bounds if supplied,
@@ -265,10 +266,7 @@ plotdf <- function(df, xx, yy,
     }
     
     ##-------------------------------------------------------------------------------------     
-    ## plot points and fit
-    
-    
-    ## determine title for plot
+    ## Add title and subtitle with equation if requested
     if (printeq == 'yes') {
         if (fitgroups == 1) {
             ## add fit equation under main title for the only fit
@@ -283,33 +281,54 @@ plotdf <- function(df, xx, yy,
         }
     }
     
+
+    ##-------------------------------------------------------------------------------------     
     ## add legend
     if (ncol > 1) {
-
-## dlh stopped here
+        ## no legend is needed if there is only one color on the plot
         
-        if (bycol_type == 'discrete') {
-            ## define color palette for discrete bycol
-            legendcolor <- unique(newdfl$color)
-            legendlabel <- unique(newdfl$bycol)
-            ##legend("right",title=bylabel,col=pal(ncol), pch=19,legend=round(legendlabel))
-            ##legend("bottomright",title=bylabel,col=newdfl$bycol, pch=19,legend=legendlabel)
-            legend("bottomright", title=bylabel, col=legendcolor, pch=19, legend=legendlabel)
-
+        ## determine legend location by slope of all data
+        fitall       <- lm(yy~xx, data=newdf)
+        fitall_slope <- fitall$coefficients[[2]]
+        if (fitall_slope > 0) {
+            legendloc <- 'bottomright'
         } else {
-            low  <- min(newdfl$bycol,na.rm=TRUE)
-            high <- max(newdfl$bycol,na.rm=TRUE)
-            legendlabel <- seq( low, high, (high-low)/(ncol-1) )
-            ##legend("right",title=bylabel,col=pal(ncol), pch=19,legend=round(legendlabel))
-            legend("right",title=bylabel,col=pal(ncol), pch=19,legend=signif(legendlabel,digits=4))
+            legendloc <- 'topright'
+        }
+
+### dlh stopped here; following works through tests 1 through 6 but not 7 and 8 for multiple fits
+        
+        for (i in 1:fitgroups) {
+
+            if (isTRUE(bycolnumeric)) {
+                ## bycol is a numeric variable so treat as continuous
+                low  <- min(newdfl[[i]]$bycol,na.rm=TRUE)
+                high <- max(newdfl[[i]]$bycol,na.rm=TRUE)
+                legendlabel <- seq( low, high, (high-low)/(ncol-1) )
+                
+            } else {
+                ## bycol is not numeric so treat as a label
+                legendcolor <- unique(newdfl[[i]]$color)
+                legendlabel <- unique(newdfl[[i]]$bycol)
+            }
+        }
+
+        if (isTRUE(bycolnumeric)) {
+            ## bycol is a numeric variable so treat as continuous
+            legend(legendloc,title=bylabel,col=pal(ncol), pch=19,legend=signif(legendlabel,digits=4))
+            
+        } else {
+            ## bycol is not numeric so treat as a label
+            legend(legendloc, title=bylabel, col=legendcolor, pch=19, legend=legendlabel)
         }
     }
+
     
-    ## for output file
+    ##-----------------------------------------------------------------------------
+    ## WRAPUP AND RETURN
+
+    ## create output file if requested
     if (!missing(outputfile)) dev.off()
-    
-    ## print results of fit
-    estbound(fit)
     
     if (suppress == 'no')
         return( list(intercept = intercept, slope = slope, rise = rise, pred = as_tibble(pred)) )
@@ -321,10 +340,13 @@ plotdf_test <- function() {
     df <- mtcars
     df$size[df$cyl <= 4] <- 'small'
     df$size[df$cyl >  4] <- 'large'
-    plotdf(df, disp, mpg,                            main='test 1')
-    plotdf(df, disp, mpg, bycol=cyl,                 main='test 2')
-    plotdf(df, disp, mpg, bycol=cyl,                 main='test 3')
-    plotdf(df, disp, mpg, bycol=cyl,  byfit='bycol', main='test 4')
-    plotdf(df, disp, mpg, bycol=size, byfit='bycol', main='test 5')
+    plotdf(df, disp, mpg,                            main='test 1: plotfit')
+    plotdf(df, disp, mpg, bycol=wt,   ncol=2,        main='test 2: plotfitcol, 2 colors')
+    plotdf(df, disp, mpg, bycol=wt,   ncol=3,        main='test 3: plotfitcol, 3 colors')
+    plotdf(df, disp, mpg, bycol=wt,                  main='test 4: plotfitcold too many numeric')
+    plotdf(df, disp, mpg, bycol=wt,   ncol=8,        main='test 5: plotfitcol  reduce numeric')
+    plotdf(df, disp, mpg, bycol=size,                main='test 6: plotfitcold few text')
+    plotdf(df, disp, mpg, bycol=size, byfit='multiple', main='test 7: plotfitcold multiple fits')
+    plotdf(df, disp, mpg, bycol=cyl,  byfit='multiple', main='test 8: plotfitcol  multiple fits')
 }
 
