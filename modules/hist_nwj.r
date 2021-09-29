@@ -146,6 +146,7 @@ hist_nwj <- function(x, alpha=0.01, P=0.99, breaks=NULL, jfit='all',
 
 }
 
+## set.seed(1)
 ## jparms <- list(gamma = -1.039, delta = 1.66, xi = 14.46, lambda = 6.95, type    = 'SU')
 ## xjohn <- SuppDists::rJohnson(999, parms=jparms) + 2
 ## out   <- hist_nwj(xjohn, jfit=jparms)
