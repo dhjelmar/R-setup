@@ -1,10 +1,12 @@
 plotdf <- function(df, xx, yy,
                    byvar      = NA,  
                    by.as.text = FALSE,
-                   ncol       = NA,   
+                   ncol       = NA,
+                   nofit      = FALSE,
                    multifit   = FALSE,
                    vlines     = NA,
-                   xlimspec   = NA, ylimspec = NA,
+                   xlimspec   = NA,
+                   ylimspec   = NA,
                    main       = NULL,
                    printeq    = 'yes',
                    xlabel     = NA,
@@ -12,7 +14,12 @@ plotdf <- function(df, xx, yy,
                    interval   = 'conf',
                    alpha      = 0.05,
                    sided      = 2,
-                   cols       = c("black","darkturquoise","pink","red"),
+                   cols       = c('black', 
+                                  '#9900CC', 'violet', 
+                                  'blue', '#6699FF', '#33FFF6', 
+                                  'green3', '#33FF66', 
+                                  'orange', '#FF6600', 
+                                  'red', 'firebrick'),
                    color      = NULL,
                    bg         = 'white',   # "grey90",  # grey90 resulted in hiding data
                    suppress   = 'yes',
@@ -96,10 +103,18 @@ plotdf <- function(df, xx, yy,
     newdf <- data.frame(xx, yy, byvar=byvar)
     names(newdf) <- c('xx', 'yy', 'byvar')
 
+    
     ##-----------------------------------------------------------------------------
     ## DETERMINE X AND Y RANGE FOR NEEDED FOR DATA AND REQUESTED LINES
-    xmin <- min(newdf$xx, vlines, na.rm=TRUE)
-    xmax <- max(newdf$xx, vlines, na.rm=TRUE)
+    if (is.null(vlines[1])) {
+        ## vlines not specified
+        xmin <- min(newdf$xx, vlines, na.rm=TRUE)
+        xmax <- max(newdf$xx, vlines, na.rm=TRUE)
+    } else {
+        ## vlines specified so use thoe for xmin and xmax
+        xmin <- min(vlines, na.rm=TRUE)   # dlh may not be good ifused for fit and axes?
+        xmax <- max(vlines, na.rm=TRUE)
+    }
     ymin <- min(newdf$yy, na.rm=TRUE)
     ymax <- max(newdf$yy, na.rm=TRUE)
 
@@ -109,8 +124,13 @@ plotdf <- function(df, xx, yy,
     if (is.na(byvar[1])) {
         ## no byvar specified so single color and single fit group
         ncol      <- 1
-        fitgroups <- 1
-
+        if (isTRUE(nofit)) {
+            ## no fit is to be put on the plot
+            fitgroups <- 0
+        } else {
+            fitgroups <- 1
+        }
+        
     } else {
         ## byvar variable used to determine datapoint colors
         if (is.na(ncol)) {
@@ -118,7 +138,10 @@ plotdf <- function(df, xx, yy,
             ncol <- length(unique(newdf$byvar))
         }
 
-        if (isFALSE(multifit)) {
+        if (isTRUE(nofit)) {
+            ## no fit is to be put on the plot
+            fitgroups <- 0
+        } else if (isFALSE(multifit)) {
             ## default is a single fit group
             fitgroups <- 1
         } else {
@@ -166,7 +189,7 @@ plotdf <- function(df, xx, yy,
 
     ##-----------------------------------------------------------------------------
     ## SPLIT DATAFRAME BY BYVAR IF MULTIPLE FITS ARE NEEDED
-    if (fitgroups == 1) {
+    if (fitgroups <= 1) {
         ## put newdf into list so can handle the same as in more complicated case for ncol > 1
         newdfl <- list(newdf)
     } else {
@@ -206,7 +229,7 @@ plotdf <- function(df, xx, yy,
          main=main)
     
     ## changes background of plot to specified color
-    par(bg=bg)  # changes background of plot to specified color
+    par(bg=bg)
 
     ## add grid
     grid(col='gray70')
@@ -228,66 +251,69 @@ plotdf <- function(df, xx, yy,
     ##-----------------------------------------------------------------------------
     ## PERFORM REGRESSION AND PLOT fit FOR EACH FITGROUP
 
-    fit <- NA
-    fitcol <- NA
-    intercept <- NA
-    slope <- NA
-    rise <- NA
-    equation <- NA
-    legendn <- NA
-    legendc <- NA
-    
-    for (ifit in 1:fitgroups) {
-        fit             <- lm(yy~xx, data=newdfl[[ifit]])
-        ## print results of fit
-        estbound(fit)
-        intercept[ifit] <- fit$coefficients[[1]]
-        slope[ifit]     <- fit$coefficients[[2]]
-        ## calculate rise of fit over range bounds if supplied,
-        ## otherwise calculate rise over range of data
-        if ( !is.na(vlines[1]) ) {
-            rise[ifit] <- (vlines[2] - vlines[1]) * slope[ifit]
-        } else {
-            rise[ifit] <- (xmax - xmin) * slope[ifit]
-        }        
-        equation[ifit] = paste0("y = ", signif(slope[ifit],4), " * x + ",
-                                signif(intercept[ifit],4),
-                                ", ", expression(Delta), " = ", signif(rise[ifit],4))
+    if (fitgroups > 0) {
 
-        ## legend info
-        if (ncol == 1) {
-            ## no legend
-            legendn <- NULL
-            legendc <- NULL
-        } else if (fitgroups == 1 & ncol > 1) {
-            ## all legend names and colors are defined in this newdfl[[1]] 
-            legendn <- list( unique(newdfl[[ifit]]$byvar) )
-            legendc <- list( unique(newdfl[[ifit]]$color) )
-        } else if (fitgroups > 1 & ncol > 1) {
-            ## byvar has a single color and subsequent ifit numbers will 
-            legendn[ifit] <- newdfl[[ifit]]$byvar[1]
-            legendc[ifit] <- newdfl[[ifit]]$color[1]
+        fit <- NA
+        fitcol <- NA
+        intercept <- NA
+        slope <- NA
+        rise <- NA
+        equation <- NA
+        legendn <- NA
+        legendc <- NA
+        
+        for (ifit in 1:fitgroups) {
+            fit             <- lm(yy~xx, data=newdfl[[ifit]])
+            ## print results of fit
+            estbound(fit)
+            intercept[ifit] <- fit$coefficients[[1]]
+            slope[ifit]     <- fit$coefficients[[2]]
+            ## calculate rise of fit over range bounds if supplied,
+            ## otherwise calculate rise over range of data
+            if ( !is.na(vlines[1]) ) {
+                rise[ifit] <- (vlines[2] - vlines[1]) * slope[ifit]
+            } else {
+                rise[ifit] <- (xmax - xmin) * slope[ifit]
+            }        
+            equation[ifit] = paste0("y = ", signif(slope[ifit],4), " * x + ",
+                                    signif(intercept[ifit],4),
+                                    ", ", expression(Delta), " = ", signif(rise[ifit],4))
+
+            ## legend info
+            if (ncol == 1) {
+                ## no legend
+                legendn <- NULL
+                legendc <- NULL
+            } else if (fitgroups == 1 & ncol > 1) {
+                ## all legend names and colors are defined in this newdfl[[1]] 
+                legendn <- list( unique(newdfl[[ifit]]$byvar) )
+                legendc <- list( unique(newdfl[[ifit]]$color) )
+            } else if (fitgroups > 1 & ncol > 1) {
+                ## byvar has a single color and subsequent ifit numbers will 
+                legendn[ifit] <- newdfl[[ifit]]$byvar[1]
+                legendc[ifit] <- newdfl[[ifit]]$color[1]
+            }
+
+            ## add fit to plot
+            new.xx <- seq(min(newdfl[[ifit]]$xx, vlines, na.rm=TRUE),
+                          max(newdfl[[ifit]]$xx, vlines, na.rm=TRUE), len=100)
+            pred   <- predict(fit, new=data.frame(xx=new.xx), interval=interval, level=1-0.05/sided)
+            if (fitgroups == 1) {
+                fitcol[ifit] <- 'black'
+            } else {
+                ## colorcode lines
+                fitcol[ifit] <- newdfl[[ifit]]$color[1]
+            }
+            lines(new.xx, pred[,"fit"], lwd=2, col=fitcol[ifit])
+
+            ## if request confidence bounds, add to plot
+            if (interval != 'none') {
+                lines(new.xx, pred[,"lwr"], lty=3, col=fitcol[ifit])
+                lines(new.xx, pred[,"upr"], lty=3, col=fitcol[ifit])
+            }
+
+
         }
-
-        ## add fit to plot
-        new.xx <- seq(min(newdfl[[ifit]]$xx, vlines, na.rm=TRUE),
-                      max(newdfl[[ifit]]$xx, vlines, na.rm=TRUE), len=100)
-        pred   <- predict(fit, new=data.frame(xx=new.xx), interval=interval, level=1-0.05/sided)
-        if (fitgroups == 1) {
-            fitcol[ifit] <- 'black'
-        } else {
-            ## colorcode lines
-            fitcol[ifit] <- newdfl[[ifit]]$color[1]
-        }
-        lines(new.xx, pred[,"fit"], lwd=2, col=fitcol[ifit])
-
-        ## if request confidence bounds, add to plot
-        if (interval != 'none') {
-            lines(new.xx, pred[,"lwr"], lty=3, col=fitcol[ifit])
-            lines(new.xx, pred[,"upr"], lty=3, col=fitcol[ifit])
-        }
-
-
     }
     
     ##-------------------------------------------------------------------------------------     
@@ -340,9 +366,9 @@ plotdf <- function(df, xx, yy,
 }
 
 
-addfit <- function(xx, yy, col='black', interval='conf', sided=2, vlines=NA) {
+addfit <- function(xx, yy, col='black', interval='conf', sided=2, pch=1, vlines=NULL) {
     ## plot points
-    points(xx, yy, pch=17, col=col)
+    points(xx, yy, pch=pch, col=col)
 
     ## perform fit
     fit <- lm(yy~xx)
@@ -364,7 +390,7 @@ addfit <- function(xx, yy, col='black', interval='conf', sided=2, vlines=NA) {
 
     ## calculate rise of fit over range bounds if supplied,
     ## otherwise calculate rise over range of data
-    if ( !is.na(vlines[1]) ) {
+    if ( !is.null(vlines[1]) ) {
         rise <- (vlines[2] - vlines[1]) * slope
     } else {
         rise <- (max(xx) - min(xx)) * slope
@@ -404,14 +430,22 @@ plotdf_test <- function() {
 ##     plotdf(df2, disp, mpg, byvar=type, multifit=TRUE, vlines=c(50, 500), main='test9: 2 fits by labels')
 
 
-    ## add another set of points and fit
-    plotdf(df2, disp, mpg, byvar=type, multifit=TRUE, vlines=c(50, 500), main='test10: add 3rd fit by hand')
-    xx <- seq(150, 400, 10)
-    rand <- rnorm(length(xx), 10, 1)
-    yy <- 5/100 * xx + rand
-    newcol <- 'darkviolet'
-    vlines <- c(120, 450)
-##     addfit(xx, yy, col='darkviolet', vlines=c(120, 450))
-    addfit(xx, yy, col='darkviolet')
+##     ## add another set of points and fit
+##     plotdf(df2, disp, mpg, byvar=type, multifit=TRUE, vlines=c(50, 500), main='test10: add 3rd fit by hand')
+##     xx <- seq(150, 400, 10)
+##     rand <- rnorm(length(xx), 10, 1)
+##     yy <- 5/100 * xx + rand
+##     newcol <- 'darkviolet'
+##     vlines <- c(120, 450)
+## ##     addfit(xx, yy, col='darkviolet', vlines=c(120, 450))
+##     addfit(xx, yy, col='darkviolet')
+
+    
+    ## separate fits for 2 variables with separate vlines and equations
+    plotdf(df2, disp, mpg, byvar=type, nofit=TRUE, main='test10: add 3rd fit by hand')
+    with(df2[df2$type == 'type1',], addfit(disp, mpg, vlines=c(80, 400), col='green'))
+    with(df2[df2$type == 'type2',], addfit(disp, mpg, vlines=c(70, 550), col='red'))
+
+    
     
 }
