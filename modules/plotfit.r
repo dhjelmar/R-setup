@@ -1,120 +1,148 @@
-plotfit <- function(df, xx, yy, xlimspec=NULL, ylimspec=NULL, vlines=NULL,
-                    main = 'equation', xlabel = NULL, ylabel = NULL,
-                    interval='conf', alpha=0.05, sided=2, bg="grey90",
-                    suppress='no', outputfile=NULL) {
-    ## create scatter plot with linear regression line and 95% confidence lines
-    ## xx and yy are variables within dataframe df
-    ## xlimspec and ylimspec can be used to force the range of the plot
-    ## vlines will plot exactly two vertical lines at specified x locations
-    ## main = 'equation'    # default is to print the fitted equation as the title
-    ##      = 'your title'  # can specify title instead
-    ## confidence or prediction limits
-    ##     interval = 'conf' # confidence limits
-    ##              = 'pred' # prediction limits
-    ##              = 'none' # no limits added to plot
-    ##     alpha    = 1 - confidence level
-    ##     sided    = 2      # 2-sided interval
-    ##              = 1      # 1-sided interval (currently plots upper and lower)
-    ## bg controls the background color of the plot
-    
-    ## example usage: plotfit(df,hsub_in,power_ratio,ylimspec=c(0,1.1))
-    ##                plotfit(mtcars, disp, mpg)
-    ##                plotfit(mtcars, disp, mpg, vlines=c(100, 400))
-    ##                plotfit(mtcars, disp, mpg, vlines=c(100, 400), interval='none')
+plotfit3 <- function(df, xx, yy,
+                     byvar  = NULL,
+                     xrange = NULL,
+                     yrange = NULL,
+                     vlines = NA,
+                     main   = NULL,
+                     equation = TRUE,
+                     xlabel = NULL,
+                     ylabel = NULL,
+                     interval='conf', alpha=0.05, sided=2,
+                     bg="grey90",
+                     color  = palette(),
+                     outputfile=NULL,
+                     suppress='no') {
 
-    ## test idea
-    ## outcols <- getcols(df, xx, yy)
-  
-    ## extract the names of xx and yy for plot axis labels if not defined
-    if (missing(xlabel)) xlabel <- deparse(substitute(xx))
-    if (missing(ylabel)) ylabel <- deparse(substitute(yy))
-
-    ## extract xx and yy from df
-    xx <- eval(substitute(xx),df)   # need to recognize name passed into function as xx
-    yy <- eval(substitute(yy),df)   # need to recognize name passed into function as yy
+    ## usage: plotfit3(mtcars, 'mpg', 'disp', 'cyl')
     
-    ## if xx and yy were passed in without quotes, xx and yy will be vectors to be plotted
-    ## if xx and yy were passed in with quotes, xx and yy will be name of vector to be plotted
-    if (typeof(xx) == 'character') {
-        xxcol <- which(grepl(xx, names(df)))  
-        xx    <- df[, xxcol]
+    ## vlines   = vector where: 1st two entries correspond to 1st byvar
+    ##                        : 2nd two entries correspond to 2nd byvar, etc.
+    ## equation = TRUE writes equation as subtext under main title
+    
+    ##-----------------------------------------------------------------------------
+    ## extract column locations and values from dataframe
+    if (is.null(xlabel)) xxlabel <- xx      ## name of xx variable
+    xxcol <- which(grepl(xx, names(df)))    ## xx column
+    xx    <- df[, xxcol]                    ## xx values
+    if (is.null(ylabel)) yylabel <- yy
+    yycol <- which(grepl(yy, names(df)))  
+    yy    <- df[, yycol]
+    if (is.null(byvar)) {
+        ## no byvar specified
+        legendnames <- NULL
+        nfit <- 1
+    } else {
+        bycol <- which(grepl(byvar, names(df)))  
+        by    <- df[, bycol]
+        legendnames <- unique(df[[bycol]])
+        nfit  <- length(legendnames)
     }
-    if (typeof(yy) == 'character')  {
-        yycol <- which(grepl(yy, names(df)))  
-        yy    <- df[, yycol]
-    }
-    
-    ## put xx and yy into dataframe
-    newdf <- data.frame(xx,yy)
-    names(newdf) <- c('xx', 'yy')
-    
-    ## set min and max for plot if not specified
-    xmin <- min(newdf$xx, xlimspec, na.rm=TRUE)
-    xmax <- max(newdf$xx, xlimspec, na.rm=TRUE)
-    ## xmax_plot <- xmax + (xmax-xmin)*1.2  # did this to make room for a legend
-    ymin <- min(newdf$yy,na.rm=TRUE)
-    ymax <- max(newdf$yy,na.rm=TRUE)
-    if (missing(xlimspec)) { xlimspec <- c(xmin,xmax) }
-    if (missing(ylimspec)) { ylimspec <- c(ymin,ymax) }
 
+    ##-----------------------------------------------------------------------------
+    ## define plot parameters
+    xmax   <- max(xrange, xx, xx, vlines, na.rm=TRUE)
+    xmin   <- min(xrange, xx, xx, vlines, na.rm=TRUE)
+    yrange <- range(yrange, yy, yy, na.rm=TRUE)
+    if (nfit > 1) {
+        ## more than 1 fit so need a legend
+        ## make extra room for legend
+        xmax_plot <- xmax + (xmax-xmin)*0.2
+    } else {
+        xmax_plot <- xmax
+    }
+    xrange <- range(xmin, xmax_plot)
+        
+    ##-----------------------------------------------------------------------------
     ## setup for output jpeg file
     if (!missing(outputfile)) jpeg(filename=outputfile)
     
+    ## create empty plot
+    plot(xx, yy, type='n',
+         xlim=xrange,  ylim=yrange,
+         xlab=xlabel,  ylab=ylabel,
+         main=main)
+
     ## change background of plot to specified color
     par(bg=bg)  
 
-    ## perform regrssion
-    fit <- lm(yy~xx,data=newdf)
-    ## estbound(fit)
-    intercept <- fit$coefficients[[1]]
-    slope <- fit$coefficients[[2]]
-    ## calculate rise of fit over range bounds if supplied, otherwise calculate rise over range of data
-    if ( !is.null(vlines) ) {
-        rise <- (vlines[2] - vlines[1]) * slope
-    } else {
-        rise <- (xmax - xmin) * slope
-    }        
+    ##-----------------------------------------------------------------------------
+    ## add nofit points
+    ## not programmed
 
-    ## plot points and fit
-    if (main == 'equation') main = paste0("y = ", signif(slope,4), "* x + ", signif(intercept,4),
-                                          ", ", expression(Delta), " = ", signif(rise,4))
-    new.xx <- seq(min(newdf$xx, vlines, na.rm=TRUE),max(newdf$xx, vlines, na.rm=TRUE), len=100)
-    pred   <- predict(fit, new=data.frame(xx=new.xx), interval=interval, level=1-0.05/sided)
-    plot(newdf$xx,newdf$yy,xlim=xlimspec,ylim=ylimspec,
-         xlab=xlabel,ylab=ylabel,
-         main=main)
-    grid(col='gray70')
-    lines(new.xx,pred[,"fit"],lwd=1, col='red')
+    ##-----------------------------------------------------------------------------
+    ## determine number of unique fits needed
 
-    ## if request confidence bounds, add to plot
-    if (interval != 'none') {
-        lines(new.xx,pred[,"lwr"],lty=3, col='red')
-        lines(new.xx,pred[,"upr"],lty=3, col='red')
+    ##-----------------------------------------------------------------------------
+    ## add points, fits and vlines
+    eq      <- NA
+    lineloc <- 1.5
+    for (i in 1:nfit) {
+
+        ## extract subset of data for ith byvar
+        if (nfit == 1) {
+            ## no byvar specified
+            dfi <- df
+        } else {
+            ## byvar is specified
+            dfi <- df[df[[bycol]] == legendnames[i],]
+        }
+        
+        ## fit is over range of data for current byvar
+        ## lines extended to max(vlines, data)
+        vpair <- c(vlines[i*2-1], vlines[i*2])
+        eq[i] <- addfit(dfi[[xxcol]], dfi[[yycol]], col=color[i], vlines=vpair,
+                        interval=interval, alpha=alpha, sided=sided)
+
+        ## add the fit equations under main title
+        ## subtitle <- list(eq1, eq2)
+        ## mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col=color)
+        lineloc = lineloc - 0.75
+        mtext(eq[i], side=3, line=lineloc, cex=0.75, col=color[i])
     }
 
-    ## if request upper/lower range bounds, add to plot
-    if ( !is.null(vlines) ) {
-        abline(v=vlines[1], col='black', lty='dashed')
-        abline(v=vlines[2], col='black', lty='dashed')
-    }        
+    ##-----------------------------------------------------------------------------
+    ## add legend
+    ## determine legend location by slope of all data
+    if (nfit > 1) {
+        fitall       <- lm(yy~xx, data=df)
+        fitall_slope <- fitall$coefficients[[2]]
+        if (fitall_slope > 0) {
+            legendloc <- 'bottomright'
+        } else {
+            legendloc <- 'topright'
+        }
+        legend(legendloc, title=byvar, col=color, legend=legendnames, pch=1)
+    }
 
     ## for output jpeg file
     if (!missing(outputfile)) dev.off()
 
-    if (suppress == 'no')
-        return( list(intercept = intercept, slope = slope, rise = rise, pred = as_tibble(pred)) )
-    
+    ##-----------------------------------------------------------------------------
+    if (suppress == 'no') {
+        ## return fitted equations    
+        if (nfit > 1) {
+            ## more than one equation so return as a list
+            eq <- as.list(eq)
+            names(eq) <- legendnames
+        }
+        return(eq)
+    }
+
 }
-testplots <- function() {
-    source('/home/dlhjel/GitHub_repos/R-setup/setup.r')
-    plotfit(mtcars, cyl, 'mpg')
-    plotfit(mtcars, cyl, 'mpg', vlines=c(5,7))
-    plotfit(mtcars, cyl, 'mpg', vlines=c(3.9,8.1))
-    plotfit(mtcars, cyl, 'mpg', vlines=c(2,9), xlimspec=c(0, 10))
-    plotfit(mtcars, cyl, 'mpg', outputfile='junk.jpg')
-    plotfitcol(mtcars, cyl, 'mpg', byvar='cyl', ncol=3)
-    plotfitcold(mtcars, cyl, 'mpg', byvar=cyl)
-    plotfitcold(mtcars, cyl, 'mpg', byvar=cyl,                xlimspec=c(0,10))
-    plotfitcold(mtcars, cyl, 'mpg', byvar=cyl, vlines=c(2,9), xlimspec=c(0,10))
-    plotfitcold(mtcars, cyl, 'mpg', byvar=cyl, vlines=c(5,7))
-}
+
+## df1 <- mtcars
+## df1$type <- 'type1'
+## df2     <- df1
+## df2$mpg <- df1$mpg * 1.1 + rnorm(1, 10, 1)
+## df2$type <- 'type2'
+## df <- rbind(df1, df2)
+
+plotfit3(df, 'mpg', 'disp')
+
+plotfit3(df, 'mpg', 'disp', 'type')
+
+out <- plotfit3(df, 'mpg', 'disp', 'type',
+         xrange=c(0, 50), yrange=c(0, 500),
+         vlines=c(10,35,    NA,NA,   25,50),
+         color = c('black', 'green', 'red'),
+         main='specified black/green/red and no vlines for green fit')
