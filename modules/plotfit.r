@@ -1,17 +1,17 @@
-plotfit3 <- function(df, xx, yy,
-                     byvar  = NULL,
-                     xrange = NULL,
-                     yrange = NULL,
-                     vlines = NA,
-                     main   = NULL,
-                     equation = TRUE,
-                     xlabel = NULL,
-                     ylabel = NULL,
-                     interval='conf', alpha=0.05, sided=2,
-                     bg="grey90",
-                     color  = palette(),
-                     outputfile=NULL,
-                     suppress='no') {
+plotfit <- function(df, xx, yy,
+                     byvar      = NULL,
+                     xlimspec   = NULL,
+                     ylimspec   = NULL,
+                     vlines     = NA,
+                     main       = NULL,
+                     equation   = TRUE,
+                     xlabel     = NULL,
+                     ylabel     = NULL,
+                     interval   = 'conf', alpha=0.05, sided=2,
+                     bg         = "grey90",
+                     color      = palette(),
+                     outputfile = NULL,
+                     suppress   = 'no') {
 
     ## usage: plotfit3(mtcars, 'mpg', 'disp', 'cyl')
     
@@ -40,9 +40,9 @@ plotfit3 <- function(df, xx, yy,
 
     ##-----------------------------------------------------------------------------
     ## define plot parameters
-    xmax   <- max(xrange, xx, xx, vlines, na.rm=TRUE)
-    xmin   <- min(xrange, xx, xx, vlines, na.rm=TRUE)
-    yrange <- range(yrange, yy, yy, na.rm=TRUE)
+    xmax   <- max(xlimspec, xx, xx, vlines, na.rm=TRUE)
+    xmin   <- min(xlimspec, xx, xx, vlines, na.rm=TRUE)
+    ylimspec <- range(ylimspec, yy, yy, na.rm=TRUE)
     if (nfit > 1) {
         ## more than 1 fit so need a legend
         ## make extra room for legend
@@ -50,7 +50,7 @@ plotfit3 <- function(df, xx, yy,
     } else {
         xmax_plot <- xmax
     }
-    xrange <- range(xmin, xmax_plot)
+    xlimspec <- range(xmin, xmax_plot)
         
     ##-----------------------------------------------------------------------------
     ## setup for output jpeg file
@@ -58,7 +58,7 @@ plotfit3 <- function(df, xx, yy,
     
     ## create empty plot
     plot(xx, yy, type='n',
-         xlim=xrange,  ylim=yrange,
+         xlim=xlimspec,  ylim=ylimspec,
          xlab=xlabel,  ylab=ylabel,
          main=main)
 
@@ -130,19 +130,38 @@ plotfit3 <- function(df, xx, yy,
 
 }
 
-## df1 <- mtcars
-## df1$type <- 'type1'
-## df2     <- df1
-## df2$mpg <- df1$mpg * 1.1 + rnorm(1, 10, 1)
-## df2$type <- 'type2'
-## df <- rbind(df1, df2)
+testplots <- function() {
+    source('/home/dlhjel/GitHub_repos/R-setup/setup.r')
+    plotfit(mtcars, 'cyl', 'mpg')
+    plotfit(mtcars, 'cyl', 'mpg', vlines=c(5,7))
+    plotfit(mtcars, 'cyl', 'mpg', vlines=c(3.9,8.1))
+    plotfit(mtcars, 'cyl', 'mpg', vlines=c(2,9), xlimspec=c(0, 10))
+    plotfit(mtcars, 'cyl', 'mpg', outputfile='junk.jpg')
+    plotfitcol(mtcars, 'cyl', 'mpg', byvar='cyl', ncol=3)
+    plotfitcold(mtcars, 'cyl', 'mpg', byvar=cyl)
+    plotfitcold(mtcars, 'cyl', 'mpg', byvar=cyl,                xlimspec=c(0,10))
+    plotfitcold(mtcars, 'cyl', 'mpg', byvar=cyl, vlines=c(2,9), xlimspec=c(0,10))
+    plotfitcold(mtcars, 'cyl', 'mpg', byvar=cyl, vlines=c(5,7))
 
-plotfit3(df, 'mpg', 'disp')
+    df1 <- mtcars
+    df1$type <- 'type1'
+    df2     <- df1
+    df2$mpg <- df1$mpg * 1.1 + rnorm(1, 10, 1)
+    df2$type <- 'type2'
+    df <- rbind(df1, df2)
+    df[58:64,]$type <- 'type is 3'
 
-plotfit3(df, 'mpg', 'disp', 'type')
+    plotfit(df, 'mpg', 'disp')
 
-out <- plotfit3(df, 'mpg', 'disp', 'type',
-         xrange=c(0, 50), yrange=c(0, 500),
-         vlines=c(10,35,    NA,NA,   25,50),
-         color = c('black', 'green', 'red'),
-         main='specified black/green/red and no vlines for green fit')
+    plotfit(df, 'mpg', 'disp', 'type')
+
+    out <- plotfit(df, 'mpg', 'disp', 'type',
+                   xlimspec=c(0, 50), ylimspec=c(0, 500),
+                   vlines=c(10,35,    NA,NA,   25,50),
+                   color = c('black', 'green', 'red'),
+                   main='specified black/green/red and no vlines for green fit')
+
+    plotspace(1,2)    
+    plotfitcol(df, mpg, disp, cyl, ncol=3)
+    plotfit(df, 'mpg', 'disp', 'cyl')
+}
