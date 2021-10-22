@@ -119,14 +119,14 @@ plotfit <- function(xx,
     ## setup for output jpeg file
     if (!missing(outputfile)) jpeg(filename=outputfile)
     
+    ## change background of plot to specified color
+    par(bg=bg)  
+
     ## create empty plot
     plot(xx, yy, type='n',
          xlim=xlimspec,  ylim=ylimspec,
          xlab=xlabel,  ylab=ylabel,
          main=main)
-
-    ## change background of plot to specified color
-    par(bg=bg)  
 
     ##-----------------------------------------------------------------------------
     ## add nofit points
