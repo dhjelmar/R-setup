@@ -4,6 +4,7 @@ plotfit <- function(xx,
                     xlabel     = NULL,
                     ylabel     = NULL,
                     bylabel    = NULL,
+                    nofit      = FALSE,
                     multifit   = FALSE,
                     color      = palette(),
                     xlimspec   = NULL,
@@ -77,6 +78,10 @@ plotfit <- function(xx,
     xx    <- df$xx
     yy    <- df$yy
     byvar <- df$byvar
+    ## following was added to drop unwanted levels
+    ## without it, the legend was wrong because it used the levels
+    ## which had the colors in the wrong order
+    df$color <- as.character(df$color) 
     color <- df$color
     
     
@@ -150,36 +155,42 @@ plotfit <- function(xx,
         ## fit is over range of data for current byvar
         ## lines extended to max(vlines, data)
         vpair <- c(vlines[i*2-1], vlines[i*2])
-        out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], vlines=vpair,
-                        interval=interval, alpha=alpha, sided=sided)
-        eq[i] <- out$equation
-        if (i == 1) {
-            if (nfit == 1) {
-                fitname <- NA
+        if (isFALSE(nofit)) {
+            ## add fit to plot
+            out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], vlines=vpair,
+                            interval=interval, alpha=alpha, sided=sided)
+            eq[i] <- out$equation
+            
+            if (i == 1) {
+                if (nfit == 1) {
+                    fitname <- NA
+                } else {
+                    fitname <- legendnames[i]
+                }
+                fits <- data.frame(fit       = fitname,
+                                   slope     = out$slope,
+                                   intercept = out$intercept,
+                                   rise      = out$rise)
             } else {
-                fitname <- legendnames[i]
+                fits  <- rbind(fits, data.frame(fit       = legendnames[i],
+                                                slope     = out$slope,
+                                                intercept = out$intercept,
+                                                rise      = out$rise))
             }
-            fits <- data.frame(fit       = fitname,
-                               slope     = out$slope,
-                               intercept = out$intercept,
-                               rise      = out$rise)
-        } else {
-            fits  <- rbind(fits, data.frame(fit       = legendnames[i],
-                                            slope     = out$slope,
-                                            intercept = out$intercept,
-                                            rise      = out$rise))
         }
-        
+            
         ## color points even though there is only one fit
         if (isTRUE(colorpoints) & nfit == 1) {
             points(xx, yy, col=color)
         }
-        
-        ## add the fit equations under main title
-        ## subtitle <- list(eq1, eq2)
-        ## mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col=color)
-        lineloc = lineloc - 0.75
-        mtext(eq[i], side=3, line=lineloc, cex=0.75, col=cols$color[i])
+
+        if (isTRUE(equation)) {
+            ## add the fit equations under main title
+            ## subtitle <- list(eq1, eq2)
+            ## mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col=color)
+            lineloc = lineloc - 0.75
+            mtext(eq[i], side=3, line=lineloc, cex=0.75, col=cols$color[i])
+        }
     }
 
     ##-----------------------------------------------------------------------------
@@ -207,7 +218,7 @@ plotfit <- function(xx,
             eq <- as.list(eq)
             names(eq) <- legendnames
         }
-        return(fits)
+        if (isFALSE(nofit)) return(fits)
     }
 
 }
