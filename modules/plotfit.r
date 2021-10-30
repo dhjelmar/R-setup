@@ -218,7 +218,12 @@ plotfit <- function(xx,
             eq <- as.list(eq)
             names(eq) <- legendnames
         }
-        if (isFALSE(nofit)) return(fits)
+        legendprint <- data.frame(legendnames, color = cols$color)
+        if (isFALSE(nofit)) {
+            return(list(fits = fits, legend = legendprint))
+        } else {
+            return(list(legend = legendprint))
+        }
     }
 
 }
