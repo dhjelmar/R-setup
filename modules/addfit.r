@@ -33,9 +33,8 @@ addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, pc
     } else {
         rise <- (max(xx) - min(xx)) * slope
     }        
-    equation = paste0("y = ", signif(slope,4), " * x + ",
-                      signif(intercept,4),
-                      ", ", expression(Delta), " = ", signif(rise,4))
+    equation = paste0("y = ", signif(intercept,4), " + ", signif(slope,4), " * x; ",
+                      expression(Delta), " = ", signif(rise,4))
     return(list(equation=equation, slope=slope, intercept=intercept, rise=rise))
 
 }
