@@ -4,8 +4,10 @@ plotfit <- function(xx,
                     xlabel     = NULL,
                     ylabel     = NULL,
                     bylabel    = NULL,
+                    bynom      = NULL,
                     nofit      = FALSE,
                     multifit   = FALSE,
+                    grid       = TRUE,
                     color      = palette(),
                     xlimspec   = NULL,
                     ylimspec   = NULL,
@@ -14,6 +16,7 @@ plotfit <- function(xx,
                     equation   = TRUE,
                     interval   = 'conf', alpha=0.05, sided=2,
                     bg         = "grey90",
+                    legendloc  = NA,
                     outputfile = NULL,
                     suppress   = 'no') {
 
@@ -34,13 +37,56 @@ plotfit <- function(xx,
 
     
     ##-----------------------------------------------------------------------------
-    ## put data into dataframe
+    ## if bynom vector is specified, map byvar to closest bynom value for color and legend
+    if (!is.null(bynom[1])) {
+
+        if (length(bynom) == 1) {
+            ## number of colors specified rather than a vector
+            ## split range evenly into this number
+            end1 <- min(byvar, na.rm=TRUE)
+            end2 <- max(byvar, na.rm=TRUE)
+            bynom <- seq(end1, end2, length.out = bynom)
+        }
+
+        
+        ## find closest bynom value for each byvar value
+        byvarnom <- unlist( purrr::pmap(list(x = byvar),
+                                        function(x) DescTools::Closest(bynom, x)) )
+        if (length(byvarnom) > length(byvar)) {
+            cat('\n##############################################\n')
+            cat(  'FATAL ERROR: bynom results in one or more     \n')
+            cat(  '             byvar values with multiple       \n')
+            cat(  '             closesest points. Try again with \n')
+            cat(  '             different bynom # or vector.)    \n')
+            cat('\n##############################################\n\n')
+            return()
+        }
+
+        ## replace byvar with byvarnom for plotting purposes
+        byvar <- byvarnom
+
+    }
+    
+
+
+    ##-----------------------------------------------------------------------------
+    ## put data into dataframe and remove any pairs that do not have values
     xxcol  <- 1
     yycol  <- 2
     bycol  <- 3
     colcol <- 4
-    df <- data.frame(xx, yy, byvar)
-    
+    if (is.na(byvar[1])) {
+        df       <- na.omit( data.frame(xx, yy) )
+        ## expand byvar=NA for every point
+        df$byvar <- NA
+    } else {
+        df    <- na.omit( data.frame(xx, yy, byvar) )
+        byvar <- df$byvar
+    }
+    ## write points back out
+    xx <- df$xx
+    yy <- df$yy
+        
     if (length(color) == length(xx)) {
         ## color provided for each datapoint
         df$color <- color
@@ -69,8 +115,6 @@ plotfit <- function(xx,
         df <- merge(df, cols, by="byvar")
         ## put order of columns back
         df <- data.frame(xx=df$xx, yy=df$yy, byvar=df$byvar, color=df$color)
-        ## pull out new color vector
-        color <- df$color
     }
     ## sort the dataframe by byvar
     df    <- df[order(df$byvar),]
@@ -112,7 +156,7 @@ plotfit <- function(xx,
     xmax   <- max(xlimspec, xx, xx, vlines, na.rm=TRUE)
     xmin   <- min(xlimspec, xx, xx, vlines, na.rm=TRUE)
     ylimspec <- range(ylimspec, yy, yy, na.rm=TRUE)
-    if (isTRUE(colorpoints)) {
+    if (isTRUE(colorpoints) & is.na(legendloc)) {
         ## make extra room for legend
         xmax_plot <- xmax + (xmax-xmin)*0.2
     } else {
@@ -133,6 +177,8 @@ plotfit <- function(xx,
          xlab=xlabel,  ylab=ylabel,
          main=main)
 
+    if (isTRUE(grid)) grid(col='gray70')
+    
     ##-----------------------------------------------------------------------------
     ## add nofit points
     ## not programmed
@@ -197,12 +243,21 @@ plotfit <- function(xx,
     ## add legend
     ## determine legend location by slope of all data
     if (isTRUE(colorpoints)) {
-        fitall       <- lm(yy~xx, data=df)
-        fitall_slope <- fitall$coefficients[[2]]
-        if (fitall_slope > 0) {
-            legendloc <- 'bottomright'
-        } else {
-            legendloc <- 'topright'
+        if (is.na(legendloc)) {
+            if (diff(range(xx)) > 0) {
+                ## xx has more than 1 value so possible to define slope
+                fitall       <- lm(yy~xx, data=df)
+                fitall_slope <- fitall$coefficients[[2]]
+                if (fitall_slope > 0) {
+                    legendloc <- 'bottomright'
+                } else {
+                    legendloc <- 'topright'
+                }
+            } else {
+                ## xx hsa only 1 value so not possible to define slope
+                ## put legend at bottom right
+                legendloc <- 'bottomright'
+            }
         }
         legend(legendloc, title=bylabel, col=cols$color, legend=legendnames, pch=1)
     }
@@ -257,6 +312,15 @@ testplots <- function() {
     plotfit(df$hp, df$mpg, df$type)
     out <- plotfit(df$hp, df$mpg, df$type, multifit=TRUE)
 
+    plotspace(2,2)
     plotfitcol(df, mpg, disp, drat, ncol=5)
     plotfit(df$mpg, df$disp, df$drat)
+    plotfit(df$mpg, df$disp, df$drat, bynom=5)
+    plotfit(df$mpg, df$disp, df$drat, bynom=c(2.76, 3.302, 3.845, 4.387, 4.93))
+
+    plotspace(1,3)
+    plotfit(mtcars$wt, mtcars$mpg, mtcars$qsec)
+    with(mtcars, plotfit(wt, mpg, qsec, bynom=seq(14, 24, 2)))
+    with(mtcars, plotfit(wt, mpg, qsec, bynom=seq(14, 24, 2),
+                         color=c('black', 'darkviolet', 'blue', 'green', 'red')))
 }
