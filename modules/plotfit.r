@@ -286,9 +286,12 @@ plotfit <- function(xx,
 testplots <- function() {
     source('/home/dlhjel/GitHub_repos/R-setup/setup.r')
     df <- mtcars
+    plotspace(1,3)
     plotfit(df$hp, df$mpg)
     plotfit(df$hp, df$mpg, df$cyl)
     with(df, plotfit(hp, mpg, cyl))
+    
+    plotspace(1,2)
     plotfit(df$hp, df$mpg, df$cyl, multifit=TRUE)
     plotfit(df$hp,         df$mpg,         df$cyl, 
             'horsepower', 'miles per gal', 'cylinders',
@@ -304,6 +307,7 @@ testplots <- function() {
     df2$mpg <- df1$mpg * 1.1 + rnorm(1, 10, 1)
     df2$type <- 'type2'
     df <- rbind(df1, df2)
+    
     plotspace(1,2)    
     plotfit(df$hp, df$mpg, df$type)
     plotfit(df$hp, df$mpg, df$type, multifit=TRUE, vlines=c(30,350,  100,450))
@@ -312,8 +316,7 @@ testplots <- function() {
     plotfit(df$hp, df$mpg, df$type)
     out <- plotfit(df$hp, df$mpg, df$type, multifit=TRUE)
 
-    plotspace(2,2)
-    plotfitcol(df, mpg, disp, drat, ncol=5)
+    plotspace(1,3)
     plotfit(df$mpg, df$disp, df$drat)
     plotfit(df$mpg, df$disp, df$drat, bynom=5)
     plotfit(df$mpg, df$disp, df$drat, bynom=c(2.76, 3.302, 3.845, 4.387, 4.93))
