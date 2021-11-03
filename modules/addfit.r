@@ -2,6 +2,13 @@ addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, pc
     ## plot points
     points(xx, yy, pch=pch, col=col)
 
+    ## put points in dataframe and remove any pairs that do not have values
+    df <- na.omit( data.frame(xx,yy) )
+
+    ## write points back out to xx and yy
+    xx <- df$xx
+    yy <- df$yy
+
     ## perform fit
     fit <- lm(yy~xx)
     intercept <- fit$coefficients[[1]]
