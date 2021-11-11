@@ -1,5 +1,5 @@
 hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
-                     main=NULL, subtitle='yes', suppress='no') {
+                     upperbound=TRUE, main=NULL, subtitle='yes', suppress='no') {
     ## plot histogram and normal, Weibull, and Johnson distributions
     ## adds lines for upper tolerance limits for given alpha and proportion
     ## alpha  = 1 - confidence
@@ -75,11 +75,15 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     
     ## create vectors with density distributions
     xmin    <- min(x)
-    xmax    <- max(x,
-                   upper_tolerance_limit_norm,
-                   upper_tolerance_limit_weib,
-                   upper_tolerance_limit_john,
-                   na.rm = TRUE)
+    if (isTRUE(upperbound)) {
+        xmax <- max(x,
+                    upper_tolerance_limit_norm,
+                    upper_tolerance_limit_weib,
+                    upper_tolerance_limit_john,
+                    na.rm = TRUE)
+    } else {
+        xmax <- max(x, na.rm = TRUE)
+    }
     chuncks <- (xmax-xmin)/1000
     xrange  <- seq(xmin,xmax,by=chuncks)
     xmean   <- mean(x)
@@ -131,10 +135,12 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     if (grepl('j', type)) lines(x=xrange, y=xdensity_john, col='black', lty=1)
 
     ## add lines for mean and upper 1-sided 99/99 tolerance limits
-    abline(v=xmean,col="red")
-    if (grepl('n', type)) abline(v=upper_tolerance_limit_norm,col="red",  lty=2)
-    if (grepl('w', type)) abline(v=upper_tolerance_limit_weib,col="blue", lty=2)
-    if (grepl('j', type)) abline(v=upper_tolerance_limit_john,col="black",lty=2)
+    if (isTRUE(upperbound)) {
+        abline(v=xmean,col="red")
+        if (grepl('n', type)) abline(v=upper_tolerance_limit_norm,col="red",  lty=2)
+        if (grepl('w', type)) abline(v=upper_tolerance_limit_weib,col="blue", lty=2)
+        if (grepl('j', type)) abline(v=upper_tolerance_limit_john,col="black",lty=2)
+    }
 
     ## print to screen
     if (suppress == 'no') {
