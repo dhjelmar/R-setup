@@ -234,7 +234,7 @@ plotfit <- function(xx,
             points(xx, yy, col=color)
         }
 
-        if (isTRUE(equation)) {
+        if (isTRUE(equation) & interval != 'line') {
             ## add the fit equations under main title
             ## subtitle <- list(eq1, eq2)
             ## mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col=color)
