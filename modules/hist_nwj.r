@@ -135,8 +135,8 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     if (grepl('j', type)) lines(x=xrange, y=xdensity_john, col='black', lty=1)
 
     ## add lines for mean and upper 1-sided 99/99 tolerance limits
+    abline(v=xmean,col="red")
     if (isTRUE(upperbound)) {
-        abline(v=xmean,col="red")
         if (grepl('n', type)) abline(v=upper_tolerance_limit_norm,col="red",  lty=2)
         if (grepl('w', type)) abline(v=upper_tolerance_limit_weib,col="blue", lty=2)
         if (grepl('j', type)) abline(v=upper_tolerance_limit_john,col="black",lty=2)
