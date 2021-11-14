@@ -5,7 +5,6 @@ plotfit <- function(xx,
                     ylabel     = NULL,
                     bylabel    = NULL,
                     bynom      = NULL,
-                    nofit      = FALSE,
                     multifit   = FALSE,
                     grid       = TRUE,
                     color      = palette(),
@@ -14,7 +13,9 @@ plotfit <- function(xx,
                     vlines     = NA,
                     main       = NULL,
                     equation   = TRUE,
-                    interval   = 'conf', alpha=0.05, sided=2,
+                    interval   = 'conf',   # 'pred', 'mean', 'line, NA
+                    alpha      = 0.05,
+                    sided      = 2,
                     bg         = "grey90",
                     legendloc  = NA,
                     outputfile = NULL,
@@ -25,9 +26,12 @@ plotfit <- function(xx,
     ## vlines   = vector where: 1st two entries correspond to 1st byvar
     ##                        : 2nd two entries correspond to 2nd byvar, etc.
     ## equation = TRUE writes equation as subtext under main title
-    ## df       = if provided, then xx, yy, byvar, and color are in dataframe
-    ##            and need to specify variables in quotes when call function
-
+    
+    ## interval = 'conf' (default) plots mean fit and confidence limits
+    ##          = 'pred' plots mean fit and prediction limits
+    ##          = 'mean' plots mean fit only (and points)
+    ##          = 'line' plots connect the dot lines
+    ##          = 'NA does not plot mean fit or limits (points only)
     
     ##-----------------------------------------------------------------------------
     ## pull label from the name of the vector if not specified otherwise
@@ -180,7 +184,7 @@ plotfit <- function(xx,
     if (isTRUE(grid)) grid(col='gray70')
     
     ##-----------------------------------------------------------------------------
-    ## add nofit points
+    ## add points not used in fit
     ## not programmed
 
     ##-----------------------------------------------------------------------------
@@ -201,7 +205,7 @@ plotfit <- function(xx,
         ## fit is over range of data for current byvar
         ## lines extended to max(vlines, data)
         vpair <- c(vlines[i*2-1], vlines[i*2])
-        if (isFALSE(nofit)) {
+        if (!is.na(interval)) {
             ## add fit to plot
             out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], vlines=vpair,
                             interval=interval, alpha=alpha, sided=sided)
@@ -274,10 +278,10 @@ plotfit <- function(xx,
             names(eq) <- legendnames
         }
         legendprint <- data.frame(legendnames, color = cols$color)
-        if (isFALSE(nofit)) {
-            return(list(fits = fits, legend = legendprint))
-        } else {
+        if (is.na(interval)) {
             return(list(legend = legendprint))
+        } else {
+            return(list(fits = fits, legend = legendprint))
         }
     }
 
