@@ -13,7 +13,7 @@ plotfit <- function(xx,
                     vlines     = NA,
                     main       = NULL,
                     equation   = TRUE,
-                    interval   = 'conf',   # 'pred', 'mean', 'line, NA
+                    interval   = 'conf',   # 'pred', 'mean', 'line', 'noline'
                     alpha      = 0.05,
                     sided      = 2,
                     bg         = "grey90",
@@ -31,7 +31,7 @@ plotfit <- function(xx,
     ##          = 'pred' plots mean fit and prediction limits
     ##          = 'mean' plots mean fit only (and points)
     ##          = 'line' plots connect the dot lines
-    ##          = 'NA does not plot mean fit or limits (points only)
+    ##          = 'noline' does not plot mean fit or limits (points only)
     
     ##-----------------------------------------------------------------------------
     ## pull label from the name of the vector if not specified otherwise
@@ -205,7 +205,7 @@ plotfit <- function(xx,
         ## fit is over range of data for current byvar
         ## lines extended to max(vlines, data)
         vpair <- c(vlines[i*2-1], vlines[i*2])
-        if (!is.na(interval)) {
+        if (interval != 'noline') {
             ## add fit to plot
             out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], vlines=vpair,
                             interval=interval, alpha=alpha, sided=sided)
@@ -278,7 +278,7 @@ plotfit <- function(xx,
             names(eq) <- legendnames
         }
         legendprint <- data.frame(legendnames, color = cols$color)
-        if (is.na(interval)) {
+        if (interval == 'nolne') {
             return(list(legend = legendprint))
         } else {
             return(list(fits = fits, legend = legendprint))
