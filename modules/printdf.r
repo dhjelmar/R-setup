@@ -1,6 +1,6 @@
-printdf <- function(df,nrows,var) {
+printdf <- function(df, n, var, na.print="") {
   df <- df[,var]
-  print(df,n=nrows)
+  print(df, n=n, na.print="")
 }
 
 ## following is an alternate to the above
