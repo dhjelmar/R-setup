@@ -8,6 +8,7 @@ plotfit <- function(xx,
                     multifit   = FALSE,
                     grid       = TRUE,
                     color      = palette(),
+                    pch        = 1,       # identify symbol style (1=open circle, 16=closed circle)
                     xlimspec   = NULL,
                     ylimspec   = NULL,
                     vlines     = NA,
@@ -207,7 +208,7 @@ plotfit <- function(xx,
         vpair <- c(vlines[i*2-1], vlines[i*2])
         if (interval != 'noline') {
             ## add fit to plot
-            out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], vlines=vpair,
+            out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], pch=pch, vlines=vpair,
                             interval=interval, alpha=alpha, sided=sided)
             eq[i] <- out$equation
             
