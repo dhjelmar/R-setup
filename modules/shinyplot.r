@@ -13,24 +13,24 @@ shinyplot <- function(df, xx, yy) {
     df$yy   <- df[, ycol]
 
     ## setup shiny user interface
-    ui <- fluidPage(
-        plotOutput("plot", brush = "plot_brush"),
-        tableOutput("data")
+    ui <- shiny::fluidPage(
+        shiny::plotOutput("plot", brush = "plot_brush"),
+        shiny::tableOutput("data")
     )
 
     ## define shiny plot function
     server <- function(input, output, session) {
-        output$plot <- renderPlot({
+        output$plot <- shiny::renderPlot({
             ggplot(df, aes(xx, yy)) + geom_point() + xlab(xlabel) + ylab(ylabel)
             ## plot(df$xx, df$yy, xlab=xlabel, ylab=ylabel)      # does not work
             ## with(df, plot(xx, yy, xlab=xlabel, ylab=ylabel))  # does not work
         }, res = 96)  
         output$data <- renderTable({
-            brushedPoints(df, input$plot_brush)
+            shiny::brushedPoints(df, input$plot_brush)
         })
     }
 
     ## call shiny plotting app
-    shinyApp(ui = ui, server = server)
+    shiny::shinyApp(ui = ui, server = server)
 }
 ## shinyplot(mtcars, 'wt', 'mpg')
