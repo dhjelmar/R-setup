@@ -1,4 +1,4 @@
-shinyplot <- function(df, xx, yy) {
+shinyplot <- function(df, xx, yy, xline=NULL, yline=NULL) {
     ## use mouse to drag rectangle over points to see table of the points
     ## need to close the plot window to give control back to command line
 
@@ -18,17 +18,38 @@ shinyplot <- function(df, xx, yy) {
         shiny::tableOutput("data")
     )
 
-    ## define shiny plot function
-    server <- function(input, output, session) {
-        output$plot <- shiny::renderPlot({
-            ggplot(df, aes(xx, yy)) + geom_point() + xlab(xlabel) + ylab(ylabel)
-            ## plot(df$xx, df$yy, xlab=xlabel, ylab=ylabel)      # does not work
-            ## with(df, plot(xx, yy, xlab=xlabel, ylab=ylabel))  # does not work
-        }, res = 96)  
-        output$data <- renderTable({
-            shiny::brushedPoints(df, input$plot_brush)
-        })
-    }
+    if (is.null(xline) | is.null(yline)) {
+        ## define shiny plot function
+        server <- function(input, output, session) {
+            output$plot <- shiny::renderPlot({
+                ggplot(df, aes(xx, yy)) + geom_point() + xlab(xlabel) + ylab(ylabel)
+                ## plot(df$xx, df$yy, xlab=xlabel, ylab=ylabel)      # does not work
+                ## with(df, plot(xx, yy, xlab=xlabel, ylab=ylabel))  # does not work
+            }, res = 96)  
+            output$data <- renderTable({
+                shiny::brushedPoints(df, input$plot_brush)
+            })
+        }
+        
+    } else {
+        ## add line to shiny plot
+
+        ## first create 2nd dataframe with line info
+        linedf <- data.frame(xx=xline, yy=yline)
+        
+        server <- function(input, output, session) {
+            output$plot <- shiny::renderPlot({
+                ggplot(NULL, aes(xx, yy)) +  xlab(xlabel) + ylab(ylabel) +
+                    ## add data points for scatter plot
+                    geom_point(data = df) +
+                    ## add separately specified line with points
+                    geom_line(data = linedf) + geom_point(data = linedf, shape = 3)  
+            }, res = 96)  
+            output$data <- renderTable({
+                shiny::brushedPoints(df, input$plot_brush)
+            })
+        }
+    }        
 
     ## call shiny plotting app
     shiny::shinyApp(ui = ui, server = server)
