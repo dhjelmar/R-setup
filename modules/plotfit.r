@@ -7,7 +7,8 @@ plotfit <- function(xx,
                     bynom      = NULL,
                     multifit   = FALSE,
                     grid       = TRUE,
-                    color      = palette(),
+                    color      = c('black', 'red', 'green3', 'cyan', 'blue',
+                                   'darkorchid1', 'violet'),
                     pch        = 1,       # identify symbol style (1=open circle, 16=closed circle)
                     xlimspec   = NULL,
                     ylimspec   = NULL,
@@ -55,9 +56,11 @@ plotfit <- function(xx,
 
         
         ## find closest bynom value for each byvar value
+        ## [1] used in function to select the 1st (lower) closest value if more than 1 found
         byvarnom <- unlist( purrr::pmap(list(x = byvar),
-                                        function(x) DescTools::Closest(bynom, x)) )
+                                        function(x) DescTools::Closest(bynom, x)[1]) )
         if (length(byvarnom) > length(byvar)) {
+            ## should no longer reach this error with addition of [1] in above function
             cat('\n##############################################\n')
             cat(  'FATAL ERROR: bynom results in one or more     \n')
             cat(  '             byvar values with multiple       \n')
@@ -94,7 +97,9 @@ plotfit <- function(xx,
         
     if (length(color) == length(xx)) {
         ## color provided for each datapoint
+        ## create cols dataframe with byvar and color columns
         df$color <- color
+        cols     <- select(df, byvar, color) 
     
     } else {
         ## color palette provided rather than defining one color for each point
@@ -107,7 +112,7 @@ plotfit <- function(xx,
             cols$color <- color[1:nrow(cols)]
         } else {
             ## too many colors for palette so ramp
-            ## define color pallette
+            ## define color palette
             pal   <- colorRampPalette(color)                  
             ncol  <- length(unique(byvar))
             color <- pal(ncol)
@@ -174,7 +179,7 @@ plotfit <- function(xx,
     if (!missing(outputfile)) jpeg(filename=outputfile)
     
     ## change background of plot to specified color
-    par(bg=bg)  
+    par(bg=bg)
 
     ## create empty plot
     plot(xx, yy, type='n',
@@ -270,6 +275,9 @@ plotfit <- function(xx,
     ## for output jpeg file
     if (!missing(outputfile)) dev.off()
 
+    ## change background back to base R default
+    par(bg="white")
+    
     ##-----------------------------------------------------------------------------
     if (suppress == 'no') {
         ## return fitted equations    
