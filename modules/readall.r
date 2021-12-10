@@ -25,17 +25,17 @@ readall <- function(datasource,
     ext <- substr(datasource, lastdot+1, nchar(datasource))
 
     if (lastone == '\n') {
-        df <- read.table(text=datasource, header=TRUE)
+        df <- read.table(text=datasource, header=TRUE, stringsAsFactors=FALSE)
         datasourcename <- 'internal table'
     } else if (ext == 'csv') {
         if (header.row == 0) {
             ## read data; no header
-            df <- read.table(datasource, header=FALSE, sep=",", skip=data.start.row-1)
+            df <- read.table(datasource, header=FALSE, sep=",", skip=data.start.row-1, stringsAsFactors=FALSE)
         } else {
             ## read header
-            hd <- read.table(datasource, header=TRUE,  sep=",", skip=header.row-1)
+            hd <- read.table(datasource, header=TRUE,  sep=",", skip=header.row-1, stringsAsFactors=FALSE)
             ## read data
-            df <- read.table(datasource, header=FALSE, sep=",", skip=data.start.row-1)
+            df <- read.table(datasource, header=FALSE, sep=",", skip=data.start.row-1, stringsAsFactors=FALSE)
             ## assign header names to columns
             names(df) <- colnames(hd)
         }
