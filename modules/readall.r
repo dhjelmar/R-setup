@@ -89,8 +89,8 @@ readall <- function(datasource,
                     ## read specified number of data rows
                     df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, n_max=n_max)
                 }                    
-                ## assign header names to columns
-                names(df) <- colnames(hd)
+                ## assign header names to columns (added [] to following to strip off blank columns with header names)
+                names(df) <- colnames(hd)[1:length(names(df))]
             }                
         }
         datasourcename <- datasource
