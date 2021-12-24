@@ -107,16 +107,16 @@ library(tolerance)
 
 ## source all files in specified folders herein
 if (os == "windows") {
-    path <- c("~/Programs/GitHub_home/R-setup/modules")
+    setup.path <- c("~/Programs/GitHub_home/R-setup/modules")
 } else if (os == 'unix') {
-    path <- c("~/GitHub_repos/R-setup/modules",
-              ##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS
-              "~/ProgramFiles/R_packages/rgl/R"      )
+    setup.path <- c("~/GitHub_repos/R-setup/modules",
+                    ##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS
+                    "~/ProgramFiles/R_packages/rgl/R"      )
 } else {
     # assume Colab (.Platform returns NULL)
-    path <- c("/content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules")
+    setup.path <- c("/content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules")
 }
-r_files <- list.files(path, pattern="*.[rR]$", full.names=TRUE)
+r_files <- list.files(setup.path, pattern="*.[rR]$", full.names=TRUE)
 for (f in r_files) {
   ## cat("f =",f,"\n")
   source(f)
