@@ -1,5 +1,5 @@
 hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
-                     upperbound=TRUE, main=NULL, subtitle='yes', suppress='no') {
+                     upperbound=TRUE, main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
     ## plot histogram and normal, Weibull, and Johnson distributions
     ## adds lines for upper tolerance limits for given alpha and proportion
     ## alpha  = 1 - confidence
@@ -111,7 +111,8 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
          xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
          ylim=c(0,maxdensity),
          freq=FALSE,
-         main=main)
+         main=main,
+         plot=plot)
     if (subtitle == 'yes') {
         n <- w <- j <- NULL
         if (grepl('n', type)) n <- 'red = normal,'
@@ -128,18 +129,23 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
         ## use user specified subitile
         mtext(subtitle)
     }
-    
-    ## add distributions
-    if (grepl('n', type)) lines(x=xrange, y=xdensity_norm, col='red',   lty=1)
-    if (grepl('w', type)) lines(x=xrange, y=xdensity_weib, col='blue',  lty=1)
-    if (grepl('j', type)) lines(x=xrange, y=xdensity_john, col='black', lty=1)
 
-    ## add lines for mean and upper 1-sided 99/99 tolerance limits
-    abline(v=xmean,col="red")
-    if (isTRUE(upperbound)) {
-        if (grepl('n', type)) abline(v=upper_tolerance_limit_norm,col="red",  lty=2)
-        if (grepl('w', type)) abline(v=upper_tolerance_limit_weib,col="blue", lty=2)
-        if (grepl('j', type)) abline(v=upper_tolerance_limit_john,col="black",lty=2)
+
+    if (isTRUE(plot)) {
+        
+        ## add distributions
+        if (grepl('n', type)) lines(x=xrange, y=xdensity_norm, col='red',   lty=1)
+        if (grepl('w', type)) lines(x=xrange, y=xdensity_weib, col='blue',  lty=1)
+        if (grepl('j', type)) lines(x=xrange, y=xdensity_john, col='black', lty=1)
+        
+        ## add lines for mean and upper 1-sided 99/99 tolerance limits
+        abline(v=xmean,col="red")
+        if (isTRUE(upperbound)) {
+            if (grepl('n', type)) abline(v=upper_tolerance_limit_norm,col="red",  lty=2)
+            if (grepl('w', type)) abline(v=upper_tolerance_limit_weib,col="blue", lty=2)
+            if (grepl('j', type)) abline(v=upper_tolerance_limit_john,col="black",lty=2)
+        }
+
     }
 
     ## print to screen
@@ -182,7 +188,11 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
                 jparms = jparms,
                 tol_out_norm=tol_out_norm,
                 tol_out_weib=tol_out_weib,
-                tol_out_john=tol_out_john))
+                tol_out_john=tol_out_john,
+                xrange = xrange,
+                xdensity_norm = xdensity_norm,
+                xdensity_weib = xdensity_weib,
+                xdensity_john = xdensity_john))
 
 }
 
@@ -190,7 +200,7 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
 ## jparms <- list(gamma = -1.039, delta = 1.66, xi = 14.46, lambda = 6.95, type    = 'SU')
 ## xjohn <- SuppDists::rJohnson(999, parms=jparms) + 2
 ## out   <- hist_nwj(xjohn, jfit=jparms)
-
+## 
 ## out <- hist_nwj(mtcars$mpg)
 ## out <- hist_nwj(mtcars$mpg, type='n')
 ## out <- hist_nwj(mtcars$mpg, type='w')
