@@ -1,4 +1,4 @@
-johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
+johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, breaks=NULL) {
 
     ## input:   x     = data set
     ##          alpha = 1 - confidence
@@ -69,18 +69,24 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
     }
     df <- data.frame(x, xn)
     
-    if (plots != 'no') {
-        plotspace(1,2)
-        hist(x)
-        hist(xn)
-    }
-    
     ##--------------------------------------------------------
     ## error check then proceed
     na_rows <- df[is.na(df$xn),]
     if (nrow(na_rows) != 0) {
 
         ## xn values could not be calculated for all x values
+        
+        if (isTRUE(plots)) {
+            plotspace(1,2)
+            if (is.null(breaks)) {
+                hist(x)
+                hist(xn)
+            } else {
+                hist(x , breaks=breaks)
+                hist(xn, breaks=breaks)
+            }                
+        }
+
         cat('\n')
         cat('#####################################\n')
         cat('  ERROR IN JOHNSON_TOL  \n')
@@ -89,6 +95,7 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
         print(jparms)
         print(na_rows)
         xntol_out <- tolerance::normtol.int(xn, alpha = alpha, P=proportion, side=side)
+        
     }
 
     ##--------------------------------------------------------
@@ -103,6 +110,18 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
         xntol_upper <- xntol_out$'2-sided.upper'
     }
 
+    ## alternately could use an equation rather than the function call for the tolerance limit
+    ## see https://www.itl.nist.gov/div898/handbook/prc/section2/prc263.htm
+    ## or search in Google for "tolearnce limits itl.nist.gov"
+    ## p       = proportion
+    ## alpha   = 1 - confidence
+    ## z_p     = qnorm(p)     # same as Excel norm.s.inv(p)
+    ## z_alpha = qnorm(alpha)
+    ## a = 1 - z_alpha^2 /( 2*(n-1) )
+    ## b = z_p^2 - (z_alpha^2 / n)
+    ## k = ( z_p + ( z_p^2 - a*b )^0.5 ) / a
+    ## xntol_upper = mean(xn) + k * sd(xn)
+    
     ##-----------------------------------------------------------------------------        
     ## transform xntol back to johnson tolerance limit, xtol
     
@@ -133,13 +152,17 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
         
     }
 
+    if (isTRUE(plots)) johnson_tol_check(x, jfit=jparms, breaks=breaks)
+    
     return(list(sided=side, 
                 alpha=alpha,
                 P=P,
                 jfit=jfit,
                 jparms=jparms,
-                x=x,
                 xn=xn,
+                xntol_lower=xntol_lower,
+                xntol_upper=xntol_upper,
+                x=x,
                 xtol_lower=xtol_lower, 
                 xtol_upper=xtol_upper))
 }
@@ -154,3 +177,5 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no') {
 ## jparms <- out$jparms
 
 ## johnson_tol(mtcars$mpg, jfit=jparms)
+
+## johnson_tol(mtcars$mpg, plots=TRUE)
