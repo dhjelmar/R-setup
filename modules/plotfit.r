@@ -20,6 +20,7 @@ plotfit <- function(xx,
                     sided      = 2,
                     bg         = "grey90",
                     legendloc  = NA,
+                    legend.cex = 0.75,
                     outputfile = NULL,
                     suppress   = 'no') {
 
@@ -237,7 +238,7 @@ plotfit <- function(xx,
             
         ## color points even though there is only one fit
         if (isTRUE(colorpoints) & nfit == 1) {
-            points(xx, yy, col=color)
+            points(xx, yy, col=color, pch=pch)
         }
 
         if (isTRUE(equation) & interval != 'line') {
@@ -269,7 +270,8 @@ plotfit <- function(xx,
                 legendloc <- 'bottomright'
             }
         }
-        legend(legendloc, title=bylabel, col=cols$color, legend=legendnames, pch=1)
+        legend(legendloc, title=bylabel, col=cols$color, legend=legendnames, 
+               pch=pch, cex=legend.cex)
     }
 
     ## for output jpeg file
