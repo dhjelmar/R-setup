@@ -27,7 +27,15 @@ shinyplot <- function(df, xx, yy, xline=NULL, yline=NULL) {
                 ## with(df, plot(xx, yy, xlab=xlabel, ylab=ylabel))  # does not work
             }, res = 96)  
             output$data <- renderTable({
-                shiny::brushedPoints(df, input$plot_brush)
+                ##        shiny::brushedPoints(df, input$plot_brush)
+                result <- shiny::brushedPoints(df, input$plot_brush)
+                ## identify the numeric columns of result
+                result.num <- as.numeric( which(unlist(lapply(port.m$perf, is.numeric))) )
+                ## format numbers with 4 significant figures
+                for (i in result.num) {
+                    result[[i]] <- format( signif(result[[i]], 4) )
+                }
+                result
             })
         }
         
@@ -46,7 +54,15 @@ shinyplot <- function(df, xx, yy, xline=NULL, yline=NULL) {
                     geom_line(data = linedf) + geom_point(data = linedf, shape = 3)  
             }, res = 96)  
             output$data <- renderTable({
-                shiny::brushedPoints(df, input$plot_brush)
+                ##        shiny::brushedPoints(df, input$plot_brush)
+                result <- shiny::brushedPoints(df, input$plot_brush)
+                ## identify the numeric columns of result
+                result.num <- as.numeric( which(unlist(lapply(port.m$perf, is.numeric))) )
+                ## format numbers with 4 significant figures
+                for (i in result.num) {
+                    result[[i]] <- format( signif(result[[i]], 4) )
+                }
+                result
             })
         }
     }        
