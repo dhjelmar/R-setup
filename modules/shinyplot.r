@@ -7,8 +7,8 @@ shinyplot <- function(df, xx, yy, xline=NULL, yline=NULL) {
     ylabel <- yy
 
     ## add xx and yy columns to dataframe
-    xcol <- which(grepl(xx, names(df)))
-    ycol <- which(grepl(yy, names(df)))
+    xcol <- match(xx, names(df))
+    ycol <- match(yy, names(df))
     df$xx   <- df[, xcol]
     df$yy   <- df[, ycol]
 
@@ -30,7 +30,7 @@ shinyplot <- function(df, xx, yy, xline=NULL, yline=NULL) {
                 ##        shiny::brushedPoints(df, input$plot_brush)
                 result <- shiny::brushedPoints(df, input$plot_brush)
                 ## identify the numeric columns of result
-                result.num <- as.numeric( which(unlist(lapply(port.m$perf, is.numeric))) )
+                result.num <- as.numeric( which(unlist(lapply(df, is.numeric))) )
                 ## format numbers with 4 significant figures
                 for (i in result.num) {
                     result[[i]] <- format( signif(result[[i]], 4) )
@@ -57,7 +57,7 @@ shinyplot <- function(df, xx, yy, xline=NULL, yline=NULL) {
                 ##        shiny::brushedPoints(df, input$plot_brush)
                 result <- shiny::brushedPoints(df, input$plot_brush)
                 ## identify the numeric columns of result
-                result.num <- as.numeric( which(unlist(lapply(port.m$perf, is.numeric))) )
+                result.num <- as.numeric( which(unlist(lapply(df, is.numeric))) )
                 ## format numbers with 4 significant figures
                 for (i in result.num) {
                     result[[i]] <- format( signif(result[[i]], 4) )
