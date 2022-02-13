@@ -92,6 +92,9 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
 
 ## johnson_tol(mtcars$mpg, plots=TRUE)
 
+
+junk <- function() {
+
 x <- mtcars$mpg
 
 ## find best fit JohnsonSU paramters
@@ -122,4 +125,6 @@ gamma.P.alpha <- z.conf - delta * asinh( (quantile.P - xi)/ lambda )
 
 ## refit the Johnson distributions
 jparms  <- SuppDists::JohnsonFit(gamma.P.alpha) # returns SU
+
+}
 
