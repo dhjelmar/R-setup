@@ -1,5 +1,11 @@
-johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, breaks=NULL) {
+johnson_tol_error <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, breaks=NULL) {
 
+    cat('\n#############################################################################################\n')
+    cat(  '#                                                                                           #\n')
+    cat(  '# WARNING: This function does not return the correct tolerance limit and will be deprecated #\n')
+    cat(  '#                                                                                           #\n')
+    cat('\n#############################################################################################\n')
+    
     ## input:   x     = data set
     ##          alpha = 1 - confidence
     ##          P     = proportion = coverage (tolerance interval only)
