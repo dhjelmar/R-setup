@@ -33,11 +33,11 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
     if (grepl('j', type)) {        
         ## obtain Johnson parameter estimates
         x <- sort(x, na.last=NA)
-        if (jfit == 'all') {
+        if (jfit[1] == 'all') {
             ## let R figure out which Johnson distribution fits best
             jparms  <- SuppDists::JohnsonFit(x)
             main <- paste('Johnson QQ Plot', mainadder, '; Type=', jparms$type, sep=" ")
-        } else if (jfit == 'SU') {
+        } else if (jfit[1] == 'SU') {
             ## force the Johnson SU distribution
             jparms.out <- ExtDist::eJohnsonSU(x)
             jparms <- list(gamma   = jparms.out$gamma,
@@ -46,7 +46,7 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
                            lambda  = jparms.out$lambda,
                            type <- 'SU')
             main <- paste('JohnsonSU QQ Plot', mainadder, sep=" ")
-        } else if (jfit == 'SB') {
+        } else if (jfit[1] == 'SB') {
             ## force the Johnson SB distribution
             jparms <- ExtDist::eJohnsonSU(x)
             jparms$type <- 'SB'
