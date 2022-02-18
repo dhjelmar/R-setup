@@ -1,5 +1,5 @@
-newton.raphson <- function(f, ..., xguess=0, tol = 1e-5, n = 1000, plot='no') {
-    ## use newton raphson to find x where f(x, ...) = 0
+newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000, plot='no') {
+    ## use newton raphson to find x where f(x, ...) = ytarget
     ## where "..." is a list of additional arguments needed by f, if any
     ## starts search from xguess
 
@@ -15,19 +15,23 @@ newton.raphson <- function(f, ..., xguess=0, tol = 1e-5, n = 1000, plot='no') {
     ## Check to see if xguess result in 0
     ## if (f(x0, ...) == 0.0) return(x0)
     if (length(args) == 1) {
-        if (f(x0) == 0.0) return(x0)
+        if (f(x0) == ytarget) return(x0)
     } else {
-        if (f(x0, ...) == 0.0) return(x0)
+        if (f(x0, ...) == ytarget) return(x0)
     }
     
-    ## iterate to find where f(x, ...) = 0
+    ## iterate to find where f(x, ...) = ytarget
     xvalue[1] <- x0          # store x values
     yvalue[1] <- f(x0, ...)  # store y values
+
     for (i in 2:(n+1)) {
+
+        ## Use first order derivative to make next guess, x1
         dx <- genD(func = f, ..., x = x0)$D[1] # First-order derivative f'(x0)
-        x1 <- x0 - (f(x0, ...) / dx)           # Calculate next guess x1
-        ## Once the difference between x0 and x1 becomes sufficiently small, output the results.
+        x1 <- x0 - ( (f(x0, ...)-ytarget) / dx)
+
         if (abs(x1 - x0) < tol) {
+            ## difference between x0 and x1 is sufficiently small, so output the results
             root.approx <- tail(xvalue, n=1)
             res <- list('root' = root.approx, 'iterations' = xvalue)
             if (plot != 'no') {
@@ -51,9 +55,8 @@ newton.raphson <- function(f, ..., xguess=0, tol = 1e-5, n = 1000, plot='no') {
         xvalue[i] <- x1
         yvalue[i] <- f(x1, ...)
         
-        ## If search has not yet reached convergence, set new x0 guess
         ## check whether solution is bracketed
-        if (yvalue[i] / yvalue[i-1] < 0) {
+        if ( (yvalue[i]-ytarget) / (yvalue[i-1]-ytarget) < 0) {
             ## bracketed solution since successive y values have opposite sign
             ## use bisection to keep solution from diverging
             x0 <- (x0 + x1)/2
@@ -95,20 +98,51 @@ test_newton.raphson <- function() {
     
     ## example: this works
     set.seed(1)
-    x <- rnorm(1000)
+    x <- rnorm(1000, mean=10, sd=20)
     zero <- function(x, parm1, parm2, z)  (x^2 + parm1 + parm2) - z
     plotspace(2,1)
     x.out <- newton.raphson(
       zero,
       parm1 = 11,
       parm2 = mean(x),
-      z=30,
+      z=400,
       xguess = 30,
       tol=1E-10,
       plot='yes'
     )
     x.out$root
-    plot(x, y = x^2 + 11 + mean(x), main='wider view of function')
+    ## plot(x, y = x^2 + 11 + mean(x), main='wider view of function')
+    curve(x^2 + 11 + mean(x), -10, 32, main='wider view of function')
+    x.iter <- x.out$iterations
+    y.iter <- x.iter^2 + 11 + mean(x)
+    num <- length(x.iter)
+    points(x.iter     , y.iter     , col='red' , pch=1 , cex=2)
+    points(x.iter[1]  , y.iter[1]  , col='blue', pch=16, cex=2)
+    points(x.iter[num], y.iter[num], col='red' , pch=16, cex=2)
+    
+    ## example: same as above, but ytarget is not zero (this works)
+    set.seed(1)
+    x <- rnorm(1000, mean=10, sd=20)
+    notzero <- function(x, parm1, parm2)  (x^2 + parm1 + parm2)
+    plotspace(2,1)
+    x.out <- newton.raphson(
+      notzero,
+      xguess = 30,
+      ytarget=400,
+      parm1 = 11,
+      parm2 = mean(x),
+      tol=1E-10,
+      plot='yes'
+    )
+    x.out$root
+    ## plot(x, y = x^2 + 11 + mean(x), main='wider view of function')
+    curve(x^2 + 11 + mean(x), -10, 32, main='wider view of function')
+    x.iter <- x.out$iterations
+    y.iter <- x.iter^2 + 11 + mean(x)
+    num <- length(x.iter)
+    points(x.iter     , y.iter     , col='red' , pch=1 , cex=2)
+    points(x.iter[1]  , y.iter[1]  , col='blue', pch=16, cex=2)
+    points(x.iter[num], y.iter[num], col='red' , pch=16, cex=2)
     
     ## example: this works
     x <- rnorm(1000)
