@@ -14,7 +14,11 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
     ##                                       lambda  = 6.95,
     ##                                       type    = 'SU',
     ##                       johnson_tol(mtcars$mpg, jfit=jparms)
-    ##
+
+    ## Note: If fit is Johnson SU, then fit will be redone using
+    ##       a Maximum Likelihood Estimate and jfit will only be used
+    ##       as an initial guess.
+ 
     ## output:  jparms = Johnson fit parameters used in tolerance limit calculation
     ##          xtol_lower = lower bound tolerance limit
     ##          xtol_upper = upper bound tolerance limit
@@ -100,7 +104,8 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
 
         ##----------------------
         ## define function to return the nnl (negative log likelihood) for
-        ## an alternate set and JohnsonSU parameters where replace gamma with quantile, i.e.:
+        ## an alternate set of JohnsonSU parameters where replace gamma
+        ## with quantile, i.e.:
         ##      quantile, delta, xi, lambda
         ## instead of:
         ##      gamma,    delta, xi, lambda
@@ -177,8 +182,8 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
 
         if (isTRUE(plot.ll)) {
             ## plot the likelihood as a function of the quantile
-            quant.min <- estimates[1] - 2 * standard.error[1]
-            quant.max <- estimates[1] + 2 * standard.error[1]
+            quant.min <- estimates[1] - 3 * standard.error[1]
+            quant.max <- estimates[1] + 3 * standard.error[1]
             quant     <- seq(quant.min, quant.max, length.out=100)
             ll <- NA
             for (i in 1:100) {
@@ -248,7 +253,18 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
         if (isTRUE(plots)) {
             ## plot fit from R packages vs my MLE fit vs. my MLE fit on quantiles
             plotspace(2,2)
-            hist(x, freq=FALSE, main='Johnson SU Fits', xlim=range(quant.tol.lower, x, quant.tol.upper))
+            ## find max density needed for plot
+            out <- hist(x, plot=FALSE)
+            ymax <- max(out$density)
+            for (xi in x) {
+                y1 <- SuppDists::dJohnson(xi, jparms)
+                y2 <- SuppDists::dJohnson(xi, jparms.optim)
+                y3 <- SuppDists::dJohnson(xi, jparms.q[1:5])
+                ymax <- max(ymax, y1, y2, y3)
+            }
+            hist(x, freq=FALSE, main='Johnson SU Fits',
+                 xlim=range(quant.tol.lower, x, quant.tol.upper),
+                 ylim=range(0, ymax))
             curve(SuppDists::dJohnson(x, jparms)       , min(x, quant.tol.lower), max(x, quant.tol.upper),
                   col='black', lty=1, add=TRUE)
             curve(SuppDists::dJohnson(x, jparms.optim) , min(x, quant.tol.lower), max(x, quant.tol.upper),
@@ -256,7 +272,7 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
             curve(SuppDists::dJohnson(x, jparms.q[1:5]), min(x, quant.tol.lower), max(x, quant.tol.upper),
                   col='blue', lty=2, add=TRUE)
             abline(v=quant.tol.upper, col='red', lwd=2)
-            legend("topright", c("SuppDists or ExtDist", "MLE", "MLE fit on quantile", "upper tolerance limit"),
+            legend("topleft", c("SuppDists or ExtDist", "MLE", "MLE fit on quantile", "upper tolerance limit"),
                    col=c("black", "red", "blue", 'red'), lty=c(1,1,2,2))
             qqplot_nwj(x, type='j', jfit=jparms       , main='ExtDist or SuppDists auto fit')
             qqplot_nwj(x, type='j', jfit=jparms.optim , main='MLE fit with optim')
