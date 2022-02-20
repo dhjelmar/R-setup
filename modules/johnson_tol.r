@@ -1,4 +1,4 @@
-johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, plot.ll=FALSE, breaks=NULL) {
+johnson_tol <- function(x, jfit='all', mle=TRUE, alpha=0.01, P=0.99, side=1, plots=FALSE, plot.ll=FALSE, breaks=NULL) {
 
     ## input:   x     = data set
     ##          alpha = 1 - confidence
@@ -14,16 +14,17 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
     ##                                       lambda  = 6.95,
     ##                                       type    = 'SU',
     ##                       johnson_tol(mtcars$mpg, jfit=jparms)
-
-    ## Note: If fit is Johnson SU, then fit will be redone using
-    ##       a Maximum Likelihood Estimate and jfit will only be used
-    ##       as an initial guess.
+    ##          mle   = 'TRUE' will use jfit for an initial estimate of parameters
+    ##                   but will use MLE (Maximum Likelihood Estimate) to refine
+    ##                   parameters and calculate tolerance limit. No tolerance limit
+    ##                   will be calculated if mle = FALSE
  
     ## output:  jparms = Johnson fit parameters used in tolerance limit calculation
     ##          xtol_lower = lower bound tolerance limit
     ##          xtol_upper = upper bound tolerance limit
     
     coverage <- P
+    jparms <- NULL
 
     ##--------------------------------------------------------
     ## initialize tolerance limits
@@ -63,7 +64,10 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
     ## Calculate tolerance limits if JohnsonSU fit
     jparms.optim <- NA
     jparms.q     <- NA
-    if (type == 'SU') {
+    coef         <- NA
+    quant.tol.lower <- NA
+    quant.tol.upper <- NA
+    if (type == 'SU' & isTRUE(mle)) {
 
         ##----------------------
         ## first check to see what parameters an MLE fit gives
@@ -122,8 +126,8 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
             gamma <- qnorm(coverage) - delta * asinh( (quant-xi)/lambda )
             ## PDF for Johnson SU
             pdf <- delta /( lambda * sqrt(2 * pi)   ) *
-                1 / sqrt(1 +            ( (x-xi)/lambda )^2)  *
-                exp( -0.5*(gamma + delta * asinh( (x-xi)/lambda ))^2 )
+                1 / sqrt(1 +                    ( (x-xi)/lambda   )^2)  *
+                exp( -0.5*(gamma + delta * asinh( (x-xi)/lambda ) )^2 )
             if (isFALSE(debug)) {
                 return( -sum(log(pdf)) )
             } else {
@@ -272,9 +276,9 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
             curve(SuppDists::dJohnson(x, jparms.q[1:5]), min(x, quant.tol.lower), max(x, quant.tol.upper),
                   col='blue', lty=2, add=TRUE)
             abline(v=quant.tol.upper, col='red', lwd=2)
-            legend("topleft", c("SuppDists or ExtDist", "MLE", "MLE fit on quantile", "upper tolerance limit"),
+            legend("topleft", c("jfit, SuppDists, or ExtDist", "MLE", "MLE fit on quantile", "upper tolerance limit"),
                    col=c("black", "red", "blue", 'red'), lty=c(1,1,2,2))
-            qqplot_nwj(x, type='j', jfit=jparms       , main='ExtDist or SuppDists auto fit')
+            qqplot_nwj(x, type='j', jfit=jparms       , main='jfit, SuppDists, or ExtDist')
             qqplot_nwj(x, type='j', jfit=jparms.optim , main='MLE fit with optim')
             qqplot_nwj(x, type='j', jfit=jparms.q[1:5], main='MLE fit with optim on quantile')
             
@@ -282,6 +286,16 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
 
     }
 
+    ## collect coefficients for comparison
+    coef0 <- as.data.frame(jfit)
+    coef1 <- as.data.frame(jparms)
+    coef2 <- as.data.frame(jparms.optim)
+    coef3 <- as.data.frame(jparms.q)
+    coef  <- fastmerge(coef0, coef1)
+    coef  <- fastmerge(coef,  coef2)
+    coef  <- fastmerge(coef,  coef3)
+    rownames(coef) <- c("jfit (input)", "jfit, SuppDists, or ExtDist", "MLE", "MLE fit on quantile")
+    
     return(list(side         = side, 
                 alpha        = alpha,
                 coverage     = coverage,
@@ -289,6 +303,7 @@ johnson_tol <- function(x, jfit='all', alpha=0.01, P=0.99, side=1, plots=FALSE, 
                 jparms       = jparms,
                 jparms.optim = jparms.optim,
                 jparms.q     = jparms.q,
+                coef         = coef,
                 x            = x,
                 xtol_lower   = quant.tol.lower, 
                 xtol_upper   = quant.tol.upper))
