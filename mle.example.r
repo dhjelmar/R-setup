@@ -250,8 +250,24 @@ rownames(allfits) <- c('ExtDist::JohnsonSU',
                        'optim quant fit')
 allfits
 
+##-------------------------------------------------------------------
+set.seed(123);
+x=rnorm(1000, mean = 2, sd = 5)
 
-## tolerance limits
-tol.params <- 
-tol.P.alpha <- 
+nll.calc <- function(param,data){
+  mu=param[1]
+  sdev=param[2]
+  loglik=dnorm(data, mean = mu, sd = sdev, log = TRUE)
+  # cat(mu,sdev,loglik,"\n")
+  return(-sum(loglik))
+}
 
+theta.start = c(2,4)
+ans = optim(par=theta.start, 
+            fn=nll.calc, 
+            data=x,
+            control=list(trace=TRUE),
+            method="BFGS")
+ans$par
+mean(x)
+sd(x)
