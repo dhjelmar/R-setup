@@ -1,4 +1,5 @@
-# optim not converging
+# setup
+source('modules/newton.raphson.r')
 
 ## consider the following dataset
 x <- iris$Sepal.Width
@@ -83,8 +84,11 @@ mle <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=FALSE, 
 
         if (isTRUE(plots)) {
             ## plot the likelihood as a function of the quantile
-            quant.min <- xbar-4*sdev
-            quant.max <- xbar+4*sdev
+            ## out <- tolerance::normtol.int(x, alpha = alpha, P=P, side=sided)
+            ## quant.min <- out$'1-sided.lower'
+            ## quant.max <- out$'1-sided.upper'
+            quant.min <- xbar - 4*sdev
+            quant.max <- xbar + 4*sdev
             quant     <- seq(quant.min, quant.max, length.out=100)
             ll <- NA
             for (i in 1:100) {
@@ -105,9 +109,11 @@ mle <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=FALSE, 
                                control = list(trace=TRUE),
                                method  = "BFGS")
         nll.max.bestfit.q <- out.bestfit.q$value
-        quant.conf <- out.bestfit.q$par[[1]]
-        sdev.conf  <- out.bestfit.q$par[[2]]
+        quant.P <- out.bestfit.q$par[[1]]
+        sdev.P  <- out.bestfit.q$par[[2]]
         
+        ## checked and xbar.conf = xbar so the fits are identical
+        ## xbar.conf <- quant.P - sqrt(2) * sdev.P * pracma::erfinv(2*P-1)
         
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
@@ -116,14 +122,46 @@ mle <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=FALSE, 
         if (isTRUE(plots)) {
             abline(h=ll.tol)
         }
-
-
-        ## conf <- data.frame(alpha, P, sided, conf.lower, xbar, conf.upper)
-        conf <- NA
+        ## function for newton.raphson() iterates on x0
+        ll.normal.q <- function(x0, data, P, sdev) {
+            ll <- -nll.normal.q(data,
+                                param=list(quant  = x0,
+                                           sdev  = sdev),
+                                P,
+                                debug=FALSE)
+        }
+        ## bound (P alread determined whether this was a lower or upper bound)
+        out.nrl <- newton.raphson(f = ll.normal.q,
+                                 xguess = quant.P - sdev.P,
+                                 ytarget = ll.tol,
+                                 data   = x,
+                                 P      = P,
+                                 sdev  = sdev,
+                                 tol = 1e-5, n = 1000, plot='no')
+        quant.P.alpha.l <- out.nrl$root
+        if (isTRUE(plots)) points(quant.P.alpha.l, ll.tol, col='red', pch=16, cex=2)
+        out.nru <- newton.raphson(f = ll.normal.q,
+                                 xguess = quant.P + sdev.P,
+                                 ytarget = ll.tol,
+                                 data   = x,
+                                 P      = P,
+                                 sdev  = sdev,
+                                 tol = 1e-5, n = 1000, plot='no')
+        quant.P.alpha.u <- out.nru$root
+        if (isTRUE(plots)) points(quant.P.alpha.u, ll.tol, col='red', pch=16, cex=2)
+        
+        conf <- data.frame(alpha, P, sided, xbar, sdev, quant.P.alpha.l, quant.P.alpha.u)
         
     }
 
     return(list(out.bestit=out.bestfit, conf=conf))
 }
-out <- mle(x, c(mean=0, sd=1), fit='n', alpha=0.01, P=0.5 , sided=1, plots=TRUE, debug=FALSE)
-out <- mle(x, c(mean=0, sd=1), fit='n', alpha=0.01, P=0.99, sided=1, plots=TRUE, debug=FALSE)
+## out <- mle(x, c(mean=0, sd=1), fit='n', alpha=0.01, P=0.5 , sided=1, plots=TRUE, debug=FALSE)
+P     <- 0.99
+alpha <- 0.01
+sided <- 1
+out <- mle(x, c(mean=0, sd=1), fit='n', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
+out$conf
+out <- mle(x, c(mean=0, sd=1), fit='n', alpha=alpha, P=1-P, sided=sided, plots=TRUE, debug=FALSE)
+out$conf
+tolerance::normtol.int(x, alpha = alpha, P=P, side=sided)
