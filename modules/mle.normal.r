@@ -1,5 +1,5 @@
 mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=FALSE, debug=FALSE) {
-
+    
     ## normal distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
     ## LR (Likelihood Ratio) appraoch to find tolerance limit
@@ -11,7 +11,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
     
     ##-----------------------------------------------------------------------------
     ## determine best fit using nnl
-    nll.normal <- function(data, param, debug=FALSE){
+    nll <- function(data, param, debug=FALSE){
         ## calculate nll (negative log likelihhod) for normal distribution
         x       <- data
         xbar    <- param[[1]]
@@ -25,7 +25,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
         return(nll)
     }        
     out.bestfit <- optim(par     = list(xbar=0, sdev=1), 
-                         fn      = nll.normal, 
+                         fn      = nll, 
                          data    = x,
                          debug   = debug,
                          control = list(trace=TRUE),
@@ -37,7 +37,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
 
     ##-----------------------------------------------------------------------------
     ## redefine nnl function to fit on desired quantile
-    nll.normal.q <- function(data, param, P, debug=FALSE){
+    nll.q <- function(data, param, P, debug=FALSE){
         ## calculate nll (negative log likelihhod) for normal distribution
         x       <- data
         quant   <- param[[1]]  # substituted for xbar
@@ -70,6 +70,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
     ##-----------------------------------------------------------------------------
     ## find confidence limit at level alpha for requested coverage, P
     tol.limits <- NA
+    params.q.save <- NA
     P.lower.upper <- c(1-P, P)
     for (P in P.lower.upper) {
         quant.coverage <- qnorm(P, xbar, sdev)   # for p=0.5, this should be xbar
@@ -78,7 +79,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
         ##----------------------
         ## find quantile, quant.P, associated with the fit
         out.bestfit.q <- optim(par     = quant.param, 
-                               fn      = nll.normal.q, 
+                               fn      = nll.q, 
                                data    = x,
                                P       = P,
                                debug   = debug,
@@ -89,6 +90,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
         sdev.P   <- out.bestfit.q$par[[2]]
         params.q <- out.bestfit.q$par
         params.q$xbar <- quant.P - sqrt(2) * sdev.P * pracma::erfinv(2*P-1)
+        params.q.save[k] <- list(params.q.save)
 
         ## checked and xbar.conf = xbar so the fits are identical
         ## xbar.conf <- quant.P - sqrt(2) * sdev.P * pracma::erfinv(2*P-1)
@@ -100,8 +102,8 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
         ll.tol <-  ll.max.P - qchisq(1 - alpha/sided, 1)   # qchisq(1-0.01/1, 1) = 6.634897 
 
         ## function for newton.raphson() iterates on x0
-        ll.normal.q <- function(x0, data, P, sdev) {
-            ll <- -nll.normal.q(data,
+        ll.q <- function(x0, data, P, sdev) {
+            ll <- -nll.q(data,
                                 param=list(quant  = x0,
                                            sdev  = sdev),
                                 P,
@@ -110,7 +112,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
 
         ## determine confidence bound (P alread determined whether this was a lower or upper bound)
         ## as point where the likelihood ratio equals 11.tol
-        out.nrl <- newton.raphson(f = ll.normal.q,
+        out.nrl <- newton.raphson(f = ll.q,
                                   xguess = quant.P - sdev.P,
                                   ytarget = ll.tol,
                                   data   = x,
@@ -118,7 +120,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
                                   sdev  = sdev,
                                   tol = 1e-5, n = 1000, plot='no')
         quant.P.alpha.l <- out.nrl$root
-        out.nru <- newton.raphson(f = ll.normal.q,
+        out.nru <- newton.raphson(f = ll.q,
                                   xguess = quant.P + sdev.P,
                                   ytarget = ll.tol,
                                   data   = x,
@@ -142,7 +144,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
                 ## vary quant parameter to see impact on likelihood
                 param.vary.q <- list(quant  = quant[i],
                                      sdev   = sdev)
-                ll[i] <- -nll.normal.q(x, param.vary.q, P=P, debug=FALSE)
+                ll[i] <- -nll.q(x, param.vary.q, P=P, debug=FALSE)
             }
             plot(quant, ll, xlab='quantile', ylab='Log Likelihood')
 
