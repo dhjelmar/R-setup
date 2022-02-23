@@ -18,9 +18,14 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
         ## let R figure out which Johnson distribution fits best
         jparms <- SuppDists::JohnsonFit(x)
         if ('type' != 'SU') {
+            cat('\n')
+            cat('################################################\n')
+            cat('                  WARNING:\n')
             cat('SuppDists::JohnsonFit() did not return type="SU"\n')
-            print(jparms)
-            return()
+            cat('Try param="ExtDist" or user defined list.\n')
+            print(data.frame(t(unlist(jparms))))
+            cat('################################################\n')
+            cat('\n')
         }
     } else if (param[1] == 'ExtDist') {
         ## force the Johnson SU distribution
@@ -52,9 +57,13 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
             1 / sqrt(1 +            ( (x-xi)/lambda )^2)  *
             exp( -0.5*(gamma + delta * asinh( (x-xi)/lambda ))^2 )
         ## the above is equivalent
-        ## pdf <- ExtDist::qJohnsonSU(x, parms=c(gamma, delta, xi, lambda))
+        ## pdf <- ExtDist::dJohnsonSU(x, parms=c(gamma, delta, xi, lambda))
         nll     <- -sum(log(pdf))
-        if (isTRUE(debug)) cat('xbar=', signif(xbar,11), 'sdev=', signif(sdev,11), 'nll=', signif(nll,11), "\n")
+        if (isTRUE(debug)) cat('gamma=', signif(gama,11),
+                               'delta=', signif(delta,11),
+                               'xi   =', signif(xi, 11),
+                               'lambda=', signif(lambda,11),
+                               'nll=', signif(nll,11), "\n")
         return(nll)
     }        
     out.bestfit <- optim(par     = param, 
@@ -236,10 +245,6 @@ mle.johnsonsu.test <- function() {
     alpha <- 0.01
     sided <- 1
 
-    out <- mle.johnsonsu(x, 'SuppDists', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
-    print(out$params.compare)
-    print(out$tolerance)
-
     out <- mle.johnsonsu(x, 'ExtDist', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
     print(out$params.compare)
     print(out$tolerance)
@@ -252,4 +257,11 @@ mle.johnsonsu.test <- function() {
 
     jparms2 <- list(gamma=jparms[[1]], delta=jparms[[2]], xi=jparms[[3]], lambda=jparms[[4]], type='SU')
     out2 <- johnson_tol(x, jparms2)
+    
+    ## test inside other modules
+    plotspace(2,2)
+    out.h <- hist_nwj(x, type = 'nwj', mle=TRUE, jfit='ExtDist')
+    out.n <- qqplot_nwj(x, type='n', mle=TRUE)
+    out.w <- qqplot_nwj(x, type='w', mle=TRUE)
+    out.j <- qqplot_nwj(x, type='j', mle=TRUE)
 }
