@@ -1,13 +1,12 @@
-hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
+hist_nwj <- function(x, type='nwj', mle=TRUE, alpha=0.01, P=0.99, breaks=NULL, jfit='ExtDist',
                      upperbound=TRUE, main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
     ## plot histogram and normal, Weibull, and Johnson distributions
     ## adds lines for upper tolerance limits for given alpha and proportion
     ## alpha  = 1 - confidence
     ## P = coverage proportion (tolerance interval only)
-    proportion = P
     ## breaks = number of bins used in the histogram (default auto determines number)
-    ## jfit  = 'all' = uses SuppDists::JohnsonFit to determine parameters
-    ##       = 'SU'  = uses ExtDist::eJohnsonSU to determine parameters
+    ## jfit  = 'ExtDist'   = uses ExtDist::eJohnsonSU to determine parameters
+    ##       = 'SuppDists' = uses SuppDists::JohnsonFit to determine parameters
     ##       = list of user specified parameters
     ##         e.g., jparms <- list(gamma   = -1.039,
     ##                              delta   = 1.66,
@@ -15,6 +14,7 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     ##                              lambda  = 6.95,
     ##                              type    = 'SU')
     ##              johnson_tol(mtcars$mpg, jfit=jparms)
+    ## mle  = TRUE uses maximum likelihood estimate for fit and likelihood ratio for tolerance limit
     ## main = title for histogram (default is "Histogram of ...")
     ## subtitle = 'yes' = puts description of lines in subtitle
     ##          = 'no'  = subtitle is blank
@@ -22,6 +22,8 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     ## suppress = 'yes' creates plot but does not return calculated values to the screen
     ##            (e.g., fit parameters and tolerance limits)
     
+    proportion = P
+
     ## name of variable passed in
     xname <- deparse(substitute(x))
 
@@ -43,8 +45,14 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     
     if (grepl('n', type)) {
         ## normal distribution calculations
-        tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=1)
-        upper_tolerance_limit_norm <- tol_out_norm$'1-sided.upper'
+        if (isFALSE(mle)) {
+            tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=1)
+            upper_tolerance_limit_norm <- tol_out_norm$'1-sided.upper'
+        } else {
+            tol_out_norm <- mle.normal(x, list(mean(x), sd(x)), alpha=alpha, P=P, sided=1,
+                                       plots=FALSE, debug=FALSE)
+            upper_tolerance_limit_norm <- tol_out_norm$tolerance$tol.upper
+        }
     }
         
     if (grepl('w', type)) {
@@ -63,6 +71,11 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
             shape   <- tol_out_weib$'shape.1'
             scale   <- tol_out_weib$'shape.2'
             upper_tolerance_limit_weib <- tol_out_weib$'1-sided.upper'
+            if (isTRUE(mle)) {
+                tol_out_weib <- mle.weibull(x, list(shape=shape, scale=scale), alpha=alpha, P=P, sided=1,
+                                            plots=FALSE, debug=FALSE)
+                upper_tolerance_limit_weib <- tol_out_weib$tolerance$tol.upper
+            }
         }
     }
         

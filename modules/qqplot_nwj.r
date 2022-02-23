@@ -1,4 +1,4 @@
-qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
+qqplot_nwj <- function(x, type='nwj', mle=TRUE, wfit=NULL, jfit='ExtDist', mainadder=NULL) {
     ## creates side by side, normal, Weibull and/or Johnson qq plots
 
     ## make room for 1, 2 or 3 plots depending on length of string 'type'
@@ -23,6 +23,16 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
         out     <- tolerance::exttol.int(x, alpha=0.05, P=0.95, side=1, dist='Weibull')
         shape   <- out$'shape.1'
         scale   <- out$'shape.2'
+        if (!is.null(wfit[1])) {
+            shape <- wfit[[1]]
+            scale <- wfit[[2]]
+        }
+        if (isFALSE(mle)) {
+            out <- mle.weibull(x, list(shape=shape, scale=scale), alpha=alpha, P=P, sided=1,
+                              plots=FALSE, debug=FALSE)
+            shape <- out$params$shape
+            scale <- out$params$scale
+        }
         wparms  <- list(shape=shape, scale=scale)
         qualityTools::qqPlot(x, "Weibull", col='black', main=main, start=wparms)
     } else if (grepl('w', type)) {
@@ -33,11 +43,11 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
     if (grepl('j', type)) {        
         ## obtain Johnson parameter estimates
         x <- sort(x, na.last=NA)
-        if (jfit[1] == 'all') {
+        if (jfit[1] == 'SuppDists') {
             ## let R figure out which Johnson distribution fits best
             jparms  <- SuppDists::JohnsonFit(x)
             main <- paste('Johnson QQ Plot', mainadder, '; Type=', jparms$type, sep=" ")
-        } else if (jfit[1] == 'SU') {
+        } else if (jfit[1] == 'ExtDist') {
             ## force the Johnson SU distribution
             jparms.out <- ExtDist::eJohnsonSU(x)
             jparms <- list(gamma   = jparms.out$gamma,
@@ -46,18 +56,21 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
                            lambda  = jparms.out$lambda,
                            type <- 'SU')
             main <- paste('JohnsonSU QQ Plot', mainadder, sep=" ")
-        } else if (jfit[1] == 'SB') {
-            ## force the Johnson SB distribution
-            jparms <- ExtDist::eJohnsonSU(x)
-            jparms$type <- 'SB'
-            main <- paste('JohnsonSB QQ Plot', mainadder, sep=" ")
         } else {
             ## use Johnson parameters specified in jfit
             ## needs to be in same list format as created by SuppDists::JohnsonFit
             jparms <- jfit
             main <- paste('User Specified Johnson QQ Plot', mainadder, sep=" ")
         }
+        ## refit using MLE if specifed
+        if (isTRUE(mle)) {
+            out <- mle.johnsonsu(x, jparms, alpha=alpha, P=P, sided=1,
+                                 plots=FALSE, debug=FALSE)
+            jparms <- out$params
+            main <- paste('MLE Johnson QQ Plot', mainadder, sep=" ")
+        }
 
+        
         ## make Johnson QQ plot
         xtheoretical <- SuppDists::qJohnson(ppoints(length(x)), jparms)
         plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value', main=main)
@@ -74,18 +87,6 @@ qqplot_nwj <- function(x, type='nwj', jfit='all', mainadder=NULL) {
         ## stats::qqline(x, distribution = function(p) qJohnson(p, jparms), col='red')
         ## abline(0,1, col='blue', lty=2)
         ## legend("bottomright",col=c('red', 'blue'), lty=c(1,2), legend=c('qqline', '45 degree line'))
-    }
-
-    if (grepl('k', type)) {
-        ## alternate approach for Johnson QQ plot to get confidence intervals
-
-        ## transpose Johnson distributed data to normal
-        out <- johnson_tol(x, jfit='all', alpha=0.01, P=0.99, side=1, plots='no')
-        xn <- out$xn
-        
-        ## now make normal QQ plot using 
-        main <- paste('Johnson Transposed to Normal QQ Plot', mainadder, sep=" ")
-        nparms <- qualityTools::qqPlot(xn, "normal",  col='black', main=main)        
     }
     
     return(list(nparms=nparms, wparms=wparms, jparms=jparms))
