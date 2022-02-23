@@ -67,10 +67,14 @@ hist_nwj <- function(x, type='nwj', alpha=0.01, P=0.99, breaks=NULL, jfit='all',
     }
         
     if (grepl('j', type)) {
+        ## ## Johnson distribution calculations
+        ## tol_out_john <- johnson_tol(x, alpha=alpha, P=proportion, side=1, jfit=jfit)
+        ## jparms   <- tol_out_john$jparms
+        ## upper_tolerance_limit_john <- tol_out_john$xtol_upper
         ## Johnson distribution calculations
-        tol_out_john <- johnson_tol(x, alpha=alpha, P=proportion, side=1, jfit=jfit)
-        jparms   <- tol_out_john$jparms
-        upper_tolerance_limit_john <- tol_out_john$xtol_upper
+        tol_out_john <- mle.johnsonsu(x, jfit, alpha=alpha, P=P, sided=1, plots=FALSE, debug=FALSE)
+        jparms   <- tol_out_john$params
+        upper_tolerance_limit_john <- tol_out_john$tolerance$tol.upper
     }
     
     ## create vectors with density distributions
