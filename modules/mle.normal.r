@@ -1,7 +1,12 @@
-mle <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=FALSE, debug=FALSE) {
+mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=FALSE, debug=FALSE) {
 
+    ## normal distribution
+    ## MLE (Maximum Likelihood Estimate) fit to determine parameters
+    ## LR (Likelihood Ratio) appraoch to find tolerance limit
+  
     x <- data
-
+    if (isTRUE(plots)) par(mfrow=c(1,2))
+    
     out <- NULL
     
     ##-----------------------------------------------------------------------------
@@ -195,7 +200,7 @@ mle.normal.test <- function() {
     P     <- 0.99
     alpha <- 0.01
     sided <- 1
-    out <- mle(x, c(mean=0, sd=1), fit='n', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
+    out <- mle.normal(x, c(mean=0, sd=1), fit='n', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
     print(out$params.compare)
     print(out$tolerance)
     print(tolerance::normtol.int(x, alpha = alpha, P=P, side=sided))
