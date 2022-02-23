@@ -71,6 +71,7 @@ mle.normal <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=
     ## find confidence limit at level alpha for requested coverage, P
     tol.limits <- NA
     params.q.save <- NA
+    k <- 0
     P.lower.upper <- c(1-P, P)
     for (P in P.lower.upper) {
         quant.coverage <- qnorm(P, xbar, sdev)   # for p=0.5, this should be xbar
