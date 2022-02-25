@@ -24,6 +24,18 @@
 
 #----------------------------------------------------------------------------
 
+## If launch from Conda, may not be able to read some *.r files.
+## To fix, set the encoding by default to UTF-8 as follows:
+##  
+## 1. click on Tools (2nd option starting by the left on the top menu).
+## 2. choose Global Options.
+## 3. An option box will appear. There choose "code" on the left menu.
+## 4. Under code, choose Savings and change the Default Text Encoding to UTF-8.
+##
+## Now the files that were open as blank should appear with code.
+
+#----------------------------------------------------------------------------
+
 ## identify operating system
 os <- .Platform$OS.type
 
@@ -121,3 +133,4 @@ for (f in r_files) {
   ## cat("f =",f,"\n")
   source(f)
 }
+
