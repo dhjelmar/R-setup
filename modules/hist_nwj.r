@@ -1,13 +1,16 @@
-hist_nwj <- function(x, type='nwj', mle=TRUE, alpha=0.01, P=0.99, breaks=NULL, jfit='ExtDist',
+hist_nwj <- function(x, type='nwj', mle=TRUE, alpha=0.01, P=0.99, breaks=NULL,
+                     wfit='auto', jfit='auto',
                      upperbound=TRUE, main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
     ## plot histogram and normal, Weibull, and Johnson distributions
     ## adds lines for upper tolerance limits for given alpha and proportion
     ## alpha  = 1 - confidence
     ## P = coverage proportion (tolerance interval only)
     ## breaks = number of bins used in the histogram (default auto determines number)
-    ## jfit  = 'ExtDist'   = uses ExtDist::eJohnsonSU to determine parameters
-    ##       = 'SuppDists' = uses SuppDists::JohnsonFit to determine parameters
-    ##       = list of user specified parameters
+    ## wfit  = 'auto' uses tolerance::exttol.int for initial guess at shape and scale
+    ##       = list of user specified parameters for initial guess
+    ## jfit  = 'auto' uses ExtDist::eJohnsonSU or SuppDists::JohnsonFit
+    ##          in atttempts at initial guesses at fit parameters
+    ##       = list of user specified parameters for initial guess
     ##         e.g., jparms <- list(gamma   = -1.039,
     ##                              delta   = 1.66,
     ##                              xi      = 14.46,
@@ -45,11 +48,14 @@ hist_nwj <- function(x, type='nwj', mle=TRUE, alpha=0.01, P=0.99, breaks=NULL, j
     
     if (grepl('n', type)) {
         ## normal distribution calculations
+        xmean <- mean(x)
+        xsd   <- sd(x)
         if (isFALSE(mle)) {
             tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=1)
             upper_tolerance_limit_norm <- tol_out_norm$'1-sided.upper'
         } else {
-            tol_out_norm <- mle.normal(x, list(mean(x), sd(x)), alpha=alpha, P=P, sided=1,
+            tol_out_norm <- mle.normal(x, list(mean(x), sd(x)), fit.only=FALSE,
+                                       alpha=alpha, P=P, sided=1,
                                        plots=FALSE, debug=FALSE)
             upper_tolerance_limit_norm <- tol_out_norm$tolerance$tol.upper
         }
@@ -67,13 +73,17 @@ hist_nwj <- function(x, type='nwj', mle=TRUE, alpha=0.01, P=0.99, breaks=NULL, j
             scale <- NA
             upper_tolerance_limit_weib <- NA
         } else {
-            tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=proportion, side=1, dist="Weibull")
-            shape   <- tol_out_weib$'shape.1'
-            scale   <- tol_out_weib$'shape.2'
-            upper_tolerance_limit_weib <- tol_out_weib$'1-sided.upper'
-            if (isTRUE(mle)) {
-                tol_out_weib <- mle.weibull(x, list(shape=shape, scale=scale), alpha=alpha, P=P, sided=1,
+            if (isFALSE(mle)) {
+                tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=proportion, side=1, dist="Weibull")
+                shape   <- tol_out_weib$'shape.1'
+                scale   <- tol_out_weib$'shape.2'
+                upper_tolerance_limit_weib <- tol_out_weib$'1-sided.upper'
+            } else {
+                tol_out_weib <- mle.weibull(x, wfit, fit.only=FALSE,
+                                            alpha=alpha, P=P, sided=1,
                                             plots=FALSE, debug=FALSE)
+                shape <- tol_out_weib$params$shape
+                scale <- tol_out_weib$params$scale
                 upper_tolerance_limit_weib <- tol_out_weib$tolerance$tol.upper
             }
         }
@@ -85,8 +95,13 @@ hist_nwj <- function(x, type='nwj', mle=TRUE, alpha=0.01, P=0.99, breaks=NULL, j
         ## jparms   <- tol_out_john$jparms
         ## upper_tolerance_limit_john <- tol_out_john$xtol_upper
         ## Johnson distribution calculations
-        tol_out_john <- mle.johnsonsu(x, jfit, alpha=alpha, P=P, sided=1, plots=FALSE, debug=FALSE)
+        tol_out_john <- mle.johnsonsu(x, jfit, fit.only=FALSE,
+                                      alpha=alpha, P=P, sided=1,
+                                      plots=FALSE, debug=FALSE)
         jparms   <- tol_out_john$params
+        ## following would be more directly what was used to determine tolerance limit
+        ## jparms   <- as.list(tol_out_john$params.compare[3,1:4])
+        ## jparms$type <- 'SU'
         upper_tolerance_limit_john <- tol_out_john$tolerance$tol.upper
     }
     
