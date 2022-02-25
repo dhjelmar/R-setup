@@ -13,12 +13,12 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000, pl
     yvalue <- n       # Initialize for iteration results
 
     ## Check to see if xguess result in 0
-    ## if (f(x0, ...) == 0.0) return(x0)
-    if (length(args) == 1) {
-        if (f(x0) == ytarget) return(x0)
-    } else {
-        if (f(x0, ...) == ytarget) return(x0)
-    }
+    ## ## if (f(x0, ...) == 0.0) return(x0)
+    ## if (length(args) == 1) {
+    ##     if (f(x0) == ytarget) return(x0)
+    ## } else {
+    if (f(x0, ...) == ytarget) return(x0)
+    ## }
     
     ## iterate to find where f(x, ...) = ytarget
     xvalue[1] <- x0          # store x values
@@ -40,9 +40,13 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000, pl
                 points(xvalue[1], yvalue[1], col='black', pch=19)  # solid black initial guess
                 last <- length(xvalue)
                 points(xvalue[last], yvalue[last], col='red', pch=19)  # solid red final result
-                x <- seq(min(xvalue), max(xvalue), (max(xvalue)-min(xvalue))/100)
-                y <- f(x, ...)
-                points(x,y,type='l')
+                xplot <- seq(min(xvalue), max(xvalue), (max(xvalue)-min(xvalue))/100)
+                ## yplot <- f(xplot, ...) # this was OK for most functions but not all
+                yplot <- NA
+                for (i in 1:length(xplot)) {
+                    yplot[i] <- f(xplot[i], ...)
+                }
+                points(xplot,yplot,type='l')
                 legend('bottomright',
                        legend=c('initial guess', 'intermediate steps', 'final result'),
                        col   =c('black',         'red',                'red'),
@@ -70,9 +74,13 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000, pl
     points(xvalue[1], yvalue[1], col='black', pch=19)  # solid black initial guess
     last <- length(xvalue)
     points(xvalue[last], yvalue[last], col='red', pch=19)  # solid red final result
-    x <- seq(min(xvalue), max(xvalue), (max(xvalue)-min(xvalue))/100)
-    y <- f(x, ...)
-    points(x,y,type='l')
+    xplot <- seq(min(xvalue), max(xvalue), (max(xvalue)-min(xvalue))/100)
+    ## yplot <- f(xplot, ...) # this was OK for most functions but not all
+    yplot <- NA
+    for (i in 1:length(xplot)) {
+        yplot[i] <- f(xplot[i], ...)
+    }
+    points(xplot,yplot,type='l')
     legend('bottomright',
            legend=c('initial guess', 'intermediate steps', 'final result'),
            col   =c('black',         'red',                'red'),
