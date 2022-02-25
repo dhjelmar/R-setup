@@ -1,4 +1,4 @@
-mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plots=FALSE, debug=FALSE) {
+mle.johnsonsu <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99, sided=1, plots=FALSE, debug=FALSE) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -7,27 +7,31 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
     ## input: data  = vector of data
     ##        param = initial guess for fit parameters for: gamma, delta, xi, and lambda
     ##                if type is also provided, it will not be used
+    ##              = 'auto' (default) uses ExtDist::eJohnsonSU() for initial guess of parameters,
+    ##                will switch to SuppDists::JohnsonFit(x) if that fails, and will switch to
+    ##                try using list(gamma=xx, delta=xx, xi=xx, lambda=xx) if that fails
     
-    x <- data    
+    x <- data   
     if (isTRUE(plots)) par(mfrow=c(1,2))
     out <- NULL
 
     ##-----------------------------------------------------------------------------
     ## initial guesses for Johnson parameters
-    if (param[1] == 'SuppDists') {
-        ## let R figure out which Johnson distribution fits best
-        jparms <- SuppDists::JohnsonFit(x)
-        if ('type' != 'SU') {
-            cat('\n')
-            cat('################################################\n')
-            cat('                  WARNING:\n')
-            cat('SuppDists::JohnsonFit() did not return type="SU"\n')
-            cat('Try param="ExtDist" or user defined list.\n')
-            print(data.frame(t(unlist(jparms))))
-            cat('################################################\n')
-            cat('\n')
-        }
-    } else if (param[1] == 'ExtDist') {
+    ## if (param[1] == 'SuppDists') {
+    ##     ## let R figure out which Johnson distribution fits best
+    ##     jparms <- SuppDists::JohnsonFit(x)
+    ##     if ('type' != 'SU') {
+    ##         cat('\n')
+    ##         cat('################################################\n')
+    ##         cat('                  WARNING:\n')
+    ##         cat('SuppDists::JohnsonFit() did not return type="SU"\n')
+    ##         cat('Try param="ExtDist" or user defined list.\n')
+    ##         print(data.frame(t(unlist(jparms))))
+    ##         cat('################################################\n')
+    ##         cat('\n')
+    ##     }
+    ## } else if (param[1] == 'ExtDist') {
+    if (param[1] == 'auto') {
         ## force the Johnson SU distribution
         jparms.out <- ExtDist::eJohnsonSU(x)
         jparms <- list(gamma   = jparms.out$gamma,
@@ -35,6 +39,30 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
                        xi      = jparms.out$xi,
                        lambda  = jparms.out$lambda,
                        type    = 'SU')
+        if (jparms$gamma == -0.5 & jparms$delta == 2.0 & jparms$xi == -0.5 & jparms$lambda == 2.0) {
+            cat('\n')
+            cat('ExtDist::eJohnsonSU(x) fit failed\n')
+            print(as.data.frame(jparms[1:4]))
+            cat('\n')
+            ## try another packages
+            jparms <- NA
+            jparms <- SuppDists::JohnsonFit(x)
+            if (jparms$type != 'SU') {
+                cat('SuppDists::JohnsonFit(x) failed to converge or did not return type=SU\n')
+                print(as.data.frame(jparms))
+                cat('\nSetting jparms to:\n')
+                jparms <- list(gamma   = 1,
+                               delta   = 1,
+                               xi      = 1,
+                               lambda  = 1,
+                               type    = 'SU')
+            } else {
+                cat('SuppDists::JohnsonFit(x) used instead for initial parameter guesses\n')
+                print(as.data.frame(jparms))
+                cat('\n')
+            }
+        }
+
     } else {
         ## use Johnson parameters specified in param
         ## needs to be in same list format as created by SuppDists::JohnsonFit
@@ -42,11 +70,12 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
     }
     ## strip off type if that is provided in param list
     param <- jparms[1:4]   # list(gamma, delta, xi, lambda)
+    params.guess <- param
     
     ##-----------------------------------------------------------------------------
     ## determine best fit using nnl
     nll <- function(data, param, debug=FALSE){
-        ## calculate nll (negative log likelihhod) for johnsonsu distribution
+        ## calculate nll (negative log likelihhod) for distribution
         x      <- data
         gamma  <- param[[1]]  
         delta  <- param[[2]]
@@ -66,6 +95,7 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
                                'nll=', signif(nll,11), "\n")
         return(nll)
     }        
+    print('Attempting MLE fit on regular parameters')
     out.bestfit <- optim(par     = param, 
                          fn      = nll, 
                          data    = x,
@@ -78,11 +108,19 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
     xi     <- out.bestfit$par[[3]]
     lambda <- out.bestfit$par[[4]]
     params <- as.list(out.bestfit$par)
+    print(as.data.frame(params))
+    cat('\n')
 
+    if (isTRUE(fit.only)) {
+        jparms <- params
+        jparms$type <- 'SU'
+        return(list(params=jparms))
+    }
+    
     ##-----------------------------------------------------------------------------
     ## redefine nnl function to fit on desired quantile
     nll.q <- function(data, param, P, debug=FALSE){
-        ## calculate nll (negative log likelihhod) for johnsonsu distribution
+        ## calculate nll (negative log likelihhod) for distribution
         x       <- data
         quant  <- param[[1]]  # replaced gamma with quant as a parameter
         delta  <- param[[2]]
@@ -119,12 +157,14 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
 
         ##----------------------
         ## refit to find quantile, quant.P, associated with the fit
+        print('Attempting MLE fit on regular parameters for P=', P)
         out.bestfit.q <- optim(par     = quant.param, 
                                fn      = nll.q, 
                                data    = x,
                                P       = P,
                                debug   = debug,
                                control = list(trace=TRUE),
+                               hessian = TRUE,
                                method  = "BFGS")
         nll.max.bestfit.q <- out.bestfit.q$value
         quant.P  <- out.bestfit.q$par[[1]]
@@ -134,13 +174,29 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
         params.q <- as.list(out.bestfit.q$par)
         params.q$gamma <- qnorm(P) - delta.P * asinh( (quant.P-xi.P)/lambda.P )
         params.q.save[k] <- list(params.q)
+        print(as.data.frame(params.q))
+        cat('\n')
+        
+        ##----------------------
+        ## estimate confidence limit using standard error to serve as starting point for search
+        ## estimates      <- as.numeric( out.bestfit.q$par )
+        standard.error <- as.numeric( sqrt(diag(solve(out.bestfit.q$hessian))) )
+        ## coef           <- data.frame(estimates, standard.error)
+        ## rownames(coef) <- names(out.bestfit.q$par)
+        dof    <- length(x) - 4    # 4 independent fitting parameters in Johnson SU
+        student.t <- qt(1 - alpha/sided, dof)  # 2.3326 for dof=598
+        quant.P.alpha.l.guess <- quant.P - student.t * standard.error[1]
+        quant.P.alpha.u.guess <- quant.P + student.t * standard.error[1]
+        cat('Initial guesses for confidence interval for P=', P, '\n')
+        cat(quant.P.alpha.l.guess, quant.P.alpha.u.guess, '\n\n')
         
         ##----------------------
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
         ll.max.P <- -nll.max.bestfit
         ll.tol <-  ll.max.P - qchisq(1 - alpha/sided, 1)   # qchisq(1-0.01/1, 1) = 6.634897 
-
+        cat('MLE=', ll.max.P, '; tolerance limit at MLE=', ll.tol, 'for P=', P, '\n')
+        
         ## function for newton.raphson() iterates on x0
         ll.q <- function(x0, data, P, delta, xi, lambda) {
             ll <- -nll.q(data,
@@ -155,7 +211,7 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
         ## determine confidence bound (P alread determined whether this was a lower or upper bound)
         ## as point where the likelihood ratio equals 11.tol
         out.nrl <- newton.raphson(f = ll.q,
-                                  xguess = quant.P - quant.P/100, # to move to the left of the max likelihood
+                                  xguess = quant.P.alpha.l.guess,
                                   ytarget = ll.tol,
                                   data   = x,
                                   P      = P,
@@ -165,7 +221,7 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
                                   tol = 1e-5, n = 1000, plot='no')
         quant.P.alpha.l <- out.nrl$root
         out.nru <- newton.raphson(f = ll.q,
-                                  xguess = quant.P + quant.P/100, # to move to the right of the max likelihood
+                                  xguess = quant.P.alpha.u.guess,
                                   ytarget = ll.tol,
                                   data   = x,
                                   P      = P,
@@ -174,8 +230,10 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
                                   lambda = lambda,
                                   tol = 1e-5, n = 1000, plot='no')
         quant.P.alpha.u <- out.nru$root
+        cat('Final confidence interval for P=', P, '\n')
+        cat(quant.P.alpha.l, quant.P.alpha.u, '\n\n')
 
-        ## 
+        ## collect tolerance limit calculations (i.e., for 1-P and P)
         tol.limits <- c(tol.limits, quant.P.alpha.l, quant.P.alpha.u)
 
         if (isTRUE(plots)) {
@@ -209,12 +267,15 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
     }
 
     ## put parameters from the standard fit and fit on quantile P into dataframe for comparison
+    a0 <- as.data.frame(t(unlist(params.guess)))
     a1 <- as.data.frame(t(unlist(params)))
     a2 <- as.data.frame(t(unlist(params.q.save[1])))
     a3 <- as.data.frame(t(unlist(params.q.save[2])))
-    params.compare <- fastmerge(a1, a2)
+    params.compare <- fastmerge(a0, a1)
+    params.compare <- fastmerge(params.compare, a2)
     params.compare <- fastmerge(params.compare, a3)
-    rownames(params.compare) <- c('standard fit', 'fit on quantile at 1-P', 'fit on quantile at P')
+    rownames(params.compare) <- c('initial guess parameters', 'standard fit',
+                                  'fit on quantile at 1-P', 'fit on quantile at P')
 
     ## collect lower and upper tolerance limits
     tol.limits <- range(tol.limits, na.rm=TRUE)
@@ -224,6 +285,12 @@ mle.johnsonsu <- function(data, param, fit='n', alpha=0.01, P=0.99, sided=1, plo
 
     ## add type to params list for use in other modules
     params$type <- 'SU'
+
+    ## print final parameter comparison and tolerance limits
+    print(params.compare)
+    cat('\n')
+    print(tolerance)
+    cat('\n')
     
     return(list(params     = params,
                 params.q   = params.q,
@@ -245,7 +312,7 @@ mle.johnsonsu.test <- function() {
     alpha <- 0.01
     sided <- 1
 
-    out <- mle.johnsonsu(x, 'ExtDist', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
+    out <- mle.johnsonsu(x, 'auto', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
     print(out$params.compare)
     print(out$tolerance)
 
@@ -260,8 +327,10 @@ mle.johnsonsu.test <- function() {
     
     ## test inside other modules
     plotspace(2,2)
-    out.h <- hist_nwj(x, type = 'nwj', mle=TRUE, jfit='ExtDist')
+    out.h <- hist_nwj(x, type = 'nwj', mle=TRUE, jfit='auto')
     out.n <- qqplot_nwj(x, type='n', mle=TRUE)
     out.w <- qqplot_nwj(x, type='w', mle=TRUE)
     out.j <- qqplot_nwj(x, type='j', mle=TRUE)
+    
+    out <- mle.johnsonsu(x, 'auto', plots=TRUE)
 }
