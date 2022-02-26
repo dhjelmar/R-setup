@@ -8,6 +8,9 @@ mle.normal <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99, s
     ##        param = initial guess for fit parameters for: xbar and sdev
     ##                if type is also provided, it will not be used
     ##              = 'auto' uses mean(x) and sd(x) to determine initial guess
+
+    ## based on approach found here:
+    ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
     
     x <- data    
     if (isTRUE(plots)) par(mfrow=c(1,2))
