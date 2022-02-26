@@ -98,8 +98,9 @@ library(stringi)       # need for stri_split_fixed function
 library(stringr)       # need for str_extract function
 library(tolerance)
 
-(.packages())          # shows packages that are loaded
-##search()              # little different from above but not sure how (includes more)
+## (.packages())          # shows packages that are loaded
+## search()              # little different from above but not sure how (includes more)
+sessionInfo()        # info on R-version loaded packages
 
 ###----------------------------------------------------------------------------
 ### Load local .R and .r files
