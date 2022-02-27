@@ -12,8 +12,8 @@ mle.johnsonsu <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99
     ##                try using list(gamma=xx, delta=xx, xi=xx, lambda=xx) if that fails
 
     ## based on approach found here:
+    ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
     ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
-    
     x <- data   
     if (isTRUE(plots)) par(mfrow=c(1,2))
     out <- NULL

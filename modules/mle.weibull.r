@@ -10,6 +10,7 @@ mle.weibull <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99, 
     ##              = 'auto' uses tolerance package to determine initial guess
 
     ## based on approach found here:
+    ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
     ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
     
     x <- data    
