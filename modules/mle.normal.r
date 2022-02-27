@@ -42,12 +42,12 @@ mle.normal <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99, s
         return(nll)
     }        
     print('Attempting MLE fit on regular parameters')
-    out.bestfit <- optim(par     = param, 
-                         fn      = nll, 
-                         data    = x,
-                         debug   = debug,
-                         control = list(trace=TRUE),
-                         method  = "BFGS")
+    out.bestfit <- stats::optim(par     = param, 
+                                fn      = nll, 
+                                data    = x,
+                                debug   = debug,
+                                control = list(trace=TRUE),
+                                method  = "BFGS")
     nll.max.bestfit <- out.bestfit$value
     xbar <- out.bestfit$par[[1]]
     sdev <- out.bestfit$par[[2]]
@@ -109,14 +109,14 @@ mle.normal <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99, s
         ##----------------------
         ## refit to find quantile, quant.P, associated with the fit
         print('Attempting MLE fit on regular parameters for P=', P)
-        out.bestfit.q <- optim(par     = quant.param, 
-                               fn      = nll.q, 
-                               data    = x,
-                               P       = P,
-                               debug   = debug,
-                               control = list(trace=TRUE),
-                               hessian = TRUE,
-                               method  = "BFGS")
+        out.bestfit.q <- stats::optim(par     = quant.param, 
+                                      fn      = nll.q, 
+                                      data    = x,
+                                      P       = P,
+                                      debug   = debug,
+                                      control = list(trace=TRUE),
+                                      hessian = TRUE,
+                                      method  = "BFGS")
         nll.max.bestfit.q <- out.bestfit.q$value
         quant.P  <- out.bestfit.q$par[[1]]
         sdev.P   <- out.bestfit.q$par[[2]]
