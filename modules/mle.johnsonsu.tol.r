@@ -1,6 +1,6 @@
 mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
                               side.which='upper', sided=1, alpha=0.01, P=0.99,
-                              plots=FALSE, debug=FALSE, main.adder=NULL) {
+                              plots=FALSE, plots.nr=FALSE, debug=FALSE, main.adder=NULL) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -95,7 +95,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
         }
     } else {
         ## sided == 2
-        p.values <- c((1-P)/2, 1-(1-P)/2)
+        P.values <- c((1-P)/2, 1-(1-P)/2)
         ## e.g., if P = 0.99, then will base tolerance limits on the
         ##       quantiles associated with 0.5% and 99.5% coverage
     }
@@ -264,6 +264,18 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
             ## converged <- which(!is.na(yplot))
             ## points(xplot[converged], yplot[converged],
             ##        xlab='quantile', ylab='log likelihood', col='red')
+            plotit <- function(xplot=0.994, col='blue', pch=16, cex=2) {
+                yplot <- ll.fixedq(x0     = xplot,
+                                   data   = x,
+                                   P      = P,
+                                   delta  = delta.P,
+                                   xi     = xi.P,
+                                   lambda = lambda.P,
+                                   lambda.control = lambda.control,
+                                   debug  = FALSE)
+                points(xplot, yplot, col=col, pch=16, cex=2)
+                return(yplot)
+            }
         }
 
         ## determine confidence bound (P alread determined whether this was a lower or upper bound)
@@ -281,7 +293,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
                                       lambda = lambda,
                                       lambda.control = lambda.control,
                                       tol = 1e-5, n = 1000,
-                                      plots=plots)
+                                      plots=plots.nr)
             quant.P.alpha.l <- out.nrl$root
             if (is.null(quant.P.alpha.l)) { quant.P.alpha.l <- NA }
         } else if (P >= 0.5 | side.which == 'upper') {
@@ -296,7 +308,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
                                       lambda = lambda,
                                       lambda.control = lambda.control,
                                       tol = 1e-5, n = 1000,
-                                      plots=plots)
+                                      plots=plots.nr)
             quant.P.alpha.u <- out.nru$root
             if (is.null(quant.P.alpha.u)) { quant.P.alpha.u <- NA }
         }
@@ -310,17 +322,6 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
             ## plot intersection with log likelihood curve
             if (!is.na(quant.P.alpha.l)) points(quant.P.alpha.l, ll.tol, col='red', pch=16, cex=2)
             if (!is.na(quant.P.alpha.u)) points(quant.P.alpha.u, ll.tol, col='red', pch=16, cex=2)
-            plotit <- function(xlot=0.994) {
-                yplot <- ll.fixedq(x0     = xplot,
-                                   data   = x,
-                                   P      = P,
-                                   delta  = delta.P,
-                                   xi     = xi.P,
-                                   lambda = lambda.P,
-                                   lambda.control = lambda.control,
-                                   debug  = FALSE)
-                points(xplot, yplot, col='blue')
-            }
         }
 
 
@@ -428,39 +429,43 @@ mle.johnsonsu.tol.test <- function() {
     source('setup.r')
 
     ## create Johnson SU dataset
+    set.seed(1)
     jparms <- list(gamma=-3.3, delta=5.3, xi=1.8, lambda=1.9, type='SU')
     x <- ExtDist::rJohnsonSU(1000, param=jparms)
-    plotspace(1,2)
+
+    ## determine johnson su parameters
+    plotspace(2,2)
     out.fit <- mle.johnsonsu(x, plots=TRUE)
     jparms.mle <- out.fit$jparms
     print(out.fit$jparms.compare)
+
+    ## johnson su tolerance limits
     out.tol <- mle.johnsonsu.tol(x, plots=TRUE)
 
-    
+    ## incorporated into other functions
+    plotspace(2,2)
+    out.hist <- hist_nwj(x)
+    out <- qqplot_nwj(x, type='n')
+    out <- qqplot_nwj(x, type='w')
+    out <- qqplot_nwj(x, type='j')
+
     ## consider the following dataset
     x <- iris$Sepal.Width
-    P     <- 0.99  # proportion or coverage
-    P     <- 0.90  # proportion or coverage
-    alpha <- 0.01
-    sided <- 1
-
-    ## try out defaults but with higher coverage
-    out <- mle.johnsonsu.tol(x)
-    
-    out <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
-                             side.which='upper', sided=1, alpha=0.01, P=0.99,
-                             plots=FALSE, debug=FALSE, main.adder=NULL)
-      
-    out <- mle.johnsonsu.tol(x, 'auto', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
-    print(out$params)
-    print(out$tolerance)
-    
-    ## test inside other modules
-    plotspace(2,2)
-    out.h <- hist_nwj(x, type = 'nwj', mle=TRUE, jfit='auto')
-    out.n <- qqplot_nwj(x, type='n', mle=TRUE)
-    out.w <- qqplot_nwj(x, type='w', mle=TRUE)
-    out.j <- qqplot_nwj(x, type='j', mle=TRUE)
-    
-    out <- mle.johnsonsu(x, 'auto', plots=TRUE)
+    plotspace(3,2)
+    ## lower tolerance limit
+    out.lower <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+                                   side.which='lower', sided=1, alpha=0.01, P=0.99,
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='lower, 1-sided')
+    ## using default parameters except for 'plots'
+    out.upper <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+                                   side.which='upper', sided=1, alpha=0.01, P=0.99,
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='upper, 1-sided')
+    ## lower and upper 1-sided tolerance limits
+    out.both <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+                                   side.which='both', sided=1, alpha=0.01, P=0.99,
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='both, 1-sided')
+    ## lower and upper 2-sided tolerance limits
+    out.twosided <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+                                      side.which='both', sided=2, alpha=0.01, P=0.99,
+                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='2-sided')
 }
