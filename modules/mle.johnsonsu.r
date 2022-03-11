@@ -152,7 +152,9 @@ mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, deb
     params.compare <- droplevels.all(params.compare)
 
     if (isTRUE(plots)) {
-        hist(x, freq=FALSE)
+        out.hist <- hist(x, plot=FALSE)
+        curve.points <- ExtDist::dJohnsonSU(x, params=jparms.mle)
+        hist(x, freq=FALSE, ylim=range(out.hist$density, curve.points))
         curve(ExtDist::dJohnsonSU(x, params=jparms.mle), min(x), max(x), add=TRUE)
         qqplot_nwj(x, type='j', jfit=jparms.mle)
     }
