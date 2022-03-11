@@ -89,7 +89,7 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.contro
         ## ## Johnson distribution calculations
         fit.j <- mle.johnsonsu(x)
         jparms <- fit.j$parm.compare
-        if (jfit == 'mle' | isTRUE(tol)) {
+        if (jfit == 'mle' | isTRUE(tolerance)) {
             jparms   <- fit.j$jparms
             if (isTRUE(tolerance)) {
                 tol_out_john <- mle.johnsonsu.tol(x, param=jparms,lambda.control=lambda.control,
