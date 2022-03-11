@@ -1,4 +1,4 @@
-qqplot_nwj <- function(x, type='nwj', mle=TRUE, wfit=NULL, jfit='auto', mainadder=NULL) {
+qqplot_nwj <- function(x, type='nwj', wfit='exttol', jfit='mle', mainadder=NULL) {
     ## creates side by side, normal, Weibull and/or Johnson qq plots
 
     ## make room for 1, 2 or 3 plots depending on length of string 'type'
@@ -23,17 +23,6 @@ qqplot_nwj <- function(x, type='nwj', mle=TRUE, wfit=NULL, jfit='auto', mainadde
         out     <- tolerance::exttol.int(x, alpha=0.05, P=0.95, side=1, dist='Weibull')
         shape   <- out$'shape.1'
         scale   <- out$'shape.2'
-        if (!is.null(wfit[1])) {
-            shape <- wfit[[1]]
-            scale <- wfit[[2]]
-        }
-        if (isFALSE(mle)) {
-            out <- mle.weibull(x, list(shape=shape, scale=scale), fit.only=TRUE,
-                               alpha=alpha, P=P, sided=1,
-                               plots=FALSE, debug=FALSE)
-            shape <- out$params$shape
-            scale <- out$params$scale
-        }
         wparms  <- list(shape=shape, scale=scale)
         qualityTools::qqPlot(x, "Weibull", col='black', main=main, start=wparms)
     } else if (grepl('w', type)) {
@@ -44,34 +33,12 @@ qqplot_nwj <- function(x, type='nwj', mle=TRUE, wfit=NULL, jfit='auto', mainadde
     if (grepl('j', type)) {        
         ## obtain Johnson parameter estimates
         x <- sort(x, na.last=NA)
-##         if (jfit[1] == 'SuppDists') {
-##             ## let R figure out which Johnson distribution fits best
-##             jparms  <- SuppDists::JohnsonFit(x)
-##             main <- paste('Johnson QQ Plot', mainadder, '; Type=', jparms$type, sep=" ")
-##         } else if (jfit[1] == 'ExtDist') {
-##             ## force the Johnson SU distribution
-##             jparms.out <- ExtDist::eJohnsonSU(x)
-##             jparms <- list(gamma   = jparms.out$gamma,
-##                            delta   = jparms.out$delta,
-##                            xi      = jparms.out$xi,
-##                            lambda  = jparms.out$lambda,
-##                            type <- 'SU')
-##             main <- paste('JohnsonSU QQ Plot', mainadder, sep=" ")
-##         } else {
-##             ## use Johnson parameters specified in jfit
-##             ## needs to be in same list format as created by SuppDists::JohnsonFit
-##             jparms <- jfit
-##             main <- paste('User Specified Johnson QQ Plot', mainadder, sep=" ")
-##         }
-        ##         ## refit using MLE if specifed
-        ##         if (isTRUE(mle)) {
-        out <- mle.johnsonsu(x, jfit, fit.only=TRUE,
-                             alpha=alpha, P=P, sided=1,
-                             plots=FALSE, debug=FALSE)
-        jparms <- out$params
-        main <- paste('MLE Johnson QQ Plot', mainadder, sep=" ")
-        ##         }
-
+        jparms <- jfit
+        if (jfit[1] == 'mle') {
+            out <- mle.johnsonsu(x)
+            jparms <- out$jparms
+        }
+        main <- paste('Johnson QQ Plot', mainadder, sep=" ")
         
         ## make Johnson QQ plot
         xtheoretical <- SuppDists::qJohnson(ppoints(length(x)), jparms)
