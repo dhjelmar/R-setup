@@ -10,7 +10,10 @@ mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, deb
     ##              = 'auto' (default) uses ExtDist::eJohnsonSU() for initial guess of parameters,
     ##                will switch to SuppDists::JohnsonFit(x) if that fails, and will switch to
     ##                try using list(gamma=xx, delta=xx, xi=xx, lambda=xx) if that fails
-    
+
+    ## based on approach found here:
+    ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
+    ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
     x <- data   
     ## if (isTRUE(plots)) par(mfrow=c(1,2))
     out <- NULL
