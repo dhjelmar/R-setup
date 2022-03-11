@@ -1,4 +1,4 @@
-mle.johnsonsu <- function(data, param='auto', plots=FALSE, debug=FALSE) {
+mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, debug=FALSE) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -12,7 +12,7 @@ mle.johnsonsu <- function(data, param='auto', plots=FALSE, debug=FALSE) {
     ##                try using list(gamma=xx, delta=xx, xi=xx, lambda=xx) if that fails
     
     x <- data   
-    if (isTRUE(plots)) par(mfrow=c(1,2))
+    ## if (isTRUE(plots)) par(mfrow=c(1,2))
     out <- NULL
 
     ##-----------------------------------------------------------------------------
@@ -35,7 +35,8 @@ mle.johnsonsu <- function(data, param='auto', plots=FALSE, debug=FALSE) {
     ##-----------------------------------------------------------------------------
     ## let R figure out which Johnson distribution fits best
     jparms.SuppDists <- SuppDists::JohnsonFit(x)
-    params.compare <- as.data.frame(t(unlist(jparms.SuppDists)))
+    ## params.compare <- as.data.frame(t(unlist(jparms.SuppDists)))
+    params.compare <- as.data.frame(jparms.SuppDists)
     params.compare$description <- 'SuppDists::JohnsonFit(x)'
 
     ##-----------------------------------------------------------------------------
@@ -85,13 +86,25 @@ mle.johnsonsu <- function(data, param='auto', plots=FALSE, debug=FALSE) {
     
     ##-----------------------------------------------------------------------------
     ## determine best fit using nll
-    nll <- function(data, param, debug=FALSE){
+    lambda.fix <- function(lambda, lambda.control) {
+        if (lambda.control == 1) {
+            ## keep lambda positive so subsequent functions are defined
+            lambda <- max(1E-15, lambda)
+        } else if (lambda.control == 2) {
+            ## keep lambda positive so subsequent functions are defined
+            lambda <- abs(lambda)
+            if (lambda == 0) lambda <- 1E-15
+        }
+        return(lambda)
+    }
+    nll <- function(data, param, lambda.control=0, debug=FALSE){
         ## calculate nll (negative log likelihhod) for distribution
         x      <- data
         gamma  <- param[[1]]  
         delta  <- param[[2]]
         xi     <- param[[3]]
         lambda <- param[[4]]
+        lambda <- lambda.fix(lambda, lambda.control)
         ## PDF for Johnson SU
         pdf <- delta /( lambda * sqrt(2 * pi)   ) *
             1 / sqrt(1 +            ( (x-xi)/lambda )^2)  *
@@ -99,7 +112,7 @@ mle.johnsonsu <- function(data, param='auto', plots=FALSE, debug=FALSE) {
         ## the above is equivalent
         ## pdf <- ExtDist::dJohnsonSU(x, parms=c(gamma, delta, xi, lambda))
         nll     <- -sum(log(pdf))
-        if (isTRUE(debug)) cat('gamma=', signif(gama,11),
+        if (isTRUE(debug)) cat('gamma=', signif(gamma,11),
                                'delta=', signif(delta,11),
                                'xi   =', signif(xi, 11),
                                'lambda=', signif(lambda,11),
@@ -107,21 +120,47 @@ mle.johnsonsu <- function(data, param='auto', plots=FALSE, debug=FALSE) {
         return(nll)
     }        
     ## print('Attempting MLE fit on regular parameters')
-    out.bestfit <- optim(par     = param, 
-                         fn      = nll, 
-                         data    = x,
-                         debug   = debug,
-                         control = list(trace=TRUE),
-                         method  = "BFGS")
-    nll.max.bestfit <- out.bestfit$value
-    jparms.mle <- as.list(out.bestfit$par)
-    jparms.mle$type <- 'SU'
-    temp <- as.data.frame(t(unlist(jparms.mle)))
+    tryCatch({
+        out.bestfit <- optim(par     = param, 
+                             fn      = nll, 
+                             data    = x,
+                             debug   = debug,
+                             lambda.control = lambda.control,
+                             control = list(trace=TRUE),
+                             method  = "BFGS")
+        nll.max.bestfit <- out.bestfit$value
+        jparms.mle <- as.list(out.bestfit$par)
+        jparms.mle$type <- 'SU'
+    }, error = function(e) {
+        ## what to do if error
+        cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu()\n')
+        jparms <- list(gamma=NA, delta=NA, xi=NA, lambda=NA, type=NA)
+    })
+    ## the following is needed if use lambda.control because the
+    ## parameter returned by optim() is the input pamaeter to the function
+    ## not the output parameter. So if the input lambda is negative,
+    ## the optim() routine thinks that was OK as the answer even though
+    ## it really only ever used abs(lambda) in the optimization.
+    jparms.mle$lambda <- lambda.fix(jparms.mle$lambda, lambda.control)
+
+    ## add MLE parameters to params.compare dataframe
+    temp <- as.data.frame(jparms.mle)
     temp$description <- 'MLE'
     params.compare <- fastmerge(params.compare, temp)
 
+    ## remove factor levels from params.compare
+    params.compare <- droplevels.all(params.compare)
+
+    if (isTRUE(plots)) {
+        hist(x, freq=FALSE)
+        curve(ExtDist::dJohnsonSU(x, params=jparms.mle), min(x), max(x), add=TRUE)
+        qqplot_nwj(x, type='j', jfit=jparms.mle)
+    }
+
+    
     return(list(jparms=jparms.mle, jparms.compare=params.compare))
 }
+
 
 
 mle.johnsonsu.test <- function() {
