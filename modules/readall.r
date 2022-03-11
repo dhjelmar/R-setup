@@ -27,7 +27,7 @@ readall <- function(datasource,
     if (lastone == '\n') {
         df <- read.table(text=datasource, header=TRUE, stringsAsFactors=FALSE)
         datasourcename <- 'internal table'
-    } else if (ext == 'csv') {
+    } else if (ext == 'csv' | ext == 'txt') {
         if (header.row == 0) {
             ## read data; no header
             df <- read.table(datasource, header=FALSE, sep=",", skip=data.start.row-1, stringsAsFactors=FALSE)
