@@ -1,7 +1,11 @@
-newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000, plot='no') {
+newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
+                           relax=0.8, plots=FALSE, main.adder=NULL) {
     ## use newton raphson to find x where f(x, ...) = ytarget
     ## where "..." is a list of additional arguments needed by f, if any
     ## starts search from xguess
+    ## relax = relaxation factor to help convergence after 1st 100 iterations
+    ##       = 1 is no relaxation
+    ##       = 0 is no change (so relax must be > 0)
 
     args <- unlist( list(...) )
     
@@ -24,18 +28,26 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000, pl
     xvalue[1] <- x0          # store x values
     yvalue[1] <- f(x0, ...)  # store y values
 
+    ## initial relaxation factor to be used during 1st 100 iterations
+    relax.use <- 1
+
     for (i in 2:(n+1)) {
 
         ## Use first order derivative to make next guess, x1
         dx <- genD(func = f, ..., x = x0)$D[1] # First-order derivative f'(x0)
         x1 <- x0 - ( (f(x0, ...)-ytarget) / dx)
 
-        if (abs(x1 - x0) < tol) {
+        if (abs(x1 - x0) < tol & abs(f(x1, ...) - f(x0, ...)) < tol) {
             ## difference between x0 and x1 is sufficiently small, so output the results
             root.approx <- tail(xvalue, n=1)
             res <- list('root' = root.approx, 'iterations' = xvalue)
-            if (plot != 'no') {
-                main <- 'Solution found within tolerance'
+            if (isTRUE(plots)) {
+                if (is.null(main.adder)) {
+                    main <- 'Solution found within tolerance in newton.raphson()'
+                } else {
+                    main <- paste('Solution found within tolerance in newton.raphson(); ',
+                                  main.adder, sep='')
+                }
                 plot(xvalue, yvalue, col='red', main=main)
                 points(xvalue[1], yvalue[1], col='black', pch=19)  # solid black initial guess
                 last <- length(xvalue)
@@ -46,11 +58,13 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000, pl
                 for (i in 1:length(xplot)) {
                     yplot[i] <- f(xplot[i], ...)
                 }
-                points(xplot,yplot,type='l')
-                legend('bottomright',
-                       legend=c('initial guess', 'intermediate steps', 'final result'),
-                       col   =c('black',         'red',                'red'),
-                       pch   =c(19,              1,                    19))
+                points(xplot,yplot,type='l')    # black line for the function
+                abline(h=ytarget, col='blue')   # blue horizontal line for the target
+                legend('topright',
+                       legend=c('initial guess', 'intermediate steps', 'final result', 'function', 'ytarget'),
+                       col   =c('black',         'red',                'red',          'black',    'blue'),
+                       pch   =c(19,              1,                    19,              NA,         NA),
+                       lty   =c(NA,              NA,                   NA,              1,          1))
             }
             return(res)
         }
@@ -60,31 +74,42 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000, pl
         yvalue[i] <- f(x1, ...)
         
         ## check whether solution is bracketed
+        if (i > 100) relax.use <- relax
+        x1.relaxed <- x0 + relax.use * (x1-x0)
         if ( (yvalue[i]-ytarget) / (yvalue[i-1]-ytarget) < 0) {
             ## bracketed solution since successive y values have opposite sign
             ## use bisection to keep solution from diverging
-            x0 <- (x0 + x1)/2
+            x0 <- (x0 + x1.relaxed)/2
         } else {
             ## have not bracketed solution so use X1 as next guess
-            x0 <- x1
+            x0 <- x1.relaxed
         }
     }
-    main <- 'Too many iterations in method'
+
+    ## below here will not be reached if the search is successful
+    if (is.null(main.adder)) {
+        main <- 'Too many iterations in newton.raphson()'
+    } else {
+        main <- paste('Too many iterations in newton.raphson(); ', main.adder, sep='')
+    }
     plot(xvalue, yvalue, col='red', main=main)
-    points(xvalue[1], yvalue[1], col='black', pch=19)  # solid black initial guess
+    points(xvalue[1], yvalue[1], col='black', pch=19)  # solid black filled circle initial guess
     last <- length(xvalue)
-    points(xvalue[last], yvalue[last], col='red', pch=19)  # solid red final result
+    points(xvalue[last], yvalue[last], col='red', pch=19)  # solid red filled circle final result
     xplot <- seq(min(xvalue), max(xvalue), (max(xvalue)-min(xvalue))/100)
     ## yplot <- f(xplot, ...) # this was OK for most functions but not all
     yplot <- NA
     for (i in 1:length(xplot)) {
         yplot[i] <- f(xplot[i], ...)
     }
-    points(xplot,yplot,type='l')
-    legend('bottomright',
-           legend=c('initial guess', 'intermediate steps', 'final result'),
-           col   =c('black',         'red',                'red'),
-           pch   =c(19,              1,                    19))
+    points(xplot,yplot,type='l')    # black line for function
+    abline(h=ytarget, col='blue')   # blue horizontal line for the target
+    ## xplot1; points(xplot1, f(xplot1, ...), col='blue')
+    legend('topright',
+           legend=c('initial guess', 'intermediate steps', 'final result', 'function', 'ytarget'),
+           col   =c('black',         'red',                'red',          'black',    'blue'),
+           pch   =c(19,              1,                    19,              NA,         NA),
+           lty   =c(NA,              NA,                   NA,              1,          1))
 }
 
 test_newton.raphson <- function() {
