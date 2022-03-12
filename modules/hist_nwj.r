@@ -113,14 +113,14 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.contro
     xmax <- max(x)
     if (isTRUE(tolerance)) {
         if (side != 'lower') {
-            if (grepl('n', type)) xmin <- min(xmin, tolerance_limit_norm.u, na.rm=TRUE)
-            if (grepl('w', type)) xmin <- min(xmin, tolerance_limit_weib.u, na.rm=TRUE)
-            if (grepl('j', type)) xmin <- min(xmin, tolerance_limit_john.u, na.rm=TRUE)
+            if (grepl('n', type)) xmax <- max(xmax, tolerance_limit_norm.u, na.rm=TRUE)
+            if (grepl('w', type)) xmax <- max(xmax, tolerance_limit_weib.u, na.rm=TRUE)
+            if (grepl('j', type)) xmax <- max(xmax, tolerance_limit_john.u, na.rm=TRUE)
         }
         if (side != 'upper') {
-            if (grepl('n', type)) xmax <- max(xmax, tolerance_limit_norm.l, na.rm=TRUE)
-            if (grepl('w', type)) xmax <- max(xmax, tolerance_limit_weib.l, na.rm=TRUE)
-            if (grepl('j', type)) xmax <- max(xmax, tolerance_limit_john.l, na.rm=TRUE)
+            if (grepl('n', type)) xmin <- min(xmin, tolerance_limit_norm.l, na.rm=TRUE)
+            if (grepl('w', type)) xmin <- min(xmin, tolerance_limit_weib.l, na.rm=TRUE)
+            if (grepl('j', type)) xmin <- min(xmin, tolerance_limit_john.l, na.rm=TRUE)
         }            
     }
     chuncks <- (xmax-xmin)/1000
@@ -158,9 +158,9 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.contro
         if (grepl('w', type)) w <- 'blue = Weibull,'
         if (grepl('j', type)) j <- 'black = Johnson'
         ## subtitle <- list('line color: red = normal, blue = Weibull, black = Johnson',
-        ##                  'line type: solid = distribution or mean, dashed = 1-sided upper bound')
+        ##                  'line type: solid = distribution or mean, dashed = bound')
         subtitle <- list(paste('line color:', n, w, j, sep=' '),
-                         'line type: solid = distribution or mean, dashed = 1-sided upper bound')
+                         'line type: solid = distribution or mean; dashed = bound')
         mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col='black')
     } else if (subtitle == 'no') {
         ## skip subitile
