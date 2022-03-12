@@ -51,7 +51,7 @@ mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, deb
                            lambda  = jparms.out$lambda,
                            type    = 'SU')
     temp <- as.data.frame(t(unlist(jparms.ExtDist)))
-    temp$description <- 'ExtDist'
+    temp$description <- 'ExtDist::eJohnsonSU(x)'
     params.compare <- fastmerge(params.compare, temp)
 
     ##-----------------------------------------------------------------------------
