@@ -41,7 +41,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
     params$type <- NULL
     
     ##-----------------------------------------------------------------------------
-    ## redefine nnl function to fit on desired quantile to find standard error
+    ## redefine nll function to fit on desired quantile to find standard error
     lambda.fix <- function(lambda, lambda.control) {
         if (lambda.control == 1) {
             ## keep lambda positive so subsequent functions are defined
@@ -64,9 +64,9 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
         ## write gamma as a function of quant, delta, xi and lambda
         gamma <- qnorm(P) - delta * asinh( (quant-xi)/lambda )
         ## PDF for Johnson SU
-        pdf <- delta /( lambda * sqrt(2 * pi)   ) *
-            1 / sqrt(1 +                    ( (x-xi)/lambda   )^2)  *
-            exp( -0.5*(gamma + delta * asinh( (x-xi)/lambda ) )^2 )
+        z   <- (x-xi)/lambda
+        pdf <- delta /( lambda * sqrt(2 * pi) ) * 1 / sqrt(1 + z^2) *
+               exp( -0.5*(gamma + delta * asinh(z))^2 )
         nll     <- -sum(log(pdf))
         if (isTRUE(debug)) cat('quant=', signif(quant,11),
                                'delta=', signif(delta,11),
@@ -184,26 +184,9 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
                                lambda.control=lambda.control, debug=FALSE) {
             ## calculate nll (negative log likelihhod) for distribution
             ## for specified quant (i.e., only fit delta, xi, and lambda)
-            x       <- data
-            delta  <- param[[1]]
-            xi     <- param[[2]]
-            lambda <- param[[3]]
-            lambda <- lambda.fix(lambda, lambda.control)
-            ## write gamma as a function of quant, delta, xi and lambda
-            gamma <- qnorm(P) - delta * asinh( (quant-xi)/lambda )
-            ## PDF for Johnson SU
-            pdf <- delta /( lambda * sqrt(2 * pi)   ) *
-                1 / sqrt(1 +                    ( (x-xi)/lambda   )^2)  *
-                exp( -0.5*(gamma + delta * asinh( (x-xi)/lambda ) )^2 )
-            nll     <- -sum(log(pdf))
-            if (isTRUE(debug)) cat('quant=', signif(quant,11),
-                                   'delta=', signif(delta,11),
-                                   'xi   =', signif(xi,11),
-                                   'lambda=', signif(lambda,11),
-                                   'nll   =', signif(nll,11), "\n")
-            return(nll)
+            param <- list(quant=quant, delta=param[[1]], xi=param[[2]], lambda=param[[3]])
+            nll.q(data, param, P, lambda.control, debug=FALSE)
         }
-
         ll.fixedq <- function(x0, data, P, delta=delta.P, xi=xi.P, lambda=lambda.P,
                               lambda.control=lambda.control, debug=FALSE) {
             ## first determine best fit delta, xi, and lambda for given x0=quant (and P)
