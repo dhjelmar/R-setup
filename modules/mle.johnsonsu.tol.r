@@ -1,5 +1,5 @@
 mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
-                              side.which='upper', sided=1, alpha=0.01, P=0.99,
+                              side.which='upper', sided=1, P=0.99, conf=0.99, alpha=NULL,
                               plots=FALSE, plots.nr=FALSE, debug=FALSE, main.adder=NULL) {
     
     ## johnsonsu distribution
@@ -16,16 +16,30 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
     ##                     not used if sided = 2
     ##        sided = 1 (default) means 1-sided tolerance limit
     ##              = 2 means 2-sided tolerance limit
-    ##        alpha = 1 - confidence
-    ##                For 1-sided, 99/99 tolerance limit, specify alpha = 0.01
-    ##                For 2-sided, 99/99 tolerance limit, also specify alpha = 0.01
     ##        P     = proportion (or coverage)
     ##                e.g., if 1-sided with P = 0.99, then will base lower and upper tolerance
     ##                       limits on the quantiles associated with 1% and 99% coverage
     ##                e.g., if 2-sided with P = 0.99, then will base lower and upper tolerance limits
     ##                       limits on the quantiles associated with 0.5% and 99.5% coverage
+    ##        conf  = confidence used to determine chi-square
+    ##        alpha = NULL (default) sets alpha = 2*(1-conf)/sided
+    ##                e.g., if 1-sided conf = 99%:
+    ##                          alpha = 2(1-0.99)/1 = 0.02
+    ##                          chi-square = qchisq(1-alpha,1) = 5.411894
+    ##                                     = 2-sided 98% confidence limit
+    ##                                     = 1-sided 99% confidence limit <- which is needed
+    ##              = # uses input value to overwrite value based on conf
     
-    x <- data   
+    x <- data
+
+    if (is.null(alpha)) {
+        ## set alpha level for chi-square for use in confidence limit calculation
+        alpha <- 2*(1-conf)/sided
+    } else {
+        ## calculate confidence limit from alpha used in chi-square
+        conf <- 1 - alpha * sided/2
+    }
+    
     ## if (isTRUE(plots) & sided == 2) par(mfrow=c(1,2))
     out <- NULL
 
@@ -115,10 +129,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
         ll.max <- -nll.q(x, quant.param, P, lambda.control=lambda.control)
-        ## Factor of 2 in the following is because alpha is generally specified for 1-sided
-        ## but use for confidence part of tolerance limit is always 2-sided. The difference
-        ## in a 1 or 2-sided tolerance limit comes from P, not alpha.
-        ll.tol <-  ll.max - qchisq(1 - 2*alpha, 1)/2   # qchisq(1-2*0.01/1, 1) = 5.411894
+        ll.tol <-  ll.max - qchisq(1 - alpha, 1)/2   # qchisq(1-0.02, 1) = 5.411894
         cat('MLE=', ll.max, '; tolerance limit at MLE=', ll.tol, '\n')
 
         ##----------------------
@@ -155,7 +166,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
         ## coef           <- data.frame(estimates, standard.error)
         ## rownames(coef) <- names(out.bestfit.q$par)
         dof    <- length(x) - 4    # 4 independent fitting parameters in Johnson SU
-        student.t <- qt(1 - alpha/sided, dof)  # 2.3326 for dof=598
+        student.t <- qt(1 - (1-conf)/sided, dof)  # 2.3326 for dof=598
         quant.P.alpha.l.guess <- quant.P - student.t * standard.error[1]
         quant.P.alpha.u.guess <- quant.P + student.t * standard.error[1]
         cat('Initial guesses for confidence interval for P=', P, '\n')
@@ -265,7 +276,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
         ## as point where the likelihood ratio equals 11.tol
         quant.P.alpha.l <- NA
         quant.P.alpha.u <- NA
-        if (P <= 0.5 | side.which == 'lower') {
+        if (P < 0.5 | side.which == 'lower' | (P == 0.5 & k == 1)) {
             out.nrl <- newton.raphson(f = ll.fixedq,
                                       xguess = quant.P.alpha.l.guess,
                                       ytarget = ll.tol,
@@ -279,7 +290,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
                                       plots=plots.nr)
             quant.P.alpha.l <- out.nrl$root
             if (is.null(quant.P.alpha.l)) { quant.P.alpha.l <- NA }
-        } else if (P >= 0.5 | side.which == 'upper') {
+        } else if (P > 0.5 | side.which == 'upper' | (P == 0.5 & k == 2)) {
             ## if (P > 0.5) browser()
             out.nru <- newton.raphson(f = ll.fixedq,
                                       xguess = quant.P.alpha.u.guess,
@@ -390,7 +401,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
     P <- P.in
 
     ## collect tolerance values in dataframe similar to extol.int for weibull
-    tolerance <- data.frame(alpha, P, sided, tol.lower, tol.upper)
+    tolerance <- data.frame(sided, P, conf, alpha.chisq=alpha, tol.lower, tol.upper)
 
     ## print final parameter comparison and tolerance limits
     print(as.data.frame(params.save))
@@ -437,18 +448,28 @@ mle.johnsonsu.tol.test <- function() {
     plotspace(3,2)
     ## lower tolerance limit
     out.lower <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
-                                   side.which='lower', sided=1, alpha=0.01, P=0.99,
+                                   side.which='lower', sided=1, P=0.99, conf=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='lower, 1-sided')
     ## using default parameters except for 'plots'
     out.upper <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
-                                   side.which='upper', sided=1, alpha=0.01, P=0.99,
+                                   side.which='upper', sided=1, P=0.99, conf=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='upper, 1-sided')
     ## lower and upper 1-sided tolerance limits
     out.both <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
-                                   side.which='both', sided=1, alpha=0.01, P=0.99,
+                                   side.which='both', sided=1, P=0.99, conf=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='both, 1-sided')
     ## lower and upper 2-sided tolerance limits
     out.twosided <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
-                                      side.which='both', sided=2, alpha=0.01, P=0.99,
+                                      side.which='both', sided=2, P=0.98, conf=0.99, 
+                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='2-sided')
+
+
+    ## lower and upper 1-sided tolerance limits
+    out.both <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+                                   side.which='both', sided=1, P=0.5, conf=0.99, 
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='both, 1-sided')
+    ## lower and upper 2-sided tolerance limits
+    out.twosided <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+                                      side.which='both', sided=2, P=0.5, conf=0.99, 
                                       plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='2-sided')
 }
