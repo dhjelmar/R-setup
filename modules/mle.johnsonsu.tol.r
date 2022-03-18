@@ -1,6 +1,6 @@
 mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
                               side.which='upper', sided=1, P=0.99, conf=0.99, alpha=NULL,
-                              plots=FALSE, plots.nr=FALSE, debug=FALSE, main.adder=NULL) {
+                              plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -78,9 +78,8 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
         ## write gamma as a function of quant, delta, xi and lambda
         gamma <- qnorm(P) - delta * asinh( (quant-xi)/lambda )
         ## PDF for Johnson SU
-        z   <- (x-xi)/lambda
-        pdf <- delta /( lambda * sqrt(2 * pi) ) * 1 / sqrt(1 + z^2) *
-               exp( -0.5*(gamma + delta * asinh(z))^2 )
+        z <- gamma + delta * asinh( (x-xi)/lambda )
+        pdf <- delta / (lambda*sqrt(2*pi)) / sqrt(1 +((x-xi)/lambda)^2) * exp(-0.5*z^2)
         nll     <- -sum(log(pdf))
         if (isTRUE(debug)) cat('quant=', signif(quant,11),
                                'delta=', signif(delta,11),
@@ -184,7 +183,8 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
             plot(quant.P, ll.max, col='blue', pch=16, cex=2,
                  xlab='quantile', ylab='log likelihood',
                  xlim=range(xmin, xmax),
-                 ylim=range(ll.max, ll.tol))
+                 ylim=range(ll.max, ll.tol),
+                 main=main)
             abline(h=ll.tol)
             abline(v=c(quant.P.alpha.l.guess, quant.P.alpha.u.guess), col='red', lty=2)
         }
@@ -422,6 +422,7 @@ mle.johnsonsu.tol <- function(data, param='auto', lambda.control=2,
 mle.johnsonsu.tol.test <- function() {
     source('setup.r')
 
+    ##-------------------------------------------------------------------
     ## create Johnson SU dataset
     set.seed(1)
     jparms <- list(gamma=-3.3, delta=5.3, xi=1.8, lambda=1.9, type='SU')
@@ -443,33 +444,39 @@ mle.johnsonsu.tol.test <- function() {
     out <- qqplot_nwj(x, type='w')
     out <- qqplot_nwj(x, type='j')
 
+    ##-------------------------------------------------------------------
     ## consider the following dataset
     x <- iris$Sepal.Width
     plotspace(3,2)
     ## lower tolerance limit
     out.lower <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
                                    side.which='lower', sided=1, P=0.99, conf=0.99, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='lower, 1-sided')
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/99')
     ## using default parameters except for 'plots'
     out.upper <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
                                    side.which='upper', sided=1, P=0.99, conf=0.99, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='upper, 1-sided')
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
     ## lower and upper 1-sided tolerance limits
     out.both <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
                                    side.which='both', sided=1, P=0.99, conf=0.99, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='both, 1-sided')
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 99/99')
     ## lower and upper 2-sided tolerance limits
+    ## test that 1-sided 99/99 is the same as a 2-sided 98/98
     out.twosided <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
-                                      side.which='both', sided=2, P=0.98, conf=0.99, 
-                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='2-sided')
+                                      side.which='both', sided=2, P=0.98, conf=0.98, 
+                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/98')
 
-
+    
+    ## test that upper and lower 1-sided 75/99 are the same as a 2-sided 50/98  
+    plotspace(2,2)
     ## lower and upper 1-sided tolerance limits
     out.both <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
-                                   side.which='both', sided=1, P=0.5, conf=0.99, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='both, 1-sided')
+                                  side.which='both', sided=1, P=0.75, conf=0.99, 
+                                  plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 0.75/99')
     ## lower and upper 2-sided tolerance limits
     out.twosided <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
-                                      side.which='both', sided=2, P=0.5, conf=0.99, 
-                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main.adder='2-sided')
+                                      side.which='both', sided=2, P=0.5, conf=0.98, 
+                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 0.5/98')
+
 }
+
