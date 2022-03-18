@@ -109,9 +109,10 @@ mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, deb
         lambda <- param[[4]]
         lambda <- lambda.fix(lambda, lambda.control)
         ## PDF for Johnson SU
-        pdf <- delta /( lambda * sqrt(2 * pi)   ) *
-            1 / sqrt(1 +            ( (x-xi)/lambda )^2)  *
-            exp( -0.5*(gamma + delta * asinh( (x-xi)/lambda ))^2 )
+        z <- gamma + delta * asinh( (x-xi)/lambda )
+        pdf <- delta / (lambda*sqrt(2*pi)) / sqrt(1 +((x-xi)/lambda)^2) * exp(-0.5*z^2)
+        ## cdf <- pnorm(z)
+        ## plot(z, cdf)
         ## the above is equivalent
         ## pdf <- ExtDist::dJohnsonSU(x, parms=c(gamma, delta, xi, lambda))
         nll     <- -sum(log(pdf))
@@ -175,3 +176,54 @@ mle.johnsonsu.test <- function() {
     print(out$jparms)
     print(out$jparms.compare)
 }
+
+
+
+
+
+
+##-----------------------------------------------------------------------------
+## the following is a work in progress to understand mle with censored data
+mle.cond <- function() {
+    x <- iris$Sepal.Width
+    out.fit <- mle.johnsonsu(x)
+    jparms  <- out.fit$jparms
+    lambda.fix <- function(lambda, lambda.control) {
+        if (lambda.control == 1) {
+            ## keep lambda positive so subsequent functions are defined
+            lambda <- max(1E-15, lambda)
+        } else if (lambda.control == 2) {
+            ## keep lambda positive so subsequent functions are defined
+            lambda <- abs(lambda)
+            if (lambda == 0) lambda <- 1E-15
+        }
+        return(lambda)
+    }
+    nll <- function(data, param, lambda.control=0, debug=FALSE){
+        ## calculate nll (negative log likelihhod) for distribution
+        x      <- data
+        gamma  <- param[[1]]  
+        delta  <- param[[2]]
+        xi     <- param[[3]]
+        lambda <- param[[4]]
+        lambda <- lambda.fix(lambda, lambda.control)
+        ## PDF for Johnson SU
+        z <- gamma + delta * asinh( (x-xi)/lambda )
+        pdf <- delta / (lambda*sqrt(2*pi)) / sqrt(1 +((x-xi)/lambda)^2) * exp(-0.5*z^2)
+        cdf <- pnorm(z)
+        plot(z, cdf)
+        ## the above is equivalent
+        ## pdf <- ExtDist::dJohnsonSU(x, parms=c(gamma, delta, xi, lambda))
+        nll     <- -sum(log(pdf))
+        if (isTRUE(debug)) {
+            return(list(log.pdf=log(pdf), cdf=cdf, nll=nll))
+        } else {
+            return(nll)
+        }
+    }
+    out.cond <- nll(x, jparms, lambda.control = 2, debug=TRUE)
+    plotspace(1,2)
+    plot(x, out.cond$log.pdf)
+    plot(x, out.cond$cdf)
+}
+
