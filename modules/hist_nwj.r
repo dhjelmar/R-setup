@@ -1,10 +1,14 @@
 hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.control=2, breaks=NULL,
-                     tolerance=TRUE, side='upper', sided=1, alpha=0.01, P=0.99, 
+                     tolerance=TRUE, side='upper', sided=1, P=0.99, conf=0.99, alpha=NULL, alpha.chisq=NULL,
                      main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
     ## plot histogram and normal, Weibull, and Johnson distributions
     ## adds lines for upper tolerance limits for given alpha and proportion
-    ## alpha  = 1 - confidence
     ## P = coverage proportion (tolerance interval only)
+    ## conf = confidence used for tolerance limit
+    ## alpha = NULL (default) sets = (1-conf)/sided for non-mle based tolerance limit
+    ##       = # overrides the above and uses the specified alpha
+    ## alpha.chisq = NULL (default) sets = 2*(1-conf)/sided for tolerance limit based on LR (likelihood ratio)
+    ##       = # overrides the above and uses the specified alpha.chisq
     ## breaks = number of bins used in the histogram (default auto determines number)
     ## wfit  = 'auto' uses tolerance::exttol.int for initial guess at shape and scale
     ##       = list of user specified parameters for initial guess
@@ -26,6 +30,22 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.contro
     ##            (e.g., fit parameters and tolerance limits)
     
     proportion = P
+    
+    if (is.null(alpha)) {
+        ## set alpha level based on desired confidence
+        alpha <- (1-conf)/sided
+    } else {
+        ## calculate confidence limit from alpha used in chi-square
+        conf <- 1 - alpha * sided/2
+    }
+    
+    if (is.null(alpha.chisq)) {
+        ## set alpha level based on desired confidence
+        alpha.chisq <- 2*(1-conf)/sided
+    } else {
+        ## calculate confidence limit from alpha used in chi-square
+        conf <- 1 - alpha.chisq * sided/2   # note there is a potential for this to overwrite the prior conf
+    }
 
     ## name of variable passed in
     xname <- deparse(substitute(x))
@@ -93,7 +113,7 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.contro
             jparms   <- fit.j$jparms
             if (isTRUE(tolerance)) {
                 tol_out_john <- mle.johnsonsu.tol(x, param=jparms,lambda.control=lambda.control,
-                                                  side.which=side, sided=sided, alpha=alpha, P=P, 
+                                                  side.which=side, sided=sided, alpha=alpha.chisq, P=P, 
                                                   plots=FALSE, debug=FALSE)
                 tolerance_limit_john.l <- tol_out_john$tolerance$tol.lower
                 tolerance_limit_john.u <- tol_out_john$tolerance$tol.upper
@@ -197,7 +217,7 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.contro
     ## print to screen
     if (suppress == 'no') {
         cat(side, ',', sided, "-Sided Tolerance Limits\n")
-        cat("coverage proportion, P = ", P, " / confidence = ", 1-alpha, '\n')
+        cat("coverage proportion, P = ", P, " / confidence = ", conf, '\n')
         cat("------------------------------------------------")
         cat("\n")
         if (grepl('n', type)) {
@@ -222,7 +242,6 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.contro
             cat("   lambda              =",jparms$lambda,"\n")
             cat("   type                =",jparms$type  ,"\n")
             cat("   tolerance limit     =",tolerance_limit_john.u,"\n")
-            cat("   (tolerance limit is the distribution bound if type SB or SL)\n")
         }
     }    
 
