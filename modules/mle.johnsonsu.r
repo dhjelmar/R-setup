@@ -1,4 +1,4 @@
-mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, debug=FALSE) {
+mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -14,7 +14,15 @@ mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, deb
     ## based on approach found here:
     ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
     ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
-    x <- data   
+    x <- data
+  
+    if (is.data.frame(data.censored[1])) {
+        ## censored data also provided
+        xcen <- data.frame(x.low = data.censored[[1]], x.high = data.censored[[2]])
+    } else {
+        xcen <- NA
+    }
+    
     ## if (isTRUE(plots)) par(mfrow=c(1,2))
     out <- NULL
 
@@ -89,33 +97,47 @@ mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, deb
     
     ##-----------------------------------------------------------------------------
     ## determine best fit using nll
-    lambda.fix <- function(lambda, lambda.control) {
-        if (lambda.control == 1) {
-            ## keep lambda positive so subsequent functions are defined
-            lambda <- max(1E-15, lambda)
-        } else if (lambda.control == 2) {
-            ## keep lambda positive so subsequent functions are defined
-            lambda <- abs(lambda)
-            if (lambda == 0) lambda <- 1E-15
+    param.fix <- function(param, param.control) {
+        if (param.control == 1) {
+            ## keep param positive so subsequent functions are defined
+            param <- max(1E-15, param)
+        } else if (param.control == 2) {
+            ## keep param positive so subsequent functions are defined
+            param <- abs(param)
+            if (param == 0) param <- 1E-15
         }
-        return(lambda)
+        return(param)
     }
-    nll <- function(data, param, lambda.control=0, debug=FALSE){
+    nll <- function(data, data.censored=NA, param, param.control=0, debug=FALSE){
         ## calculate nll (negative log likelihhod) for distribution
         x      <- data
+        xcen   <- data.censored
         gamma  <- param[[1]]  
         delta  <- param[[2]]
         xi     <- param[[3]]
         lambda <- param[[4]]
-        lambda <- lambda.fix(lambda, lambda.control)
+        delta  <- param.fix(delta,  param.control)
+        lambda <- param.fix(lambda, param.control)
         ## PDF for Johnson SU
         z <- gamma + delta * asinh( (x-xi)/lambda )
         pdf <- delta / (lambda*sqrt(2*pi)) / sqrt(1 +((x-xi)/lambda)^2) * exp(-0.5*z^2)
-        ## cdf <- pnorm(z)
-        ## plot(z, cdf)
         ## the above is equivalent
         ## pdf <- ExtDist::dJohnsonSU(x, parms=c(gamma, delta, xi, lambda))
-        nll     <- -sum(log(pdf))
+        ## cdf <- pnorm(z)
+        ## plot(z, cdf)
+        if (is.data.frame(xcen)) {
+            xcen$F.low  <- pnorm(xcen$x.low)
+            xcen$F.high <- pnorm(xcen$x.high)
+            ## if low CDF is NA, set to 0
+            xcen[is.na(xcen$F.low) ,]$F.low   <- 0
+            ## if high CDF is NA, set to 1
+            xcen[is.na(xcen$F.high),]$F.high  <- 1
+            ## calculate probability for the censored interval
+            xcen$probability <- xcen$F.high - xcen$F.low
+            nll     <- -sum(log(pdf), log(xcen$probability))
+        } else {
+            nll     <- -sum(log(pdf))
+        }
         if (isTRUE(debug)) cat('gamma=', signif(gamma,11),
                                'delta=', signif(delta,11),
                                'xi   =', signif(xi, 11),
@@ -128,8 +150,9 @@ mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, deb
         out.bestfit <- optim(par     = param, 
                              fn      = nll, 
                              data    = x,
+                             data.censored = xcen,
                              debug   = debug,
-                             lambda.control = lambda.control,
+                             param.control = param.control,
                              control = list(trace=TRUE),
                              method  = "BFGS")
         nll.max.bestfit <- out.bestfit$value
@@ -140,12 +163,13 @@ mle.johnsonsu <- function(data, param='auto', lambda.control=2, plots=FALSE, deb
         cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu()\n')
         jparms <- list(gamma=NA, delta=NA, xi=NA, lambda=NA, type=NA)
     })
-    ## the following is needed if use lambda.control because the
+    ## the following is needed if use param.control because the
     ## parameter returned by optim() is the input pamaeter to the function
     ## not the output parameter. So if the input lambda is negative,
     ## the optim() routine thinks that was OK as the answer even though
-    ## it really only ever used abs(lambda) in the optimization.
-    jparms.mle$lambda <- lambda.fix(jparms.mle$lambda, lambda.control)
+    ## it really only ever used abs(lambda) and abs(delta) in the optimization.
+    jparms.mle$delta  <- param.fix(jparms.mle$delta,  param.control)
+    jparms.mle$lambda <- param.fix(jparms.mle$lambda, param.control)
 
     ## add MLE parameters to params.compare dataframe
     temp <- as.data.frame(jparms.mle)
@@ -185,45 +209,12 @@ mle.johnsonsu.test <- function() {
 ##-----------------------------------------------------------------------------
 ## the following is a work in progress to understand mle with censored data
 mle.cond <- function() {
+    source("F:\\Documents\\01_Dave's Stuff\\Programs\\GitHub_home\\R-setup\\setup.r")
     x <- iris$Sepal.Width
-    out.fit <- mle.johnsonsu(x)
-    jparms  <- out.fit$jparms
-    lambda.fix <- function(lambda, lambda.control) {
-        if (lambda.control == 1) {
-            ## keep lambda positive so subsequent functions are defined
-            lambda <- max(1E-15, lambda)
-        } else if (lambda.control == 2) {
-            ## keep lambda positive so subsequent functions are defined
-            lambda <- abs(lambda)
-            if (lambda == 0) lambda <- 1E-15
-        }
-        return(lambda)
-    }
-    nll <- function(data, param, lambda.control=0, debug=FALSE){
-        ## calculate nll (negative log likelihhod) for distribution
-        x      <- data
-        gamma  <- param[[1]]  
-        delta  <- param[[2]]
-        xi     <- param[[3]]
-        lambda <- param[[4]]
-        lambda <- lambda.fix(lambda, lambda.control)
-        ## PDF for Johnson SU
-        z <- gamma + delta * asinh( (x-xi)/lambda )
-        pdf <- delta / (lambda*sqrt(2*pi)) / sqrt(1 +((x-xi)/lambda)^2) * exp(-0.5*z^2)
-        cdf <- pnorm(z)
-        plot(z, cdf)
-        ## the above is equivalent
-        ## pdf <- ExtDist::dJohnsonSU(x, parms=c(gamma, delta, xi, lambda))
-        nll     <- -sum(log(pdf))
-        if (isTRUE(debug)) {
-            return(list(log.pdf=log(pdf), cdf=cdf, nll=nll))
-        } else {
-            return(nll)
-        }
-    }
-    out.cond <- nll(x, jparms, lambda.control = 2, debug=TRUE)
-    plotspace(1,2)
-    plot(x, out.cond$log.pdf)
-    plot(x, out.cond$cdf)
+    xcen <- data.frame(x.low=c(NA, 2, 2.7), x.high=c(0.5,2.5,NA))
+    xcen <- data.frame(x.low=c(NA, NA, NA), x.high=c(2.2, 2.3, 2.4))
+    plotspace(2,2)
+    out.fit <- mle.johnsonsu(x, data.censored=NA,   plots=TRUE)
+    out.fit <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
 }
 
