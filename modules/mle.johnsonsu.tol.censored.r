@@ -32,12 +32,11 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
     
     x <- data
     
-    if (!is.na(data.censored)) {
+    if (is.data.frame(data.censored[1])) {
         ## censored data also provided
         xcen <- data.frame(x.low = data.censored[[1]], x.high = data.censored[[2]])
-        ## set the cdf (cumulative distribution function) value for the low and high end
-        xcen$F.low  <- 0
-        xcen$F.high <- 1
+    } else {
+        xcen <- NA
     }
 
     if (is.null(alpha)) {
@@ -64,32 +63,46 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
     
     ##-----------------------------------------------------------------------------
     ## redefine nll function to fit on desired quantile to find standard error
-    param.fix <- function(lambda, param.control) {
+    param.fix <- function(param, param.control) {
         if (param.control == 1) {
-            ## keep lambda positive so subsequent functions are defined
-            lambda <- max(1E-15, lambda)
+            ## keep param positive so subsequent functions are defined
+            param <- max(1E-15, param)
         } else if (param.control == 2) {
-            ## keep lambda positive so subsequent functions are defined
-            lambda <- abs(lambda)
-            if (lambda == 0) lambda <- 1E-15
+            ## keep param positive so subsequent functions are defined
+            param <- abs(param)
+            if (param == 0) param <- 1E-15
         }
-        return(lambda)
+        return(param)
     }
     nll.q <- function(data, data.censored=NA, param, P, param.control, debug=FALSE){
         ## calculate nll (negative log likelihhod) for distribution
         x       <- data
+        xcen    <- data.censored
         if (!is.na(data.censored)) 
         quant  <- param[[1]]  # replaced gamma with quant as a parameter
         delta  <- param[[2]]
         xi     <- param[[3]]
         lambda <- param[[4]]
+        delta  <- param.fix(delta,  param.control)
         lambda <- param.fix(lambda, param.control)
         ## write gamma as a function of quant, delta, xi and lambda
         gamma <- qnorm(P) - delta * asinh( (quant-xi)/lambda )
         ## PDF for Johnson SU
         z <- gamma + delta * asinh( (x-xi)/lambda )
         pdf <- delta / (lambda*sqrt(2*pi)) / sqrt(1 +((x-xi)/lambda)^2) * exp(-0.5*z^2)
-        nll     <- -sum(log(pdf))
+        if (is.data.frame(xcen)) {
+            xcen$F.low  <- pnorm(xcen$x.low)
+            xcen$F.high <- pnorm(xcen$x.high)
+            ## if low CDF is NA, set to 0
+            xcen$F.low[is.na(xcen$F.low)]   <- 0
+            ## if high CDF is NA, set to 1
+            xcen$F.high[is.na(xcen$F.high)] <- 1
+            ## calculate probability for the censored interval
+            xcen$probability <- xcen$F.high - xcen$F.low
+            nll     <- -sum(log(pdf), log(xcen$probability))
+        } else {
+            nll     <- -sum(log(pdf))
+        }
         if (isTRUE(debug)) cat('quant=', signif(quant,11),
                                'delta=', signif(delta,11),
                                'xi   =', signif(xi,11),
@@ -146,6 +159,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
         out.bestfit.q <- optim(par     = quant.param, 
                                fn      = nll.q, 
                                data    = x,
+                               data.censored = xcen,
                                P       = P,
                                param.control = param.control,
                                debug   = debug,
@@ -157,6 +171,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
         delta.P  <- out.bestfit.q$par[[2]]
         xi.P     <- out.bestfit.q$par[[3]]
         lambda.P <- out.bestfit.q$par[[4]]
+        delta.P  <- param.fix(delta.P,  param.control)
         lambda.P <- param.fix(lambda.P, param.control)
         params.q <- as.list(out.bestfit.q$par)
         params.q$lambda <- lambda.P
@@ -200,14 +215,15 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
         
         ##----------------------
         ## function to fit on delta, xi and lambda
-        nll.fixedq <- function(data, param, quant, P,
+        nll.fixedq <- function(data, data.censored=NA, param, quant, P,
                                param.control=param.control, debug=FALSE) {
             ## calculate nll (negative log likelihhod) for distribution
             ## for specified quant (i.e., only fit delta, xi, and lambda)
             param <- list(quant=quant, delta=param[[1]], xi=param[[2]], lambda=param[[3]])
-            nll.q(data, param, P, param.control, debug=FALSE)
+            nll.q(data, data.censored, param, P, param.control, debug=FALSE)
         }
-        ll.fixedq <- function(x0, data, P, delta=delta.P, xi=xi.P, lambda=lambda.P,
+        ll.fixedq <- function(x0, data, data.censored=NA,
+                              P, delta=delta.P, xi=xi.P, lambda=lambda.P,
                               param.control=param.control, debug=FALSE) {
             ## first determine best fit delta, xi, and lambda for given x0=quant (and P)
             fit <- NA
@@ -215,6 +231,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
                 fit <- optim(par     = c(delta, xi, lambda), 
                              fn      = nll.fixedq, 
                              data    = data,
+                             data.censored = data.censored,
                              quant   = x0,
                              P       = P,
                              param.control = param.control,
@@ -243,11 +260,11 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
             out <- mle.johnsonsu(x)$jparms
             delta_test <- out$delta
             ## this one converges nicely
-            ll.fixedq(4.4, x, P, delta=out$delta, xi=out$xi, lambda=out$lambda, debug=FALSE)
+            ll.fixedq(4.4, x, xcen, P, delta=out$delta, xi=out$xi, lambda=out$lambda, debug=FALSE)
             ## this one does not converge
-            ll.fixedq(4.5, x, P, delta=out$delta, xi=out$xi, lambda=out$lambda, debug=FALSE)
+            ll.fixedq(4.5, x, xcen, P, delta=out$delta, xi=out$xi, lambda=out$lambda, debug=FALSE)
             ## this one converges nicely
-            ll.fixedq(4.6, x, P, delta=out$delta, xi=out$xi, lambda=out$lambda, debug=FALSE)
+            ll.fixedq(4.6, x, xcen, P, delta=out$delta, xi=out$xi, lambda=out$lambda, debug=FALSE)
         }
 
         ##----------------------
@@ -256,7 +273,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
             yplot <- NA
             for (ploti in 1:length(xplot)) {
                 ## if (ploti == 3) browser()
-                yplot[ploti] <- ll.fixedq(xplot[ploti], x, P, delta, xi, lambda,
+                yplot[ploti] <- ll.fixedq(xplot[ploti], x, xcen, P, delta, xi, lambda,
                                           param.control=param.control, debug=FALSE)
                 cat(ploti, xplot[ploti], yplot[ploti], '\n')
             }
@@ -268,8 +285,10 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
             ## points(xplot[converged], yplot[converged],
             ##        xlab='quantile', ylab='log likelihood', col='red')
             plotit <- function(xplot=0.994, col='blue', pch=16, cex=2) {
+                ## this is just for using interactively if debugging
                 yplot <- ll.fixedq(x0     = xplot,
                                    data   = x,
+                                   data.censored = xcen,
                                    P      = P,
                                    delta  = delta.P,
                                    xi     = xi.P,
@@ -290,6 +309,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
                                       xguess = quant.P.alpha.l.guess,
                                       ytarget = ll.tol,
                                       data   = x,
+                                      data.censored = xcen,
                                       P      = P,
                                       delta  = delta,
                                       xi     = xi,
@@ -305,6 +325,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
                                       xguess = quant.P.alpha.u.guess,
                                       ytarget = ll.tol,
                                       data   = x,
+                                      data.censored = xcen,
                                       P      = P,
                                       delta  = delta,
                                       xi     = xi,
@@ -325,69 +346,6 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
             ## plot intersection with log likelihood curve
             if (!is.na(quant.P.alpha.l)) points(quant.P.alpha.l, ll.tol, col='red', pch=16, cex=2)
             if (!is.na(quant.P.alpha.u)) points(quant.P.alpha.u, ll.tol, col='red', pch=16, cex=2)
-        }
-
-
-        new.idea.not.working <- function() {
-            ##----------------------
-            ## alternate use of optim to find tolerance limit
-            quant <- mean(x) + (max(x)-mean(x))/2
-            tol.zero <- function(data, param, P, debug, ll.tol) {
-                nll  <- nll.q(data, param, P, debug=debug)
-                zero <- -abs(nll + ll.tol)
-                return(zero)
-            }
-            out <- ll.fixedq(quant.P.alpha.u, x, P,
-                             delta=delta, xi=xi, lambda=lambda, debug=TRUE)
-            out.nll <- out$fit$value
-            out.par <- out$fit$par
-            tol.zero(x, c(quant.P.alpha.u-0.1, out.par), P, debug=FALSE, ll.tol)
-            tol.zero(x, c(quant.P.alpha.u    , out.par), P, debug=FALSE, ll.tol)
-            tol.zero(x, c(quant.P.alpha.u+0.1, out.par), P, debug=FALSE, ll.tol)
-
-            fit <- optim(par     = c(quant, delta, xi, lambda), 
-                         fn      = tol.zero,
-                         data    = x,
-                         P       = P,
-                         debug   = FALSE,
-                         ll.tol  = ll.tol,
-                         control = list(trace=TRUE,
-                                        maxit=1e4),   # a bit better without maxit
-                         hessian = TRUE,
-                         method  = "BFGS")
-
-            
-            mle.tol <- function(data, P, quant=quant, delta=delta, xi=xi, lambda=lambda, ll.tol) {
-                ## first determine best fit delta, xi, and lambda for given x0=quant (and P)
-                fit <- NA
-                tryCatch({
-                    fit <- optim(par     = c(quant, delta, xi, lambda), 
-                                 fn      = tol.zero,
-                                 data    = data,
-                                 P       = P,
-                                 debug   = FALSE,
-                                 ll.tol  = ll.tol,
-                                 control = list(trace=TRUE,
-                                                maxit=1e4),
-                                 hessian = TRUE,
-                                 method  = "BFGS")
-                    ll <- -fit$value
-                    quant <- fit$par$quant
-                    delta <- fit$par$delta
-                    xi    <- fit$par$xi
-                    lambda <- fit$par$lambda
-                }, error = function(e) {
-                    ## what to do if error
-                    cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu.tol.r MODULE\n')
-                    cat('         IN mle.tol OPTIMIZATION ROUTINE.\n\n')
-                    fit <- NA
-                    ll  <- NA
-                })
-                return(list(fit=fit,
-                            ll=ll,
-                            parma=list(quant=quant, delta=delta, xi=xi, lambda=lambda)))
-            }
-            out.mle <- mle.tol(x, P, quant=quant, delta=delta, xi=xi, lambda=lambda, ll.tol)
         }
 
     }

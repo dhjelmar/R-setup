@@ -129,9 +129,9 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
             xcen$F.low  <- pnorm(xcen$x.low)
             xcen$F.high <- pnorm(xcen$x.high)
             ## if low CDF is NA, set to 0
-            xcen[is.na(xcen$F.low) ,]$F.low   <- 0
+            xcen$F.low[is.na(xcen$F.low)]   <- 0
             ## if high CDF is NA, set to 1
-            xcen[is.na(xcen$F.high),]$F.high  <- 1
+            xcen$F.high[is.na(xcen$F.high)] <- 1
             ## calculate probability for the censored interval
             xcen$probability <- xcen$F.high - xcen$F.low
             nll     <- -sum(log(pdf), log(xcen$probability))
@@ -161,7 +161,7 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
     }, error = function(e) {
         ## what to do if error
         cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu()\n')
-        jparms <- list(gamma=NA, delta=NA, xi=NA, lambda=NA, type=NA)
+        jparms.mle <- list(gamma=NA, delta=NA, xi=NA, lambda=NA, type=NA)
     })
     ## the following is needed if use param.control because the
     ## parameter returned by optim() is the input pamaeter to the function
@@ -194,27 +194,42 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
 
 
 mle.johnsonsu.test <- function() {
-    source('setup.r')
-    x <- iris$Sepal.Width
-    out <- mle.johnsonsu(x, 'auto', plots=TRUE, debug=FALSE)
-    print(out$jparms)
-    print(out$jparms.compare)
-}
-
-
-
-
-
-
-##-----------------------------------------------------------------------------
-## the following is a work in progress to understand mle with censored data
-mle.cond <- function() {
     source("F:\\Documents\\01_Dave's Stuff\\Programs\\GitHub_home\\R-setup\\setup.r")
     x <- iris$Sepal.Width
+    plotspace(3,2)
     xcen <- data.frame(x.low=c(NA, 2, 2.7), x.high=c(0.5,2.5,NA))
+    out.fit1 <- mle.johnsonsu(x, data.censored=NA,   plots=TRUE)
+    out.fit2 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
     xcen <- data.frame(x.low=c(NA, NA, NA), x.high=c(2.2, 2.3, 2.4))
-    plotspace(2,2)
-    out.fit <- mle.johnsonsu(x, data.censored=NA,   plots=TRUE)
-    out.fit <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
+    out.fit3 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
+    print(out.fit1$jparms.compare)
+    print(out.fit2$jparms.compare)
+    print(out.fit3$jparms.compare)
+
+    ## little impact seen from many data at low end? 
+    ## makes sense if survival data but not for my purpose
+    xcen <- data.frame(x.low=rep(NA,99), x.high=rep(2.2,99))
+    out.fit1 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
+    print(out.fit1$jparms.compare)
+
+    ## little impact from many data with huge uncertainty in timing
+    xcen <- data.frame(x.low=rep(NA,99), x.high=rep(3.7,99))
+    out.fit2 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
+    print(out.fit2$jparms.compare)
+
+    ## little impact from many data at high end????????
+    xcen <- data.frame(x.low=rep(3.7,99), x.high=rep(NA,99))
+    out.fit3 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
+    print(out.fit3$jparms.compare)
+    ## huge impact if add those data as real data    
+    x <- c(x, xcen[[1]])
+    out.fit4 <- mle.johnsonsu(x, data.censored=NA, plots=TRUE)
+    print(out.fit4$jparms.compare)
+    ## what if add those data with small window?
+    x <- iris$Sepal.Width
+    xcen <- data.frame(x.low=rep(3.7,99), x.high=rep(3.7001,99))
+    out.fit5 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
+    print(out.fit5$jparms.compare)
+    
 }
 
