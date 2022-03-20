@@ -1,4 +1,4 @@
-mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', lambda.control=2,
+mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', param.control=2,
                               side.which='upper', sided=1, P=0.99, conf=0.99, alpha=NULL,
                               plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
     
@@ -32,9 +32,12 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
     
     x <- data
     
-    if (!is.null(data.censored)) {
+    if (!is.na(data.censored)) {
         ## censored data also provided
-        
+        xcen <- data.frame(x.low = data.censored[[1]], x.high = data.censored[[2]])
+        ## set the cdf (cumulative distribution function) value for the low and high end
+        xcen$F.low  <- 0
+        xcen$F.high <- 1
     }
 
     if (is.null(alpha)) {
@@ -61,25 +64,26 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
     
     ##-----------------------------------------------------------------------------
     ## redefine nll function to fit on desired quantile to find standard error
-    lambda.fix <- function(lambda, lambda.control) {
-        if (lambda.control == 1) {
+    param.fix <- function(lambda, param.control) {
+        if (param.control == 1) {
             ## keep lambda positive so subsequent functions are defined
             lambda <- max(1E-15, lambda)
-        } else if (lambda.control == 2) {
+        } else if (param.control == 2) {
             ## keep lambda positive so subsequent functions are defined
             lambda <- abs(lambda)
             if (lambda == 0) lambda <- 1E-15
         }
         return(lambda)
     }
-    nll.q <- function(data, param, P, lambda.control, debug=FALSE){
+    nll.q <- function(data, data.censored=NA, param, P, param.control, debug=FALSE){
         ## calculate nll (negative log likelihhod) for distribution
         x       <- data
+        if (!is.na(data.censored)) 
         quant  <- param[[1]]  # replaced gamma with quant as a parameter
         delta  <- param[[2]]
         xi     <- param[[3]]
         lambda <- param[[4]]
-        lambda <- lambda.fix(lambda, lambda.control)
+        lambda <- param.fix(lambda, param.control)
         ## write gamma as a function of quant, delta, xi and lambda
         gamma <- qnorm(P) - delta * asinh( (quant-xi)/lambda )
         ## PDF for Johnson SU
@@ -132,7 +136,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
         ##----------------------
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
-        ll.max <- -nll.q(x, quant.param, P, lambda.control=lambda.control)
+        ll.max <- -nll.q(x, quant.param, P, param.control=param.control)
         ll.tol <-  ll.max - qchisq(1 - alpha, 1)/2   # qchisq(1-0.02, 1) = 5.411894
         cat('MLE=', ll.max, '; tolerance limit at MLE=', ll.tol, '\n')
 
@@ -143,7 +147,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
                                fn      = nll.q, 
                                data    = x,
                                P       = P,
-                               lambda.control = lambda.control,
+                               param.control = param.control,
                                debug   = debug,
                                control = list(trace=TRUE),
                                hessian = TRUE,
@@ -153,7 +157,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
         delta.P  <- out.bestfit.q$par[[2]]
         xi.P     <- out.bestfit.q$par[[3]]
         lambda.P <- out.bestfit.q$par[[4]]
-        lambda.P <- lambda.fix(lambda.P, lambda.control)
+        lambda.P <- param.fix(lambda.P, param.control)
         params.q <- as.list(out.bestfit.q$par)
         params.q$lambda <- lambda.P
         params.q$gamma <- qnorm(P) - delta.P * asinh( (quant.P-xi.P)/lambda.P )
@@ -197,14 +201,14 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
         ##----------------------
         ## function to fit on delta, xi and lambda
         nll.fixedq <- function(data, param, quant, P,
-                               lambda.control=lambda.control, debug=FALSE) {
+                               param.control=param.control, debug=FALSE) {
             ## calculate nll (negative log likelihhod) for distribution
             ## for specified quant (i.e., only fit delta, xi, and lambda)
             param <- list(quant=quant, delta=param[[1]], xi=param[[2]], lambda=param[[3]])
-            nll.q(data, param, P, lambda.control, debug=FALSE)
+            nll.q(data, param, P, param.control, debug=FALSE)
         }
         ll.fixedq <- function(x0, data, P, delta=delta.P, xi=xi.P, lambda=lambda.P,
-                              lambda.control=lambda.control, debug=FALSE) {
+                              param.control=param.control, debug=FALSE) {
             ## first determine best fit delta, xi, and lambda for given x0=quant (and P)
             fit <- NA
             tryCatch({
@@ -213,7 +217,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
                              data    = data,
                              quant   = x0,
                              P       = P,
-                             lambda.control = lambda.control,
+                             param.control = param.control,
                              debug   = debug,
                              control = list(trace=TRUE,
                                             maxit=1e4),
@@ -253,7 +257,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
             for (ploti in 1:length(xplot)) {
                 ## if (ploti == 3) browser()
                 yplot[ploti] <- ll.fixedq(xplot[ploti], x, P, delta, xi, lambda,
-                                          lambda.control=lambda.control, debug=FALSE)
+                                          param.control=param.control, debug=FALSE)
                 cat(ploti, xplot[ploti], yplot[ploti], '\n')
             }
             xyplot <- data.frame(quantile       = xplot[1:length(yplot)],
@@ -270,7 +274,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
                                    delta  = delta.P,
                                    xi     = xi.P,
                                    lambda = lambda.P,
-                                   lambda.control = lambda.control,
+                                   param.control = param.control,
                                    debug  = FALSE)
                 points(xplot, yplot, col=col, pch=16, cex=2)
                 return(yplot)
@@ -290,7 +294,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
                                       delta  = delta,
                                       xi     = xi,
                                       lambda = lambda,
-                                      lambda.control = lambda.control,
+                                      param.control = param.control,
                                       tol = 1e-5, n = 1000,
                                       plots=plots.nr)
             quant.P.alpha.l <- out.nrl$root
@@ -305,7 +309,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NULL, param='auto', l
                                       delta  = delta,
                                       xi     = xi,
                                       lambda = lambda,
-                                      lambda.control = lambda.control,
+                                      param.control = param.control,
                                       tol = 1e-5, n = 1000,
                                       plots=plots.nr)
             quant.P.alpha.u <- out.nru$root
@@ -454,20 +458,20 @@ mle.johnsonsu.tol.test <- function() {
     x <- iris$Sepal.Width
     plotspace(3,2)
     ## lower tolerance limit
-    out.lower <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+    out.lower <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
                                    side.which='lower', sided=1, P=0.99, conf=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/99')
     ## using default parameters except for 'plots'
-    out.upper <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+    out.upper <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
                                    side.which='upper', sided=1, P=0.99, conf=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
     ## lower and upper 1-sided tolerance limits
-    out.both <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+    out.both <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
                                    side.which='both', sided=1, P=0.99, conf=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 99/99')
     ## lower and upper 2-sided tolerance limits
     ## test that 1-sided 99/99 is the same as a 2-sided 98/98
-    out.twosided <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+    out.twosided <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
                                       side.which='both', sided=2, P=0.98, conf=0.98, 
                                       plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/98')
 
@@ -475,11 +479,11 @@ mle.johnsonsu.tol.test <- function() {
     ## test that upper and lower 1-sided 75/99 are the same as a 2-sided 50/98  
     plotspace(2,2)
     ## lower and upper 1-sided tolerance limits
-    out.both <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+    out.both <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
                                   side.which='both', sided=1, P=0.75, conf=0.99, 
                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 0.75/99')
     ## lower and upper 2-sided tolerance limits
-    out.twosided <- mle.johnsonsu.tol(data=x, param='auto', lambda.control=2,
+    out.twosided <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
                                       side.which='both', sided=2, P=0.5, conf=0.98, 
                                       plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 0.5/98')
 
