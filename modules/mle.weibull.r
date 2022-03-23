@@ -1,4 +1,4 @@
-mle.weibull <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99, sided=1, plots=FALSE, debug=FALSE) {
+mle.weibull <- function(data, data.censored=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
     
     ## weibull distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -12,9 +12,16 @@ mle.weibull <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99, 
     ## based on approach found here:
     ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
     ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
+    x <- data
+  
+    if (is.data.frame(data.censored[1])) {
+        ## censored data also provided
+        xcen <- data.frame(x.low = data.censored[[1]], x.high = data.censored[[2]])
+    } else {
+        xcen <- NA
+    }
     
-    x <- data    
-    if (isTRUE(plots)) par(mfrow=c(1,2))
+    ## if (isTRUE(plots)) par(mfrow=c(1,2))
     out <- NULL
 
     ##-----------------------------------------------------------------------------
@@ -25,251 +32,86 @@ mle.weibull <- function(data, param='auto', fit.only=FALSE, alpha=0.01, P=0.99, 
         shape   <- tol_out_weib$'shape.1'
         scale   <- tol_out_weib$'shape.2'
         param <- list(shape=shape, scale=scale)
+        params.compare <- as.data.frame(param)
+        params.compare$description <- 'tolerance::extol.int(x)'
+    } else {
+        params.compare <- as.data.frame(param)
+        params.compare$description <- 'input parameters'
     }
     params.guess <- param
     
     ##-----------------------------------------------------------------------------
-    ## determine best fit using nnl
-    nll <- function(data, param, debug=FALSE){
+    ## determine best fit using nll
+    param.fix <- function(param, param.control) {
+        if (param.control == 1) {
+            ## keep param positive so subsequent functions are defined
+            param <- param(1E-15, param)
+        } else if (param.control == 2) {
+            ## keep param positive so subsequent functions are defined
+            param <- abs(param)
+            if (param == 0) param <- 1E-15
+        }
+        return(param)
+    }
+    nll <- function(data, data.censored=NA, param, param.control=0, debug=FALSE){
         ## calculate nll (negative log likelihhod) for distribution
         x      <- data
         shape  <- param[[1]]  
         scale  <- param[[2]]
+        scale  <- param.fix(scale, param.control)
         pdf <- shape / scale^shape * x^(shape-1) * exp(-(x/scale)^shape)
         ## the above is equivalent
         ## pdf <- dWeibull(x, shape, scale)
-        nll     <- -sum(log(pdf))
+        if (is.data.frame(xcen)) {
+            xcen$F.low  <- 1 - exp(- (xcen$x.low  / scale)^shape) # CDF
+            xcen$F.high <- 1 - exp(- (xcen$x.high / scale)^shape) # CDF
+            ## if low CDF is NA, set to 0
+            xcen$F.low[is.na(xcen$F.low)]   <- 0
+            ## if high CDF is NA, set to 1
+            xcen$F.high[is.na(xcen$F.high)] <- 1
+            ## calculate probability for the censored interval
+            xcen$probability <- xcen$F.high - xcen$F.low
+            nll     <- -sum(log(pdf), log(xcen$probability))
+        } else {
+            nll     <- -sum(log(pdf))
+        }
         if (isTRUE(debug)) cat('shape=', signif(shape,11), 'scale=', signif(scale,11), 'nll=', signif(nll,11), "\n")
         return(nll)
     }        
-    print('Attempting MLE fit on regular parameters')
+    ## print('Attempting MLE fit on regular parameters')
     out.bestfit <- stats::optim(par     = param, 
                                 fn      = nll, 
                                 data    = x,
+                                data.censored = xcen,
                                 debug   = debug,
                                 control = list(trace=TRUE),
                                 method  = "BFGS")
     nll.max.bestfit <- out.bestfit$value
-    shape  <- out.bestfit$par[[1]]
-    scale  <- out.bestfit$par[[2]]
-    params <- as.list(out.bestfit$par)
-    print(as.data.frame(params))
+    params.mle <- as.list(out.bestfit$par)
+    params.mle$scale <- param.fix(params$scale, param.control)
+    shape  <- params.mle$shape
+    scale  <- params.mle$scale
+    print(as.data.frame(params.mle))
     cat('\n')
 
-    if (isTRUE(fit.only)) return(list(params=params))
-    
-    ##-----------------------------------------------------------------------------
-    ## redefine nnl function to fit on desired quantile
-    nll.q <- function(data, param, P, debug=FALSE){
-        ## calculate nll (negative log likelihhod) for distribution
-        x       <- data
-        quant  <- param[[1]]  # replaced gamma with quant as a parameter
-        shape  <- param[[2]]
-        scale  <- quant/(-log((1-P)))^(1/shape)
-        pdf <- shape / scale^shape * x^(shape-1) * exp(-(x/scale)^shape)
-        ## the above is equivalent
-        ## pdf <- dWeibull(x, shape, scale)
-        nll     <- -sum(log(pdf))
-        if (isTRUE(debug)) cat('quant=', signif(quant,11),
-                               'shape=', signif(shape,11),
-                               'scale=', signif(scale,11),
-                               'nll=', signif(nll,11), "\n")  # dlh fix in johnsonsu
-        return(nll)
-    }
-    
-    ##-----------------------------------------------------------------------------
-    ## find confidence limit at level alpha for requested coverage, P
-    tol.limits <- NA
-    params.q.save <- NA
-    k <- 0
-    P.lower.upper <- c(1-P, P)
-    for (P in P.lower.upper) {
 
-        k <- k+1  # counter
+    ## add MLE parameters to params.compare dataframe
+    temp <- as.data.frame(params.mle)
+    temp$description <- 'MLE'
+    params.compare <- fastmerge(params.compare, temp)
 
-        ##----------------------
-        ## fist set estimated parameters
-        quant.P <- qweibull(P, shape=shape, scale=scale)
-        quant.param <- c(quant=quant.P, shape=shape)    #dlh was list
+    ## remove factor levels from params.compare
+    params.compare <- droplevels.all(params.compare)
 
-        ##----------------------
-        ## refit to find quantile, quant.P, associated with the fit
-        print('Attempting MLE fit on regular parameters for P=', P)
-        out.bestfit.q <- stats::optim(par     = quant.param, 
-                                      fn      = nll.q, 
-                                      data    = x,
-                                      P       = P,
-                                      debug   = debug,
-                                      control = list(trace=TRUE),
-                                      hessian = TRUE,
-                                      method  = "BFGS")
-        nll.max.bestfit.q <- out.bestfit.q$value
-        quant.P  <- out.bestfit.q$par[[1]]
-        shape.P  <- out.bestfit.q$par[[2]]
-        params.q <- as.list(out.bestfit.q$par)
-        params.q$scale  <- quant.P/(-log((1-P)))^(1/shape.P)
-
-        params.q.save[k] <- list(params.q)
-        print(as.data.frame(params.q))
-        cat('\n')
-        
-        ##----------------------
-        ## estimate confidence limit using standard error to serve as starting point for search
-        ## estimates      <- as.numeric( out.bestfit.q$par )
-        standard.error <- as.numeric( sqrt(diag(solve(out.bestfit.q$hessian))) )
-        ## coef           <- data.frame(estimates, standard.error)
-        ## rownames(coef) <- names(out.bestfit.q$par)
-        dof    <- length(x) - 2    # 2 independent fitting parameters in Weibull fit
-        student.t <- qt(1 - alpha/sided, dof)  # 2.3326 for dof=598
-        quant.P.alpha.l.guess <- quant.P - student.t * standard.error[1]
-        quant.P.alpha.u.guess <- quant.P + student.t * standard.error[1]
-        cat('Initial guesses for confidence interval for P=', P, '\n')
-        cat(quant.P.alpha.l.guess, quant.P.alpha.u.guess, '\n\n')
-        
-        ##----------------------
-        ## calculate confidence limits using LR (Likelihood Ratio)
-        ## confidene limit is defined at likelihood that is lower than max by chi-squared
-        ll.max.P <- -nll.max.bestfit
-        ll.tol <-  ll.max.P - qchisq(1 - alpha/sided, 1)   # qchisq(1-0.01/1, 1) = 6.634897 
-        cat('MLE=', ll.max.P, '; tolerance limit at MLE=', ll.tol, 'for P=', P, '\n')
-        
-        ## function for newton.raphson() iterates on x0
-        ll.q <- function(x0, data, P, shape) {
-            ll <- -nll.q(data,
-                         param=list(quant  = x0,
-                                    shape  = shape),
-                         P,
-                         debug=FALSE)
-        }
-        
-        ## determine confidence bound (P alread determined whether this was a lower or upper bound)
-        ## as point where the likelihood ratio equals 11.tol
-        out.nrl <- newton.raphson(f = ll.q,
-                                  xguess = quant.P.alpha.l.guess,
-                                  ytarget = ll.tol,
-                                  data   = x,
-                                  P      = P,
-                                  shape  = shape,
-                                  tol = 1e-5, n = 1000, plot='no')
-        quant.P.alpha.l <- out.nrl$root
-        out.nru <- newton.raphson(f = ll.q,
-                                  xguess = quant.P.alpha.u.guess,
-                                  ytarget = ll.tol,
-                                  data   = x,
-                                  P      = P,
-                                  shape  = shape,
-                                  tol = 1e-5, n = 1000, plot='no')
-        quant.P.alpha.u <- out.nru$root
-        cat('Final confidence interval for P=', P, '\n')
-        cat(quant.P.alpha.l, quant.P.alpha.u, '\n\n')
-
-        ## collect tolerance limit calculations (i.e., for 1-P and P)
-        tol.limits <- c(tol.limits, quant.P.alpha.l, quant.P.alpha.u)
-
-        if (isTRUE(plots)) {
-            ## plot the likelihood as a function of the quantile
-
-            ## set range of quantile values to plot
-            quant     <- seq(quant.P.alpha.l, quant.P.alpha.u, length.out=100)
-
-            ## calculate and plot log likelihood
-            ll <- NA
-            for (i in 1:100) {
-                ## vary quant parameter to see impact on likelihood
-                param.vary.q <- list(quant  = quant[i],
-                                     shape  = shape)
-                ll[i] <- -nll.q(x, param.vary.q, P=P, debug=FALSE)
-            }
-            plot(quant, ll, xlab='quantile', ylab='Log Likelihood')
-
-            ## plot log likelihood at tolerance limit
-            abline(h=ll.tol)
-
-            ## plot intersection with log likelihood curve
-            points(quant.P.alpha.l, ll.tol, col='red', pch=16, cex=2)
-            points(quant.P.alpha.u, ll.tol, col='red', pch=16, cex=2)
-
-        }
-
-
+    if (isTRUE(plots)) {
+        out.hist <- hist(x, plot=FALSE)
+        curve.points <- stats::dweibull(x, shape, scale)
+        hist(x, freq=FALSE, ylim=range(out.hist$density, curve.points))
+        curve(stats::dweibull(x, shape, scale), min(x), max(x), add=TRUE)
+        qqplot_nwj(x, type='w', jfit=params.mle)
     }
 
-    ## put parameters from the standard fit and fit on quantile P into dataframe for comparison
-    a0 <- as.data.frame(t(unlist(params.guess)))
-    a1 <- as.data.frame(t(unlist(params)))
-    a2 <- as.data.frame(t(unlist(params.q.save[1])))
-    a3 <- as.data.frame(t(unlist(params.q.save[2])))
-    params.compare <- fastmerge(a0, a1)
-    params.compare <- fastmerge(params.compare, a2)
-    params.compare <- fastmerge(params.compare, a3)
-    rownames(params.compare) <- c('initial guess parameters', 'standard fit',
-                                  'fit on quantile at 1-P', 'fit on quantile at P')
-
-    ## collect lower and upper tolerance limits
-    tol.limits <- range(tol.limits, na.rm=TRUE)
-    tol.lower <- tol.limits[1]
-    tol.upper <- tol.limits[2]
-    tolerance <- data.frame(alpha, P, sided, tol.lower, tol.upper)
-
-    ## print final parameter comparison and tolerance limits
-    print(params.compare)
-    cat('\n')
-    print(tolerance)
-    cat('\n')
     
-    return(list(params     = params,
-                params.q   = params.q,
-                params.compare = params.compare,
-                out.bestit = out.bestfit,
-                tolerance  = tolerance))
-}
-
-
-mle.weibull.test <- function() {
-    source('modules/newton.raphson.r')
-    source('modules/fastmerge.r')
-
-    ## consider the following dataset
-    x <- iris$Sepal.Width
-    mean(x)  # 3.057333
-    sd(x)    # 0.4358663
-    P     <- 0.99  # proportion or coverage
-    alpha <- 0.01
-    sided <- 1
-
-    ## mle lr approach
-    out <- mle.weibull(x, 'auto', alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
-    params <- out$params
-    print(out$params.compare)
-    print(out$tolerance)
-
-    shape <- 2
-    scale <- 2.5
-    out <- mle.weibull(x, list(shape=2, scale=1), alpha=alpha, P=P, sided=sided, plots=TRUE, debug=FALSE)
-    print(out$params.compare)
-    print(out$tolerance)
-    
-    ## open source tolerance limit calculation
-    tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=P, side=1, dist="Weibull")
-    print(tol_out_weib)
-    
-    plotspace(1,1)
-    xmin <- min(0, x, out$tolerance$tol.lower, tol_out_weib$`1-sided.lower`)
-    xmax <- max(0, x, out$tolerance$tol.upper, tol_out_weib$`1-sided.upper`)
-    hist(x, xlim=c(xmin, xmax), freq=FALSE)
-    ## add initial guess pdf
-    curve(dweibull(x, shape, scale), xmin, xmax, add=TRUE,                        col='blue', lty=3)
-    ## add pdf and tolerance limits from stats package
-    curve(dweibull(x, shape=tol_out_weib$shape.1, scale=tol_out_weib$shape.2), xmin, xmax, add=TRUE, cex=9)
-    abline(v=c(tol_out_weib$`1-sided.lower`, tol_out_weib$`1-sided.upper`),                   lty=2)
-    ## add pdf and tolerance limis from MLE
-    curve(dweibull(x, shape=out$params$shape, scale=out$params$scale), xmin, xmax, col='red', add=TRUE)
-    abline(v=c(out$tolerance$tol.lower, out$tolerance$tol.upper),                  col='red', lty=2)
-    ## add legend
-    legend('topleft', 
-           legend = c('initial guess', 'stats package pdf', 'stats package tol', 'MLE PDF', 'MLE tol'),
-           col    = c('blue',          'black',             'black',             'red',     'red'), 
-           lty    = c( 3,               1,                   2,                   1,         1))
-    
+    return(list(parms=params.mle, parms.compare=params.compare))
 }
 
