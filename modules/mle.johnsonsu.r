@@ -126,8 +126,8 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
         ## cdf <- pnorm(z)
         ## plot(z, cdf)
         if (is.data.frame(xcen)) {
-            xcen$F.low  <- pnorm(xcen$x.low)
-            xcen$F.high <- pnorm(xcen$x.high)
+            xcen$F.low  <- ExtDist::pJohnsonSU(xcen$x.low,  gamma, delta, xi, lambda)
+            xcen$F.high <- ExtDist::pJohnsonSU(xcen$x.high, gamma, delta, xi, lambda)
             ## if low CDF is NA, set to 0
             xcen$F.low[is.na(xcen$F.low)]   <- 0
             ## if high CDF is NA, set to 1
@@ -195,41 +195,53 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
 
 mle.johnsonsu.test <- function() {
     source("F:\\Documents\\01_Dave's Stuff\\Programs\\GitHub_home\\R-setup\\setup.r")
-    x <- iris$Sepal.Width
-    plotspace(3,2)
-    xcen <- data.frame(x.low=c(NA, 2, 2.7), x.high=c(0.5,2.5,NA))
-    out.fit1 <- mle.johnsonsu(x, data.censored=NA,   plots=TRUE)
-    out.fit2 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
-    xcen <- data.frame(x.low=c(NA, NA, NA), x.high=c(2.2, 2.3, 2.4))
-    out.fit3 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
-    print(out.fit1$jparms.compare)
-    print(out.fit2$jparms.compare)
-    print(out.fit3$jparms.compare)
-
-    ## little impact seen from many data at low end? 
-    ## makes sense if survival data but not for my purpose
-    xcen <- data.frame(x.low=rep(NA,99), x.high=rep(2.2,99))
-    out.fit1 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
-    print(out.fit1$jparms.compare)
-
-    ## little impact from many data with huge uncertainty in timing
-    xcen <- data.frame(x.low=rep(NA,99), x.high=rep(3.7,99))
-    out.fit2 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
-    print(out.fit2$jparms.compare)
-
-    ## little impact from many data at high end????????
-    xcen <- data.frame(x.low=rep(3.7,99), x.high=rep(NA,99))
-    out.fit3 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
-    print(out.fit3$jparms.compare)
-    ## huge impact if add those data as real data    
-    x <- c(x, xcen[[1]])
-    out.fit4 <- mle.johnsonsu(x, data.censored=NA, plots=TRUE)
-    print(out.fit4$jparms.compare)
-    ## what if add those data with small window?
-    x <- iris$Sepal.Width
-    xcen <- data.frame(x.low=rep(3.7,99), x.high=rep(3.7001,99))
-    out.fit5 <- mle.johnsonsu(x, data.censored=xcen, plots=TRUE)
-    print(out.fit5$jparms.compare)
+    source('setup.r')
     
+    fit.compare <- function(x, xcen, main=NULL) {
+        ## plot histogram with no censored data and fit
+        hist(x, freq=FALSE, border='black', main=main)
+        out.fit0 <- mle.johnsonsu(x, data.censored=NA, plots=FALSE)
+        jparms0 <- out.fit0$jparms
+        curve(ExtDist::dJohnsonSU(x, params = out.fit0$jparms), min(x), max(x), col='black', add=TRUE)
+        ## plot histogram with all data treated as known fit at numeric value
+        x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
+        hist(x.all, freq=FALSE, border='red', add=TRUE)
+        out.fit1 <- mle.johnsonsu(x.all, data.censored=NA, plots=FALSE)
+        jparms1 <- out.fit0$jparms
+        curve(ExtDist::dJohnsonSU(x, params = out.fit1$jparms), min(x), max(x), col='red', add=TRUE)
+        ## plot fit if treat xcen as censored
+        out.fit2 <- mle.johnsonsu(x, data.censored=xcen, plots=FALSE)
+        jparms2 <- out.fit2$jparms
+        curve(ExtDist::dJohnsonSU(x, params = out.fit2$jparms), min(x), max(x), col='blue', type='p', add=TRUE)
+        ## add legend
+        legend('topright', 
+               legend=c('known', 'all',   'censored'),
+               col   =c('black', 'red', 'blue'),
+               lty   =c( 1     ,  1   ,  NA),
+               pch   =c( NA    ,  NA  ,  1))
+    }
+
+    plotspace(2,2)
+    x <- iris$Sepal.Width
+    xnum <- 10
+    x.low  <- NA
+    x.high <- 2.2
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit.compare(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    
+    x.low  <- 3.7
+    x.high <- NA
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit.compare(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    
+    x.low  <- 2.2
+    x.high <- 3.7
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit.compare(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    
+    x.low  <- 2.2
+    x.high <- NA
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit.compare(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
 }
 
