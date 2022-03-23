@@ -1,5 +1,5 @@
-mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', param.control=2,
-                              side.which='upper', sided=1, P=0.99, conf=0.99, alpha=NULL,
+mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.control=2,
+                              side.which='upper', sided=1, conf=0.99, alpha=NULL, P=0.99,
                               plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
     
     ## johnsonsu distribution
@@ -52,7 +52,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
 
     ##-----------------------------------------------------------------------------
     ## Johnson SU parameters
-    out <- mle.johnsonsu(x)
+    out <- mle.johnsonsu(x, xcen, plots=FALSE)
     params <- out$jparms
     gamma  <- params$gamma
     delta  <- params$delta
@@ -78,7 +78,6 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
         ## calculate nll (negative log likelihhod) for distribution
         x       <- data
         xcen    <- data.censored
-        if (!is.na(data.censored)) 
         quant  <- param[[1]]  # replaced gamma with quant as a parameter
         delta  <- param[[2]]
         xi     <- param[[3]]
@@ -91,8 +90,8 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
         z <- gamma + delta * asinh( (x-xi)/lambda )
         pdf <- delta / (lambda*sqrt(2*pi)) / sqrt(1 +((x-xi)/lambda)^2) * exp(-0.5*z^2)
         if (is.data.frame(xcen)) {
-            xcen$F.low  <- pnorm(xcen$x.low)
-            xcen$F.high <- pnorm(xcen$x.high)
+            xcen$F.low  <- ExtDist::pJohnsonSU(xcen$x.low,  gamma, delta, xi, lambda)
+            xcen$F.high <- ExtDist::pJohnsonSU(xcen$x.high, gamma, delta, xi, lambda)
             ## if low CDF is NA, set to 0
             xcen$F.low[is.na(xcen$F.low)]   <- 0
             ## if high CDF is NA, set to 1
@@ -149,7 +148,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
         ##----------------------
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
-        ll.max <- -nll.q(x, quant.param, P, param.control=param.control)
+        ll.max <- -nll.q(x, xcen, quant.param, P, param.control=param.control)
         ll.tol <-  ll.max - qchisq(1 - alpha, 1)/2   # qchisq(1-0.02, 1) = 5.411894
         cat('MLE=', ll.max, '; tolerance limit at MLE=', ll.tol, '\n')
 
@@ -368,7 +367,7 @@ mle.johnsonsu.tol.censored <- function(data, data.censored=NA, param='auto', par
     P <- P.in
 
     ## collect tolerance values in dataframe similar to extol.int for weibull
-    tolerance <- data.frame(sided, P, conf, alpha.chisq=alpha, tol.lower, tol.upper)
+    tolerance <- data.frame(sided, alpha.chisq=alpha, conf, P, tol.lower, tol.upper)
 
     ## print final parameter comparison and tolerance limits
     print(as.data.frame(params.save))
@@ -417,20 +416,20 @@ mle.johnsonsu.tol.test <- function() {
     plotspace(3,2)
     ## lower tolerance limit
     out.lower <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                   side.which='lower', sided=1, P=0.99, conf=0.99, 
+                                   side.which='lower', sided=1, conf=0.99, P=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/99')
     ## using default parameters except for 'plots'
     out.upper <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                   side.which='upper', sided=1, P=0.99, conf=0.99, 
+                                   side.which='upper', sided=1, conf=0.99, P=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
     ## lower and upper 1-sided tolerance limits
     out.both <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                   side.which='both', sided=1, P=0.99, conf=0.99, 
+                                   side.which='both', sided=1, conf=0.99, P=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 99/99')
     ## lower and upper 2-sided tolerance limits
     ## test that 1-sided 99/99 is the same as a 2-sided 98/98
     out.twosided <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                      side.which='both', sided=2, P=0.98, conf=0.98, 
+                                      side.which='both', sided=2, conf=0.98, P=0.98, 
                                       plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/98')
 
     
@@ -438,12 +437,80 @@ mle.johnsonsu.tol.test <- function() {
     plotspace(2,2)
     ## lower and upper 1-sided tolerance limits
     out.both <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                  side.which='both', sided=1, P=0.75, conf=0.99, 
-                                  plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 0.75/99')
+                                  side.which='both', sided=1, conf=0.99, P=0.75, 
+                                  plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 99/75')
     ## lower and upper 2-sided tolerance limits
     out.twosided <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                      side.which='both', sided=2, P=0.5, conf=0.98, 
-                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 0.5/98')
+                                      side.which='both', sided=2, conf=0.98, P=0.5, 
+                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/50')
 
+
+    ##-------------------------------------------------------------------
+    ## TEST OUT CENSORED DATA FUNCTIONALITY
+    ##-------------------------------------------------------------------
+    fit.compare.cen <- function(x, xcen, main=NULL) {
+        ## plot histogram with no censored data and fit
+        hist(x, freq=FALSE, border='black', main=main, xlim=c(2,5.4))
+        out.fit0 <- mle.johnsonsu.tol(x, data.censored=NA, plots=FALSE)
+        jparms0 <- out.fit0$params
+        curve(ExtDist::dJohnsonSU(x, params = jparms0), min(x), max(x), col='black', add=TRUE)
+        abline(v=out.fit0$tolerance$tol.upper, col='black', lty=2)
+        ## plot histogram with all data treated as known fit at numeric value
+        x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
+        hist(x.all, freq=FALSE, border='red', add=TRUE)
+        out.fit1 <- mle.johnsonsu.tol(x.all, data.censored=NA, plots=FALSE)
+        jparms1 <- out.fit1$params
+        curve(ExtDist::dJohnsonSU(x, params = jparms1), min(x), max(x), col='red', add=TRUE)
+        abline(v=out.fit1$tolerance$tol.upper, col='red', lty=2)
+        ## plot fit if treat xcen as censored
+        out.fit2 <- mle.johnsonsu.tol(x, data.censored=xcen, plots=FALSE)
+        jparms2 <- out.fit2$params
+        curve(ExtDist::dJohnsonSU(x, params = jparms2), min(x), max(x), col='blue', type='p', add=TRUE)
+        abline(v=out.fit2$tolerance$tol.upper, col='blue', lty=2, lwd=2)
+        ## add legend
+        legend('topright', 
+               legend=c('known', 'all',   'censored'),
+               col   =c('black', 'red', 'blue'),
+               lty   =c( 1     ,  1   ,  NA),
+               pch   =c( NA    ,  NA  ,  1))
+
+        ## return table of results
+        df0 <- as.data.frame(out.fit0$params)
+        df0$tol.upper <- out.fit0$tolerance$tol.upper
+        df1 <- as.data.frame(out.fit1$params)
+        df1$tol.upper <- out.fit1$tolerance$tol.upper
+        df2 <- as.data.frame(out.fit2$params)
+        df2$tol.upper <- out.fit2$tolerance$tol.upper
+        df  <- rbind(df0, df1, df2)
+        return(df)
+    }
+
+    plotspace(1,1)
+    x <- iris$Sepal.Width
+    xnum <- 10
+    x.low  <- NA
+    x.high <- 2.2
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit1 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    print(fit1)
+    
+    x.low  <- 3.7
+    x.high <- NA
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit2 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    print(fit2)
+    
+    x.low  <- 2.2
+    x.high <- 3.7
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit3 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    print(fit3)
+    
+    x.low  <- 2.2
+    x.high <- NA
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit4 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    print(fit4)
+   
 }
 
