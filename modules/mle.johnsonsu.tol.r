@@ -203,7 +203,7 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
             xmax <- quant.P.alpha.u.guess + 1.1*quant.dif
             xplot <- seq(xmin, xmax, length.out=101)
             yplot <- NA
-            plot(quant.P, ll.max, col='blue', pch=16, cex=2,
+            plot(quant.P.save[k], ll.max, col='blue', pch=16, cex=2,
                  xlab='quantile', ylab='log likelihood',
                  xlim=range(xmin, xmax),
                  ylim=range(ll.max, ll.tol),
