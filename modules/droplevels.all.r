@@ -2,7 +2,9 @@ droplevels.all <- function(df) {
     ## drop all levels from dataframe, df
     df.num <- df
     for (i in 1:ncol(df)) {
-        df.num[,i] <- as.numeric(as.character(df.num[,i]))
+        ## as.numeric will convert a non-numeric character to NA and issue a warning
+        ## supperssWarnings keeps the warning from being printed to screen
+        suppressWarnings( df.num[,i] <- as.numeric(as.character(df.num[,i])) )
     }
     ## df.num
     df.sum <- colSums(df.num)
