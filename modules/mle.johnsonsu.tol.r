@@ -12,15 +12,14 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
     ##              = 'auto' (default) uses ExtDist::eJohnsonSU() for initial guess of parameters,
     ##                will switch to SuppDists::JohnsonFit(x) if that fails, and will switch to
     ##                try using list(gamma=xx, delta=xx, xi=xx, lambda=xx) if that fails
-    ##        side.which = 'upper', 'lower', 'both' where 'both' calculates upper and lower limits
-    ##                     not used if sided = 2
+    ##        side.which = 'upper' or 'lower' (not used if sided = 2)
     ##        sided = 1 (default) means 1-sided tolerance limit
     ##              = 2 means 2-sided tolerance limit
     ##        P     = proportion (or coverage)
-    ##                e.g., if 1-sided with P = 0.99, then will base lower and upper tolerance
-    ##                       limits on the quantiles associated with 1% and 99% coverage
-    ##                e.g., if 2-sided with P = 0.99, then will base lower and upper tolerance limits
-    ##                       limits on the quantiles associated with 0.5% and 99.5% coverage
+    ##              = any value if 1-sided
+    ##                Note: lower 99/99 means  the lower bound on P=0.99
+    ##                      if you really want the lower bound on P=0.01, then specify P=0.1
+    ##              >= 0.5 if 2-sided
     ##        conf  = confidence used to determine chi-square
     ##        alpha = NULL (default) sets alpha = 2*(1-conf)/sided
     ##                e.g., if 1-sided conf = 99%:
@@ -119,14 +118,7 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
     quant.P.save <- NA
     P.in <- P
     if (sided == 1) {
-        if (side.which == 'lower') {
-            P.values <- 1-P
-        } else if (side.which == 'upper') {
-            P.values <- P
-        } else {
-            ## side.which == 'both'
-            P.values <- c(1-P, P)
-        }
+        P.values <- P
     } else {
         ## sided == 2
         P.values <- c((1-P)/2, 1-(1-P)/2)
@@ -299,11 +291,11 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
             }
         }
 
-        ## determine confidence bound (P alread determined whether this was a lower or upper bound)
-        ## as point where the likelihood ratio equals 11.tol
+        ## determine confidence bound as point where the likelihood ratio equals 11.tol
         quant.P.alpha.l <- NA
         quant.P.alpha.u <- NA
-        if (P < 0.5 | side.which == 'lower' | (P == 0.5 & k == 1)) {
+        if (side.which == 'lower' | (P < 0.5 & sided == 2)) {
+            ## find lower tolerance limit
             out.nrl <- newton.raphson(f = ll.fixedq,
                                       xguess = quant.P.alpha.l.guess,
                                       ytarget = ll.tol,
@@ -318,8 +310,8 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
                                       plots=plots.nr)
             quant.P.alpha.l <- out.nrl$root
             if (is.null(quant.P.alpha.l)) { quant.P.alpha.l <- NA }
-        } else if (P > 0.5 | side.which == 'upper' | (P == 0.5 & k == 2)) {
-            ## if (P > 0.5) browser()
+        } else {
+            ## find upper tolerance limit
             out.nru <- newton.raphson(f = ll.fixedq,
                                       xguess = quant.P.alpha.u.guess,
                                       ytarget = ll.tol,
@@ -352,14 +344,15 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
     ## collect lower and upper tolerance limits
     tol.approx <- range(tol.approx, na.rm=TRUE)
     tol.limits <- range(tol.limits, na.rm=TRUE)
-    if (side.which == 'both') {
+    if (sided == 2) {
         tol.lower <- tol.limits[1]
         tol.upper <- tol.limits[2]
     } else if (side.which == 'lower') {
+        ## lower, 1-sided
         tol.lower <- tol.limits[1]
         tol.upper <- NA
     } else {
-        # side.which == 'upper'
+        ## upper, 1-sided
         tol.lower <- NA
         tol.upper <- tol.limits[2]
     }
@@ -413,19 +406,15 @@ mle.johnsonsu.tol.test <- function() {
     ##-------------------------------------------------------------------
     ## consider the following dataset
     x <- iris$Sepal.Width
-    plotspace(3,2)
+    plotspace(2,2)
     ## lower tolerance limit
     out.lower <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                   side.which='lower', sided=1, conf=0.99, P=0.99, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/99')
+                                   side.which='lower', sided=1, conf=0.99, P=0.01, 
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/1')
     ## using default parameters except for 'plots'
     out.upper <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
                                    side.which='upper', sided=1, conf=0.99, P=0.99, 
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
-    ## lower and upper 1-sided tolerance limits
-    out.both <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                   side.which='both', sided=1, conf=0.99, P=0.99, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 99/99')
     ## lower and upper 2-sided tolerance limits
     ## test that 1-sided 99/99 is the same as a 2-sided 98/98
     out.twosided <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
@@ -436,9 +425,12 @@ mle.johnsonsu.tol.test <- function() {
     ## test that upper and lower 1-sided 75/99 are the same as a 2-sided 50/98  
     plotspace(2,2)
     ## lower and upper 1-sided tolerance limits
-    out.both <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
-                                  side.which='both', sided=1, conf=0.99, P=0.75, 
-                                  plots=TRUE, plots.nr=FALSE, debug=FALSE, main='both, 1-sided 99/75')
+    out.lower <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
+                                   side.which='lower', sided=1, conf=0.99, P=0.25, 
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/25')
+    out.upper <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
+                                   side.which='upper', sided=1, conf=0.99, P=0.75, 
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/75')
     ## lower and upper 2-sided tolerance limits
     out.twosided <- mle.johnsonsu.tol(data=x, param='auto', param.control=2,
                                       side.which='both', sided=2, conf=0.98, P=0.5, 
@@ -485,27 +477,59 @@ mle.johnsonsu.tol.test <- function() {
         return(df)
     }
 
-    plotspace(1,1)
     x <- iris$Sepal.Width
+    plotspace(4,2)
+    ## left censored data should reduce the upper 99/99
+    ## following shows that did not happen (99/99 for fit with xcen is >> that for fit to x)
     xnum <- 10
     x.low  <- NA
+    x.high <- 2.0
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit1a <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    print(fit1)
+    ## it may be that the fit was bad because the following does pull the 99/99 in as I would expect
+    ## out.qq <- qqplot_nwj(x, type='j', mainadder = 'x only')
+    ## x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
+    ## out.qq <- qqplot_nwj(x.all, type='j', mainadder='all')
+    ## out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='censored')
+    x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
+    out.qq <- qqplot_nwj(x.all, type='j', mainadder='all')
+    
+    x.high <- 2.14
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit1b <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
+    out.qq <- qqplot_nwj(x.all, type='j', mainadder='all')
+    
+    x.high <- 2.15
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit1c <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='censored')
+    
     x.high <- 2.2
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit1 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-    print(fit1)
-    
+    fit1d <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='censored')
+
+    plotspace(1,1)
+    ## data that are high should push out the upper 99/99
+    ## following shows that is true (99/99 for fit with xcen is >> that for fit to x)
     x.low  <- 3.7
     x.high <- NA
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit2 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit2)
     
+    ## data that are unknown over the middle range of data should strengthen confidence in 99/99
+    ## following shows that is true (99/99 for fit with xcen is < that for fit to x)
     x.low  <- 2.2
     x.high <- 3.7
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit3 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit3)
     
+    ## data that are unknown between almost the lowest value and Inf should have no real impact
+    ## following shows that is true (99/99 for fit with xcen is about the same as that for fit to x)
     x.low  <- 2.2
     x.high <- NA
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
