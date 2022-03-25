@@ -1,6 +1,12 @@
-qqplot_nwj <- function(x, type='nwj', wfit='exttol', jfit='mle', mainadder=NULL) {
+qqplot_nwj <- function(x, xcen=NA, type='nwj', wfit='exttol', jfit='mle', mainadder=NULL) {
     ## creates side by side, normal, Weibull and/or Johnson qq plots
 
+    ## x    = data
+    ## xcen = censored data in a dataframe
+    ##        current limitations: Johnson SU only
+    ##                             left or right censored data (i.e., (NA,2.2) or (3.3, NA))
+    ##                             does not handle interval data
+    
     ## make room for 1, 2 or 3 plots depending on length of string 'type'
     nplots <- nchar(type)
     if (nplots != 1) par(mfrow=c(1, nplots))
@@ -32,11 +38,23 @@ qqplot_nwj <- function(x, type='nwj', wfit='exttol', jfit='mle', mainadder=NULL)
 
     if (grepl('j', type)) {        
         ## obtain Johnson parameter estimates
-        x <- sort(x, na.last=NA)
         jparms <- jfit
         if (jfit[1] == 'mle') {
-            out <- mle.johnsonsu(x)
+            out <- mle.johnsonsu(x, xcen)
             jparms <- out$jparms
+        }
+        ## sort data and add censored data, if needed, to prepare for QQ plot
+        ## na.last = NA removes missing values
+        ##         = TRUE puts missing values last
+        ##         = FALSE puts missing values first
+        x <- sort(x, na.last=NA)
+        if (is.data.frame(xcen)) {
+            ## count number of left censored values (i.e., those with x.low=NA)
+            left  <- sum(is.na(xcen$x.low), na.rm=TRUE)
+            ## count number of right censored values (i.e., those with x.low=NA)
+            right <- sum(is.na(xcen$x.high), na.rm=TRUE)
+            ## add NA values to x
+            x <- c(rep(NA, left), x, rep(NA, right))
         }
         main <- paste('Johnson QQ Plot', mainadder, sep=" ")
         
