@@ -1,4 +1,4 @@
-hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.control=2, breaks=NULL,
+hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', param.control=2, breaks=NULL,
                      tolerance=TRUE, side='upper', sided=1, P=0.99, conf=0.99, alpha=NULL, alpha.chisq=NULL,
                      main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
     ## plot histogram and normal, Weibull, and Johnson distributions
@@ -112,7 +112,7 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', lambda.contro
         if (jfit == 'mle' | isTRUE(tolerance)) {
             jparms   <- fit.j$jparms
             if (isTRUE(tolerance)) {
-                tol_out_john <- mle.johnsonsu.tol(x, param=jparms,lambda.control=lambda.control,
+                tol_out_john <- mle.johnsonsu.tol(x, param=jparms,param.control=param.control,
                                                   side.which=side, sided=sided, alpha=alpha.chisq, P=P, 
                                                   plots=FALSE, debug=FALSE)
                 tolerance_limit_john.l <- tol_out_john$tolerance$tol.lower
