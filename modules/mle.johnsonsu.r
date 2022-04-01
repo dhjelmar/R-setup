@@ -204,10 +204,11 @@ mle.johnsonsu.test <- function() {
         jparms0 <- out.fit0$jparms
         curve(ExtDist::dJohnsonSU(x, params = out.fit0$jparms), min(x), max(x), col='black', add=TRUE)
         ## plot histogram with all data treated as known fit at numeric value
-        x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
+        xcen.avg <- rowMeans(xcen, na.rm=TRUE) # use the average for interval data
+        x.all <- c(x, xcen.avg)
         hist(x.all, freq=FALSE, border='red', add=TRUE)
         out.fit1 <- mle.johnsonsu(x.all, data.censored=NA, plots=FALSE)
-        jparms1 <- out.fit0$jparms
+        jparms1 <- out.fit1$jparms
         curve(ExtDist::dJohnsonSU(x, params = out.fit1$jparms), min(x), max(x), col='red', add=TRUE)
         ## plot fit if treat xcen as censored
         out.fit2 <- mle.johnsonsu(x, data.censored=xcen, plots=FALSE)
