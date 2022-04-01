@@ -448,7 +448,8 @@ mle.johnsonsu.tol.test <- function() {
         curve(ExtDist::dJohnsonSU(x, params = jparms0), min(x), max(x), col='black', add=TRUE)
         abline(v=out.fit0$tolerance$tol.upper, col='black', lty=2)
         ## plot histogram with all data treated as known fit at numeric value
-        x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
+        xcen.avg <- rowMeans(xcen, na.rm=TRUE) # use the average for interval data
+        x.all <- c(x, xcen.avg)
         hist(x.all, freq=FALSE, border='red', add=TRUE)
         out.fit1 <- mle.johnsonsu.tol(x.all, data.censored=NA, plots=FALSE)
         jparms1 <- out.fit1$params
