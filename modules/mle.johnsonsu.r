@@ -14,6 +14,10 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
     ## based on approach found here:
     ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
     ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
+
+    ## alternately, could probably use bbmle::mle2() to determine coefficients
+    ## an example is here: https://stackoverflow.com/questions/45208176/the-weibull-distribution-in-r-extdist
+
     x <- data
   
     if (is.data.frame(data.censored[1])) {
@@ -25,23 +29,6 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
     
     ## if (isTRUE(plots)) par(mfrow=c(1,2))
     out <- NULL
-
-    ##-----------------------------------------------------------------------------
-    ## initial guesses for Johnson parameters
-    ## if (param[1] == 'SuppDists') {
-    ##     ## let R figure out which Johnson distribution fits best
-    ##     jparms <- SuppDists::JohnsonFit(x)
-    ##     if ('type' != 'SU') {
-    ##         cat('\n')
-    ##         cat('################################################\n')
-    ##         cat('                  WARNING:\n')
-    ##         cat('SuppDists::JohnsonFit() did not return type="SU"\n')
-    ##         cat('Try param="ExtDist" or user defined list.\n')
-    ##         print(data.frame(t(unlist(jparms))))
-    ##         cat('################################################\n')
-    ##         cat('\n')
-    ##     }
-    ## } else if (param[1] == 'ExtDist') {
 
     ##-----------------------------------------------------------------------------
     ## let R figure out which Johnson distribution fits best
