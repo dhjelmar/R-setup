@@ -5,6 +5,8 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
     ## LR (Likelihood Ratio) appraoch to find tolerance limit
 
     ## input: data  = vector of data
+    ##        data.censored = censored data in a dataframe
+    ##                        (1st column = low value or NA; 2nd column = high value or NA)
     ##        param = initial guess for fit parameters for: gamma, delta, xi, and lambda
     ##                if type is also provided, it will not be used
     ##              = 'auto' (default) uses ExtDist::eJohnsonSU() for initial guess of parameters,
@@ -121,6 +123,7 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
             xcen$F.high[is.na(xcen$F.high)] <- 1
             ## calculate probability for the censored interval
             xcen$probability <- xcen$F.high - xcen$F.low
+            xcen$probability <- max(0, xcen$probability) # do not allow probability < 0
             nll     <- -sum(log(pdf), log(xcen$probability))
         } else {
             nll     <- -sum(log(pdf))

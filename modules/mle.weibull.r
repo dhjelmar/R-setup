@@ -92,6 +92,7 @@ mle.weibull <- function(data, data.censored=NA, param='auto', param.control=2, p
             xcen$F.high[is.na(xcen$F.high)] <- 1
             ## calculate probability for the censored interval
             xcen$probability <- xcen$F.high - xcen$F.low
+            xcen$probability <- max(0, xcen$probability) # do not allow probability < 0
             nll     <- -sum(log(pdf), log(xcen$probability))
         } else {
             nll     <- -sum(log(pdf))

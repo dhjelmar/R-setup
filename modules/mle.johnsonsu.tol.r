@@ -97,6 +97,7 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
             xcen$F.high[is.na(xcen$F.high)] <- 1
             ## calculate probability for the censored interval
             xcen$probability <- xcen$F.high - xcen$F.low
+            xcen$probability <- max(0, xcen$probability) # do not allow probability < 0
             nll     <- -sum(log(pdf), log(xcen$probability))
         } else {
             nll     <- -sum(log(pdf))
@@ -442,7 +443,7 @@ mle.johnsonsu.tol.test <- function() {
     ##-------------------------------------------------------------------
     fit.compare.cen <- function(x, xcen, main=NULL) {
         ## plot histogram with no censored data and fit
-        hist(x, freq=FALSE, border='black', main=main, xlim=c(2,5.4))
+        hist(x, freq=FALSE, border='black', main=main, xlim=c(2,5), ylim=c(0,1))
         out.fit0 <- mle.johnsonsu.tol(x, data.censored=NA, plots=FALSE)
         jparms0 <- out.fit0$params
         curve(ExtDist::dJohnsonSU(x, params = jparms0), min(x), max(x), col='black', add=TRUE)
@@ -478,39 +479,20 @@ mle.johnsonsu.tol.test <- function() {
         return(df)
     }
 
-    x <- iris$Sepal.Width
-    plotspace(4,2)
+    ## create data set
+    set.seed(1)
+    jparms <- list(gamma=-3.3, delta=5.3, xi=1.8, lambda=1.9, type='SU')
+    x <- ExtDist::rJohnsonSU(1000, param=jparms)
+    plotspace(1,1)
+    
     ## left censored data should reduce the upper 99/99
-    ## following shows that did not happen (99/99 for fit with xcen is >> that for fit to x)
-    xnum <- 10
+    ## my expectation did not happen
+    xnum <- 50
     x.low  <- NA
     x.high <- 2.0
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit1a <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-    print(fit1)
-    ## it may be that the fit was bad because the following does pull the 99/99 in as I would expect
-    ## out.qq <- qqplot_nwj(x, type='j', mainadder = 'x only')
-    ## x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
-    ## out.qq <- qqplot_nwj(x.all, type='j', mainadder='all')
-    ## out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='censored')
-    x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
-    out.qq <- qqplot_nwj(x.all, type='j', mainadder='all')
-    
-    x.high <- 2.14
-    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit1b <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-    x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
-    out.qq <- qqplot_nwj(x.all, type='j', mainadder='all')
-    
-    x.high <- 2.15
-    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit1c <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-    out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='censored')
-    
-    x.high <- 2.2
-    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit1d <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-    out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='censored')
+    print(fit1a)
 
     plotspace(1,1)
     ## data that are high should push out the upper 99/99
