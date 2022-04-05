@@ -1,11 +1,7 @@
-qqplot_nwj <- function(x, xcen=NA, type='nwj', wfit='exttol', jfit='mle', mainadder=NULL) {
-    ## creates side by side, normal, Weibull and/or Johnson qq plots
+qqplot_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NULL) {
+    ## creates normal, Weibull and/or Johnson qq plots
 
-    ## x    = data
-    ## xcen = censored data in a dataframe
-    ##        current limitations: Johnson SU only
-    ##                             left or right censored data (i.e., (NA,2.2) or (3.3, NA))
-    ##                             does not handle interval data
+    ## input: x    = vector of data
     
     ## make room for 1, 2 or 3 plots depending on length of string 'type'
     nplots <- nchar(type)
@@ -20,17 +16,36 @@ qqplot_nwj <- function(x, xcen=NA, type='nwj', wfit='exttol', jfit='mle', mainad
         nparms <- qualityTools::qqPlot(x, "normal",  col='black', main=main)
     }
     
-    if (grepl('w', type) & min(x)>0) {        
-        ## make Weibull QQ plot
+    if (grepl('w', type) & min(x)>0) {
+        ## obtain Weibull parameters
+        wparms <- wfit
+        if (wfit[1] == 'mle') {
+            out <- mle.weibull(x)
+            wparms <- out$parms
+        } else if (wfit[1] == 'exttol') {
+            ## tolerance package seems more robust than qualityTools
+            ##     wparms <- qualityTools::qqPlot(x, "Weibull", col='black', main=main)
+            ## also, tolerance packages is used in hist_nwj so more consistent
+            out     <- tolerance::exttol.int(x, alpha=0.05, P=0.95, side=1, dist='Weibull')
+            shape   <- out$'shape.1'
+            scale   <- out$'shape.2'
+            wparms  <- list(shape=shape, scale=scale)
+        }
+        
+        ## make QQ plot
         main <- paste('Weibull QQ Plot', mainadder, sep=" ")
-        ## tolerance package seems more robust than qualityTools
-        ##     wparms <- qualityTools::qqPlot(x, "Weibull", col='black', main=main)
-        ## also, tolerance packages is used in hist_nwj so more consistent
-        out     <- tolerance::exttol.int(x, alpha=0.05, P=0.95, side=1, dist='Weibull')
-        shape   <- out$'shape.1'
-        scale   <- out$'shape.2'
-        wparms  <- list(shape=shape, scale=scale)
-        qualityTools::qqPlot(x, "Weibull", col='black', main=main, start=wparms)
+        ## qualityTools has nice confidence bounds on QQ plot but no ability for censored data
+        ## qualityTools::qqPlot(x, "Weibull", col='black', main=main, start=wparms)
+        ## sort data and add censored data, if needed, to prepare for QQ plot
+        ## na.last = NA removes missing values
+        ##         = TRUE puts missing values last
+        ##         = FALSE puts missing values first
+        x <- sort(x, na.last=NA)
+        xtheoretical <- stats::qweibull(ppoints(length(x)), shape=wparms$shape, scale=wparms$scale)
+        plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value', main=main)
+        abline(0,1, col='red')
+
+        
     } else if (grepl('w', type)) {
         ## some values are negative or zero so Weibull is not appropriate
         cat('Weibull plot not made because not appropriate; some values not > 0\n')
@@ -40,25 +55,17 @@ qqplot_nwj <- function(x, xcen=NA, type='nwj', wfit='exttol', jfit='mle', mainad
         ## obtain Johnson parameter estimates
         jparms <- jfit
         if (jfit[1] == 'mle') {
-            out <- mle.johnsonsu(x, xcen)
+            out <- mle.johnsonsu(x)
             jparms <- out$jparms
         }
+
+        ## make QQ plot
+        main <- paste('Johnson QQ Plot', mainadder, sep=" ")
         ## sort data and add censored data, if needed, to prepare for QQ plot
         ## na.last = NA removes missing values
         ##         = TRUE puts missing values last
         ##         = FALSE puts missing values first
         x <- sort(x, na.last=NA)
-        if (is.data.frame(xcen)) {
-            ## count number of left censored values (i.e., those with x.low=NA)
-            left  <- sum(is.na(xcen$x.low), na.rm=TRUE)
-            ## count number of right censored values (i.e., those with x.low=NA)
-            right <- sum(is.na(xcen$x.high), na.rm=TRUE)
-            ## add NA values to x
-            x <- c(rep(NA, left), x, rep(NA, right))
-        }
-        main <- paste('Johnson QQ Plot', mainadder, sep=" ")
-        
-        ## make Johnson QQ plot
         xtheoretical <- SuppDists::qJohnson(ppoints(length(x)), jparms)
         plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value', main=main)
         abline(0,1, col='red')
