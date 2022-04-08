@@ -47,7 +47,7 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
         param <- list(shape=shape, scale=scale)
         params.compare <- as.data.frame(param)
         params.compare$description <- 'tolerance::exttol.int(x)'
-        if (is.na(parms$shape) | is.na(parms$scale)) {
+        if (is.na(param$shape) | is.na(param$scale)) {
             ## exttol failed to converge 
             param <- list(shape = 1,
                           scale = 1)
