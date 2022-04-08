@@ -1,14 +1,10 @@
-hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', param.control=2, breaks=NULL,
-                     tolerance=TRUE, side='upper', sided=1, P=0.99, conf=0.99, alpha=NULL, alpha.chisq=NULL,
+hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, breaks=NULL,
+                     tolerance=TRUE, side='upper', sided=1, P=0.99, conf=0.99,
                      main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
     ## plot histogram and normal, Weibull, and Johnson distributions
     ## adds lines for upper tolerance limits for given alpha and proportion
     ## P = coverage proportion (tolerance interval only)
     ## conf = confidence used for tolerance limit
-    ## alpha = NULL (default) sets = (1-conf)/sided for non-mle based tolerance limit
-    ##       = # overrides the above and uses the specified alpha
-    ## alpha.chisq = NULL (default) sets = 2*(1-conf)/sided for tolerance limit based on LR (likelihood ratio)
-    ##       = # overrides the above and uses the specified alpha.chisq
     ## breaks = number of bins used in the histogram (default auto determines number)
     ## wfit  = 'auto' uses tolerance::exttol.int for initial guess at shape and scale
     ##       = list of user specified parameters for initial guess
@@ -31,21 +27,8 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', param.control
     
     proportion = P
     
-    if (is.null(alpha)) {
-        ## set alpha level based on desired confidence
-        alpha <- (1-conf)/sided
-    } else {
-        ## calculate confidence limit from alpha used in chi-square
-        conf <- 1 - alpha * sided/2
-    }
-    
-    if (is.null(alpha.chisq)) {
-        ## set alpha level based on desired confidence
-        alpha.chisq <- 2*(1-conf)/sided
-    } else {
-        ## calculate confidence limit from alpha used in chi-square
-        conf <- 1 - alpha.chisq * sided/2   # note there is a potential for this to overwrite the prior conf
-    }
+    ## set effective alpha level for use in standard R packages based on desired confidence and whether 1 or 2 sided
+    alpha <- (1-conf)/sided
 
     ## name of variable passed in
     xname <- deparse(substitute(x))
@@ -89,15 +72,26 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', param.control
             shape <- NA
             scale <- NA
         } else {
-            if (wfit == 'exttol.int') {
+            if (wfit == 'mle') {
+                tol_out_weib <- mle.weibull.tol(x, side.which=side, sided=sided, conf=conf, P=P)
+                shape <- tol_out_weib$params$shape
+                scale <- tol_out_weib$params$scale
+                tolerance_limit_weib.l <- tol_out_weib$tolerance$tol.lower
+                tolerance_limit_weib.u <- tol_out_weib$tolerance$tol.upper
+            } else if (wfit == 'exttol.int') {
                 tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=proportion,
                                                        side=sided, dist="Weibull")
                 shape   <- tol_out_weib$'shape.1'
                 scale   <- tol_out_weib$'shape.2'
                 tolerance_limit_weib.l <- tol_out_weib[[5]]
                 tolerance_limit_weib.u <- tol_out_weib[[6]]
+            } else if (is.numeric(wfit[1])) {
+                ## user supplied parameters
+                shape <- wfit[1]
+                scale <- wfit[2]
+                tol_out_weib <- NA
             } else {
-                ## other options not programmed yet
+                ## no other method programmed
                 shape <- NA
                 scale <- NA
                 tol_out_weib <- NA
@@ -113,7 +107,7 @@ hist_nwj <- function(x, type='nwj', wfit='exttol.int', jfit='mle', param.control
             jparms   <- fit.j$jparms
             if (isTRUE(tolerance)) {
                 tol_out_john <- mle.johnsonsu.tol(x, param=jparms,param.control=param.control,
-                                                  side.which=side, sided=sided, alpha=alpha.chisq, P=P, 
+                                                  side.which=side, sided=sided, conf=conf, P=P, 
                                                   plots=FALSE, debug=FALSE)
                 tolerance_limit_john.l <- tol_out_john$tolerance$tol.lower
                 tolerance_limit_john.u <- tol_out_john$tolerance$tol.upper
