@@ -1,10 +1,12 @@
-mle.weibull <- function(data, data.censored=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
+mle.weibull <- function(x=NA, xcen=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
     
     ## weibull distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
     ## LR (Likelihood Ratio) appraoch to find tolerance limit
 
-    ## input: data  = vector of data
+    ## input: x     = vector of known data
+    ##        xcen  = dataframe of censored data
+    ##                (1st column = low value or NA; 2nd column = high value or NA)
     ##        param = initial guess for fit parameters for: shape and scale
     ##                if type is also provided, it will not be used
     ##              = 'auto' (default) uses tolerance::exttol.int() for initial guess of parameters
@@ -13,7 +15,6 @@ mle.weibull <- function(data, data.censored=NA, param='auto', param.control=2, p
     ## based on approach found here:
     ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
     ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
-    x <- data
     scale <- NA
     shape <- NA
 
@@ -25,9 +26,10 @@ mle.weibull <- function(data, data.censored=NA, param='auto', param.control=2, p
         return(list(scale=scale, shape=shape))
     }
   
-    if (is.data.frame(data.censored[1])) {
-        ## censored data also provided
-        xcen <- data.frame(x.low = data.censored[[1]], x.high = data.censored[[2]])
+    if (is.data.frame(xcen[1])) {
+        ## censored data also provided (only reason for following is if
+        ## x.low and x.high were not the names of the two columns of data)
+        xcen <- data.frame(x.low = xcen[[1]], x.high = xcen[[2]])
     } else {
         xcen <- NA
     }
@@ -36,26 +38,28 @@ mle.weibull <- function(data, data.censored=NA, param='auto', param.control=2, p
     out <- NULL
 
     ##-----------------------------------------------------------------------------
-    ## let R figure out which Johnson distribution fits best
-    tol_out_weib <- tolerance::exttol.int(x)
-    ## params.compare <- as.data.frame(t(unlist(parms.extol)))
-    shape   <- tol_out_weib$'shape.1'
-    scale   <- tol_out_weib$'shape.2'
-    param <- list(shape=shape, scale=scale)
-    params.compare <- as.data.frame(param)
-    params.compare$description <- 'tolerance::exttol.int(x)'
-
-    ##-----------------------------------------------------------------------------
     ## set initial guess for MLE fit
     if (param[1] == 'auto') {
+        ## initial parameters not specified, so let R figure guess
+        tol_out_weib <- tolerance::exttol.int(x)
+        shape   <- tol_out_weib$'shape.1'
+        scale   <- tol_out_weib$'shape.2'
+        param <- list(shape=shape, scale=scale)
+        params.compare <- as.data.frame(param)
+        params.compare$description <- 'tolerance::exttol.int(x)'
         if (is.na(parms$shape) | is.na(parms$scale)) {
             ## exttol failed to converge 
             param <- list(shape = 1,
                           scale = 1)
         }
+    } else {
+        ## use provided initial parameters
+        params.compare <- as.data.frame(param)
+        params.compare$description <- 'user provided parameters'
     }
+    
     temp <- as.data.frame(t(unlist(param)))
-    temp$description <- 'Initial guess for MLE'
+    temp$description <- 'initial guess for MLE'
     params.compare <- fastmerge(params.compare, temp)
     
     ##-----------------------------------------------------------------------------
@@ -92,7 +96,6 @@ mle.weibull <- function(data, data.censored=NA, param='auto', param.control=2, p
             xcen$F.high[is.na(xcen$F.high)] <- 1
             ## calculate probability for the censored interval
             xcen$probability <- xcen$F.high - xcen$F.low
-            xcen$probability <- max(0, xcen$probability) # do not allow probability < 0
             nll     <- -sum(log(pdf), log(xcen$probability))
         } else {
             nll     <- -sum(log(pdf))

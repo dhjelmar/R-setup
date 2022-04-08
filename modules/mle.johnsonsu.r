@@ -1,12 +1,12 @@
-mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
+mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
     ## LR (Likelihood Ratio) appraoch to find tolerance limit
 
-    ## input: data  = vector of data
-    ##        data.censored = censored data in a dataframe
-    ##                        (1st column = low value or NA; 2nd column = high value or NA)
+    ## input: x     = vector of known data
+    ##        xcen  = dataframe of censored data
+    ##                (1st column = low value or NA; 2nd column = high value or NA)
     ##        param = initial guess for fit parameters for: gamma, delta, xi, and lambda
     ##                if type is also provided, it will not be used
     ##              = 'auto' (default) uses ExtDist::eJohnsonSU() for initial guess of parameters,
@@ -20,11 +20,10 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
     ## alternately, could probably use bbmle::mle2() to determine coefficients
     ## an example is here: https://stackoverflow.com/questions/45208176/the-weibull-distribution-in-r-extdist
 
-    x <- data
-  
-    if (is.data.frame(data.censored[1])) {
-        ## censored data also provided
-        xcen <- data.frame(x.low = data.censored[[1]], x.high = data.censored[[2]])
+    if (is.data.frame(xcen[1])) {
+        ## censored data also provided (only reason for following is if
+        ## x.low and x.high were not the names of the two columns of data)
+        xcen <- data.frame(x.low = xcen[[1]], x.high = xcen[[2]])
     } else {
         xcen <- NA
     }
@@ -58,10 +57,11 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
         ## force the Johnson SU distribution
         jparms <- jparms.ExtDist
 
-        if (jparms$gamma == -0.5 & jparms$delta == 2.0 & jparms$xi == -0.5 & jparms$lambda == 2.0) {
+        if (is.na(jparms$gamma) |
+            (jparms$gamma == -0.5 & jparms$delta == 2.0 & jparms$xi == -0.5 & jparms$lambda == 2.0)) {
             ## ExtDist failed to converge so try SuppDists
             jparms <- jparms.SuppDists
-            if (jparms$type != 'SU') {
+            if (is.na(jparms$gamma) | jparms$type != 'SU') {
                 ## SuppDists::JohnsonFit(x) failed to converge or did not return type=SU
                 ## so arbitrarily set jparms to something as a starting point
                 jparms <- list(gamma   = 1,
@@ -123,7 +123,6 @@ mle.johnsonsu <- function(data, data.censored=NA, param='auto', param.control=2,
             xcen$F.high[is.na(xcen$F.high)] <- 1
             ## calculate probability for the censored interval
             xcen$probability <- xcen$F.high - xcen$F.low
-            xcen$probability <- max(0, xcen$probability) # do not allow probability < 0
             nll     <- -sum(log(pdf), log(xcen$probability))
         } else {
             nll     <- -sum(log(pdf))

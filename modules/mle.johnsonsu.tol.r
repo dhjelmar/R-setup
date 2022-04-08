@@ -1,4 +1,4 @@
-mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.control=2,
+mle.johnsonsu.tol <- function(x=NA, xcen=NA, param='auto', param.control=2,
                               side.which='upper', sided=1, conf=0.99, alpha=NULL, P=0.99,
                               plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
     
@@ -6,7 +6,9 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
     ## LR (Likelihood Ratio) appraoch to find tolerance limit
 
-    ## input: data  = vector of data
+    ## input: x     = vector of known data
+    ##        xcen  = dataframe of censored data
+    ##                (1st column = low value or NA; 2nd column = high value or NA)
     ##        param = initial guess for fit parameters for: gamma, delta, xi, and lambda
     ##                if type is also provided, it will not be used
     ##              = 'auto' (default) uses ExtDist::eJohnsonSU() for initial guess of parameters,
@@ -15,11 +17,6 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
     ##        side.which = 'upper' or 'lower' (not used if sided = 2)
     ##        sided = 1 (default) means 1-sided tolerance limit
     ##              = 2 means 2-sided tolerance limit
-    ##        P     = proportion (or coverage)
-    ##              = any value if 1-sided
-    ##                Note: lower 99/99 means  the lower bound on P=0.99
-    ##                      if you really want the lower bound on P=0.01, then specify P=0.1
-    ##              >= 0.5 if 2-sided
     ##        conf  = confidence used to determine chi-square
     ##        alpha = NULL (default) sets alpha = 2*(1-conf)/sided
     ##                e.g., if 1-sided conf = 99%:
@@ -28,12 +25,16 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
     ##                                     = 2-sided 98% confidence limit
     ##                                     = 1-sided 99% confidence limit <- which is needed
     ##              = # uses input value to overwrite value based on conf
+    ##        P     = proportion (or coverage)
+    ##              = any value if 1-sided
+    ##                Note: lower 99/99 means  the lower bound on P=0.99
+    ##                      if you really want the lower bound on P=0.01, then specify P=0.1
+    ##              >= 0.5 if 2-sided
     
-    x <- data
-    
-    if (is.data.frame(data.censored[1])) {
-        ## censored data also provided
-        xcen <- data.frame(x.low = data.censored[[1]], x.high = data.censored[[2]])
+    if (is.data.frame(xcen[1])) {
+        ## censored data also provided (only reason for following is if
+        ## x.low and x.high were not the names of the two columns of data)
+        xcen <- data.frame(x.low = xcen[[1]], x.high = xcen[[2]])
     } else {
         xcen <- NA
     }
@@ -97,7 +98,6 @@ mle.johnsonsu.tol <- function(data, data.censored=NA, param='auto', param.contro
             xcen$F.high[is.na(xcen$F.high)] <- 1
             ## calculate probability for the censored interval
             xcen$probability <- xcen$F.high - xcen$F.low
-            xcen$probability <- max(0, xcen$probability) # do not allow probability < 0
             nll     <- -sum(log(pdf), log(xcen$probability))
         } else {
             nll     <- -sum(log(pdf))
