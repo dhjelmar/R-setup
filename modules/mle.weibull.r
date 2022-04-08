@@ -1,4 +1,4 @@
-mle.weibull <- function(x=NA, xcen=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
+mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
     
     ## weibull distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters

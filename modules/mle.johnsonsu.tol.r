@@ -1,4 +1,4 @@
-mle.johnsonsu.tol <- function(x=NA, xcen=NA, param='auto', param.control=2,
+mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
                               side.which='upper', sided=1, conf=0.99, alpha=NULL, P=0.99,
                               plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
     

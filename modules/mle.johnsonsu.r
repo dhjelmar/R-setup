@@ -1,4 +1,4 @@
-mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
+mle.johnsonsu <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
