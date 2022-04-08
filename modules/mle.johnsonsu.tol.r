@@ -1,5 +1,5 @@
 mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
-                              side.which='upper', sided=1, conf=0.99, alpha=NULL, P=0.99,
+                              side.which='upper', sided=1, P=0.99, conf=0.99, alpha.eff=NULL,
                               plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
     
     ## johnsonsu distribution
@@ -18,10 +18,12 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
     ##        sided = 1 (default) means 1-sided tolerance limit
     ##              = 2 means 2-sided tolerance limit
     ##        conf  = confidence used to determine chi-square
-    ##        alpha = NULL (default) sets alpha = 2*(1-conf)/sided
-    ##                e.g., if 1-sided conf = 99%:
-    ##                          alpha = 2(1-0.99)/1 = 0.02
-    ##                          chi-square = qchisq(1-alpha,1) = 5.411894
+    ##        alpha.eff = NULL (default) sets effective alpha, alpha.eff = 2*(1-conf)/sided, for use with qchisq();
+    ##                    Staticticians define alpha as 1 - confidence, but functions and tables require
+    ##                    use of an effective alpha that may be different.
+    ##                    e.g., if 1-sided conf = 99%:
+    ##                          alpha.eff = 2(1-0.99)/1 = 0.02
+    ##                          chi-square = qchisq(1-alpha.eff,1) = 5.411894
     ##                                     = 2-sided 98% confidence limit
     ##                                     = 1-sided 99% confidence limit <- which is needed
     ##              = # uses input value to overwrite value based on conf
@@ -39,12 +41,12 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
         xcen <- NA
     }
 
-    if (is.null(alpha)) {
-        ## set alpha level for chi-square for use in confidence limit calculation
-        alpha <- 2*(1-conf)/sided
+    if (is.null(alpha.eff)) {
+        ## set alpha.eff level for chi-square for use in confidence limit calculation
+        alpha.eff <- 2*(1-conf)/sided
     } else {
-        ## calculate confidence limit from alpha used in chi-square
-        conf <- 1 - alpha * sided/2
+        ## calculate confidence limit from alpha.eff used in chi-square
+        conf <- 1 - alpha.eff * sided/2
     }
     
     ## if (isTRUE(plots) & sided == 2) par(mfrow=c(1,2))
@@ -110,7 +112,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
     }
     
     ##-----------------------------------------------------------------------------
-    ## find confidence limit at level alpha for requested coverage, P
+    ## find confidence limit at level alpha.eff for requested coverage, P
     tol.limits <- NA
     tol.approx <- NA
     params.q.save <- NA
@@ -142,7 +144,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
         ll.max <- -nll.q(x, xcen, quant.param, P, param.control=param.control)
-        ll.tol <-  ll.max - qchisq(1 - alpha, 1)/2   # qchisq(1-0.02, 1) = 5.411894
+        ll.tol <-  ll.max - qchisq(1 - alpha.eff, 1)/2   # qchisq(1-0.02, 1) = 5.411894
         cat('MLE=', ll.max, '; tolerance limit at MLE=', ll.tol, '\n')
 
         ##----------------------
@@ -182,18 +184,18 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
         ## rownames(coef) <- names(out.bestfit.q$par)
         dof    <- length(x) - 4    # 4 independent fitting parameters in Johnson SU
         student.t <- qt(1 - (1-conf)/sided, dof)  # 2.3326 for dof=598
-        quant.P.alpha.l.guess <- quant.P - student.t * standard.error[1]
-        quant.P.alpha.u.guess <- quant.P + student.t * standard.error[1]
+        quant.P.alpha.eff.l.guess <- quant.P - student.t * standard.error[1]
+        quant.P.alpha.eff.u.guess <- quant.P + student.t * standard.error[1]
         cat('Initial guesses for confidence interval for P=', P, '\n')
-        cat(quant.P.alpha.l.guess, quant.P.alpha.u.guess, '\n\n')
-        tol.approx <- c(tol.approx, quant.P.alpha.l.guess, quant.P.alpha.u.guess)
+        cat(quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess, '\n\n')
+        tol.approx <- c(tol.approx, quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess)
 
 
         ##----------------------
         if (isTRUE(plots)) {
-            quant.dif <- quant.P.alpha.u.guess - quant.P
-            xmin <- quant.P.alpha.l.guess - 1.1*quant.dif
-            xmax <- quant.P.alpha.u.guess + 1.1*quant.dif
+            quant.dif <- quant.P.alpha.eff.u.guess - quant.P
+            xmin <- quant.P.alpha.eff.l.guess - 1.1*quant.dif
+            xmax <- quant.P.alpha.eff.u.guess + 1.1*quant.dif
             xplot <- seq(xmin, xmax, length.out=101)
             yplot <- NA
             plot(quant.P.save[k], ll.max, col='blue', pch=16, cex=2,
@@ -202,7 +204,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
                  ylim=range(ll.max, ll.tol),
                  main=main)
             abline(h=ll.tol)
-            abline(v=c(quant.P.alpha.l.guess, quant.P.alpha.u.guess), col='red', lty=2)
+            abline(v=c(quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess), col='red', lty=2)
         }
         
         ##----------------------
@@ -293,12 +295,12 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
         }
 
         ## determine confidence bound as point where the likelihood ratio equals 11.tol
-        quant.P.alpha.l <- NA
-        quant.P.alpha.u <- NA
+        quant.P.alpha.eff.l <- NA
+        quant.P.alpha.eff.u <- NA
         if (side.which == 'lower' | (P < 0.5 & sided == 2)) {
             ## find lower tolerance limit
             out.nrl <- newton.raphson(f = ll.fixedq,
-                                      xguess = quant.P.alpha.l.guess,
+                                      xguess = quant.P.alpha.eff.l.guess,
                                       ytarget = ll.tol,
                                       data   = x,
                                       data.censored = xcen,
@@ -309,12 +311,12 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
                                       param.control = param.control,
                                       tol = 1e-5, n = 1000,
                                       plots=plots.nr)
-            quant.P.alpha.l <- out.nrl$root
-            if (is.null(quant.P.alpha.l)) { quant.P.alpha.l <- NA }
+            quant.P.alpha.eff.l <- out.nrl$root
+            if (is.null(quant.P.alpha.eff.l)) { quant.P.alpha.eff.l <- NA }
         } else {
             ## find upper tolerance limit
             out.nru <- newton.raphson(f = ll.fixedq,
-                                      xguess = quant.P.alpha.u.guess,
+                                      xguess = quant.P.alpha.eff.u.guess,
                                       ytarget = ll.tol,
                                       data   = x,
                                       data.censored = xcen,
@@ -325,19 +327,19 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
                                       param.control = param.control,
                                       tol = 1e-5, n = 1000,
                                       plots=plots.nr)
-            quant.P.alpha.u <- out.nru$root
-            if (is.null(quant.P.alpha.u)) { quant.P.alpha.u <- NA }
+            quant.P.alpha.eff.u <- out.nru$root
+            if (is.null(quant.P.alpha.eff.u)) { quant.P.alpha.eff.u <- NA }
         }
         cat('Final confidence interval for P=', P, '\n')
-        cat(quant.P.alpha.l, quant.P.alpha.u, '\n\n')
+        cat(quant.P.alpha.eff.l, quant.P.alpha.eff.u, '\n\n')
 
         ## collect tolerance limit calculations (i.e., for 1-P and P)
-        tol.limits <- c(tol.limits, quant.P.alpha.l, quant.P.alpha.u)
+        tol.limits <- c(tol.limits, quant.P.alpha.eff.l, quant.P.alpha.eff.u)
         
         if (isTRUE(plots)) {
             ## plot intersection with log likelihood curve
-            if (!is.na(quant.P.alpha.l)) points(quant.P.alpha.l, ll.tol, col='red', pch=16, cex=2)
-            if (!is.na(quant.P.alpha.u)) points(quant.P.alpha.u, ll.tol, col='red', pch=16, cex=2)
+            if (!is.na(quant.P.alpha.eff.l)) points(quant.P.alpha.eff.l, ll.tol, col='red', pch=16, cex=2)
+            if (!is.na(quant.P.alpha.eff.u)) points(quant.P.alpha.eff.u, ll.tol, col='red', pch=16, cex=2)
         }
 
     }
@@ -361,7 +363,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto', param.control=2,
     P <- P.in
 
     ## collect tolerance values in dataframe similar to extol.int for weibull
-    tolerance <- data.frame(sided, alpha.chisq=alpha, conf, P, tol.lower, tol.upper)
+    tolerance <- data.frame(sided, alpha.eff=alpha.eff, conf, P, tol.lower, tol.upper)
 
     ## print final parameter comparison and tolerance limits
     print(as.data.frame(params.save))
