@@ -1,3 +1,34 @@
+loglik.weibull <- function(x=NA, xcen=NA, param=c(shape, scale), debug=FALSE){
+    ## calculate log likelihhod for distribution
+    if (is.data.frame(x)) x <- x[1] # convert to vector
+    shape  <- param[[1]]  
+    scale  <- param[[2]]
+    pdf <- 1
+    if (!is.na(x[1])) {
+        pdf <- shape / scale^shape * x^(shape-1) * exp(-(x/scale)^shape)
+        ## the above is equivalent
+        ## pdf <- stats::dweibull(x, shape, scale)
+        ## cdf <- pnorm(z)
+        ## plot(z, cdf)
+    }
+    probability <- 1
+    if (is.data.frame(xcen)) {
+        xcen$F.low  <- 1 - exp(- (xcen$x.low  / scale)^shape) # CDF; could use ExtDist::pWeibull(xcen$x.low, shape, scale)
+        xcen$F.high <- 1 - exp(- (xcen$x.high / scale)^shape)
+        ## if low CDF is NA, set to 0
+        xcen$F.low[is.na(xcen$F.low)]   <- 0
+        ## if high CDF is NA, set to 1
+        xcen$F.high[is.na(xcen$F.high)] <- 1
+        ## calculate probability for the censored interval
+        probability <- xcen$F.high - xcen$F.low
+    }
+    loglik <- sum(log(pdf), log(probability))
+    if (isTRUE(debug)) cat('shape=', signif(shape,11),
+                           'scale=', signif(scale,11),
+                           'loglik=', signif(loglik,11), "\n")
+    return(loglik)
+}        
+
 mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
     
     ## weibull distribution
@@ -15,23 +46,26 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
     ## based on approach found here:
     ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
     ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
-    scale <- NA
-    shape <- NA
 
-    ## make sure Weibull is possible
-    if (min(x, na.rm=TRUE) < 0) {
-        cat('####################################################\n')
-        cat('               ERROR: MINIMUM x < 0                 \n')
-        cat('####################################################\n')
-        return(list(scale=scale, shape=shape))
-    }
+    ## alternately, could probably use bbmle::mle2() to determine coefficients
+    ## an example is here: https://stackoverflow.com/questions/45208176/the-weibull-distribution-in-r-extdist
+
+    if (is.data.frame(x)) x <- x[1] # convert to vector
   
-    if (is.data.frame(xcen[1])) {
+    if (is.data.frame(xcen)) {
         ## censored data also provided (only reason for following is if
         ## x.low and x.high were not the names of the two columns of data)
         xcen <- data.frame(x.low = xcen[[1]], x.high = xcen[[2]])
-    } else {
-        xcen <- NA
+    }
+    
+    ## make sure Weibull is possible
+    if (!is.na(x[1])        & min(x   , na.rm=TRUE) < 0) {
+        if (!is.data.frame(xcen) | min(xcen, na.rm=TRUE) < 0) {
+            cat('####################################################\n')
+            cat('               ERROR: MINIMUM x < 0                 \n')
+            cat('####################################################\n')
+            return()
+        }
     }
     
     ## if (isTRUE(plots)) par(mfrow=c(1,2))
@@ -54,6 +88,8 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
         }
     } else {
         ## use provided initial parameters
+        shape <- param$shape
+        scale <- param$scale
         params.compare <- as.data.frame(param)
         params.compare$description <- 'user provided parameters'
     }
@@ -64,70 +100,29 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
     
     ##-----------------------------------------------------------------------------
     ## determine best fit using nll
-    param.fix <- function(param, param.control) {
-        if (param.control == 1) {
-            ## keep param positive so subsequent functions are defined
-            param <- max(1E-15, param)
-        } else if (param.control == 2) {
-            ## keep param positive so subsequent functions are defined
-            param <- abs(param)
-            if (param == 0) param <- 1E-15
-        }
-        return(param)
-    }
-    nll <- function(data, data.censored=NA, param, param.control=0, debug=FALSE){
-        ## calculate nll (negative log likelihhod) for distribution
-        x      <- data
-        xcen   <- data.censored
-        shape  <- param[[1]]  
-        scale  <- param[[2]]
-        scale  <- param.fix(scale, param.control)
-        pdf <- shape / scale^shape * x^(shape-1) * exp(-(x/scale)^shape)
-        ## the above is equivalent
-        ## pdf <- stats::dweibull(x, shape, scale)
-        ## cdf <- pnorm(z)
-        ## plot(z, cdf)
-        if (is.data.frame(xcen)) {
-            xcen$F.low  <- 1 - exp(- (xcen$x.low  / scale)^shape) # CDF; could use ExtDist::pWeibull(xcen$x.low, shape, scale)
-            xcen$F.high <- 1 - exp(- (xcen$x.high / scale)^shape)
-            ## if low CDF is NA, set to 0
-            xcen$F.low[is.na(xcen$F.low)]   <- 0
-            ## if high CDF is NA, set to 1
-            xcen$F.high[is.na(xcen$F.high)] <- 1
-            ## calculate probability for the censored interval
-            xcen$probability <- xcen$F.high - xcen$F.low
-            nll     <- -sum(log(pdf), log(xcen$probability))
-        } else {
-            nll     <- -sum(log(pdf))
-        }
-        if (isTRUE(debug)) cat('shape=', signif(shape,11),
-                               'scale=', signif(scale,11),
-                               'nll=', signif(nll,11), "\n")
-        return(nll)
-    }        
     ## print('Attempting MLE fit on regular parameters')
+    ## constraints for shape and/or scale
+    ## A %*% param + B > 0
+    ## row 1: shape > 0
+    ## row 2: scale > 0
+    A <- matrix(c(1,0, 0,1), 2, 2, byrow=TRUE)
+    B <- matrix(c(0,0))
+    constraints <- list(ineqA=A, ineqB=B)
+    out.bestfit <- NA
     tryCatch({
-        out.bestfit <- optim(par     = param, 
-                             fn      = nll, 
-                             data    = x,
-                             data.censored = xcen,
-                             debug   = debug,
-                             param.control = param.control,
-                             control = list(trace=TRUE),
-                             method  = "BFGS")
-        nll.max.bestfit <- out.bestfit$value
-        parms.mle <- as.list(out.bestfit$par)
+        out.bestfit <- maxLik::maxLik(loglik.weibull,
+                                      start = unlist(param),
+                                      x     = x,
+                                      xcen  = xcen,
+                                      debug = debug,
+                                      constraints = constraints)
+        loglik.max.bestfit <- out.bestfit$maximum
+        parms.mle <- as.list(out.bestfit$estimate)
     }, error = function(e) {
         ## what to do if error
         cat('WARNING: CONVERGENCE FAILURE IN mle.weibull()\n')
         parms.mle <- list(shape=NA, scale=NA)
     })
-    ## the following is needed if use param.control because the
-    ## parameter returned by optim() is the input pamameter to the function
-    ## not the output parameter. So if the input parameter is negative,
-    ## the optim() routine thinks that was OK as the answer even though
-    ## it really only ever used abs(param) in the optimization.
-    parms.mle$scale  <- param.fix(parms.mle$scale,  param.control)
         
     ## add MLE parameters to params.compare dataframe
     temp <- as.data.frame(parms.mle)
@@ -147,7 +142,7 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
         qqplot_nwj(x, type='w', jfit=parms.mle)
     }
 
-    return(list(parms=parms.mle, parms.compare=params.compare))
+    return(list(parms=parms.mle, parms.compare=params.compare, loglik.max=loglik.max.bestfit))
 }
 
 
@@ -159,18 +154,18 @@ mle.weibull.test <- function() {
     fit.compare <- function(x, xcen, main=NULL) {
         ## plot histogram with no censored data and fit
         hist(x, freq=FALSE, border='black', main=main)
-        out.fit0 <- mle.weibull(x, data.censored=NA, plots=FALSE)
+        out.fit0 <- mle.weibull(x, xcen=NA, plots=FALSE)
         parms0 <- out.fit0$parms
         curve(stats::dweibull(x, parms0$shape, parms0$scale), min(x), max(x), col='black', add=TRUE)
         ## plot histogram with all data treated as known fit at numeric value
         xcen.avg <- rowMeans(xcen, na.rm=TRUE) # use the average for interval data
         x.all <- c(x, xcen.avg)
         hist(x.all, freq=FALSE, border='red', add=TRUE)
-        out.fit1 <- mle.weibull(x.all, data.censored=NA, plots=FALSE)
+        out.fit1 <- mle.weibull(x.all, xcen=NA, plots=FALSE)
         parms1 <- out.fit1$parms
         curve(stats::dweibull(x, parms1$shape, parms1$scale), min(x), max(x), col='red', add=TRUE)
         ## plot fit if treat xcen as censored
-        out.fit2 <- mle.weibull(x, data.censored=xcen, plots=FALSE)
+        out.fit2 <- mle.weibull(x, xcen=xcen, plots=FALSE)
         parms2 <- out.fit2$parms
         curve(stats::dweibull(x, parms2$shape, parms2$scale), min(x), max(x), col='blue', type='p', add=TRUE)
         ## add legend
