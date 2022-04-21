@@ -90,7 +90,16 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
     xi     <- params$xi
     lambda <- params$lambda
     params.save <- params
-    params$type <- NULL    
+    params$type <- NULL
+    out.all  <- as.data.frame(params)
+    out.all$quant <- NA
+    out.all$P     <- NA
+    out.all$loglik <- out$loglik
+    out.all$convergence <- out$convergence
+    out.all$optimizer    <- 'maxLik'
+    out.all$max.function <- 'loglik.johnsonsu'
+    out.all$fit.params   <- 'gamma, delta, xi, lambda'
+    cat('convergence for best estimate parameters:', out.all$convergence, '\n')
     
     ##-----------------------------------------------------------------------------
     ## find confidence limit at level alpha.eff for requested coverage, P
@@ -116,17 +125,23 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         ##----------------------
         ## fist set estimated parameters
         ## following is identical to
-        ## quant.P <- ExtDist::qJohnsonSU(P, params = params)
-        quant.P  <- xi + lambda * sinh( (qnorm(P)-gamma)/delta )
-        quant.P.save[k] <- quant.P
-        quant.param <- c(quant=quant.P, params[2:4])
-
+        ## quant.P.orig <- ExtDist::qJohnsonSU(P, params = params)
+        quant.P.orig  <- xi + lambda * sinh( (qnorm(P)-gamma)/delta )
+        quant.P.save[k] <- quant.P.orig
+        quant.param <- list(quant=quant.P.orig, delta=params$delta, xi=params$xi, lambda=params$lambda)
+        
         ##----------------------
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
         loglik.max <- loglik.johnsonsu.q(x, xcen, quant.param, P)
         loglik.tol <- loglik.max - qchisq(1 - alpha.eff, 1)/2   # qchisq(1-0.02, 1) = 5.411894
         cat('MLE=', loglik.max, '; tolerance limit at MLE=', loglik.tol, '\n')
+        temp <- data.frame(gamma=gamma, delta=delta, xi=xi, lambda=lambda,
+                           quant=quant.P.orig, P=P, loglik=loglik.max, convergence=NA,
+                           optimizer    = NA,
+                           max.function = NA,
+                           fit.params   = 'quant calculated for P')
+        out.all <- rbind(out.all, temp)
 
         ##----------------------
         ## refit on alternate parameters to determine standard error for fit on quantile
@@ -138,42 +153,54 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         A <- matrix(c(0,1,0,0,  0,0,0,1), 2, 4, byrow=TRUE)
         B <- matrix(c(0,0),               2, 1)
         constraints <- list(ineqA=A, ineqB=B)
-        out.bestfit.q <- NA
-        out.bestfit.q <- maxLik::maxLik(loglik.johnsonsu.q,
+        out.qdxl <- NA
+        out.qdxl <- maxLik::maxLik(loglik.johnsonsu.q,
                                         start = unlist(quant.param),  # quant, delta, xi, lambda
                                         x     = x,
                                         xcen  = xcen,
                                         P     = P,
                                         debug = debug,
-                                        constraints = constraints)
-        loglik.max.bestfit.q <- out.bestfit.q$maximum
-        params.q <- as.list(out.bestfit.q$estimate)
-        quant.P  <- params.q[[1]]
-        delta.P  <- params.q[[2]]
-        xi.P     <- params.q[[3]]
-        lambda.P <- params.q[[4]]
-        params.q$gamma <- qnorm(P) - delta.P * asinh( (quant.P-xi.P)/lambda.P )
-        params.q.save[k] <- list(params.q)
-        print(as.data.frame(params.q))
-        standard.error <- as.numeric( sqrt(diag(solve(out.bestfit.q$hessian))) )
+                                        constraints = constraints,
+                                        iterlim = 2000)
+        convergence.qdxl <- if (out.qdxl$message == 'successful convergence ') {'successful'}
+                            else {out.qdxl$message}
+        if (convergence.qdxl != 'successful') {
+            cat('####################################################################################\n')
+            cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu.tol when maximizing loglik.johnsonsu.q\n')
+            cat('####################################################################################\n')
+        }
+        loglik.max.qdxl <- out.qdxl$maximum
+        params.qdxl <- as.list(out.qdxl$estimate)
+        quant.P  <- params.qdxl[[1]]
+        delta.P  <- params.qdxl[[2]]
+        xi.P     <- params.qdxl[[3]]
+        lambda.P <- params.qdxl[[4]]
+        params.qdxl$gamma <- qnorm(P) - delta.P * asinh( (quant.P-xi.P)/lambda.P )
+        params.q.save[k] <- list(params.qdxl)
+        print(as.data.frame(params.qdxl))
+        ## following does not work for maxLik because hessian often has negative diagonals
+        ## standard.error <- as.numeric( sqrt(diag(solve(out.qdxl$hessian))) )
+        standard.error <- summary(out.qdxl)$estimate['quant', 'Std. error']
         print(standard.error)
         cat('standard error:', standard.error, '\n')
         cat('\n')
+        temp <- data.frame(gamma=params.qdxl$gamma, delta=delta.P, xi=xi.P, lambda=lambda.P,
+                           quant=quant.P, P=P, loglik=loglik.max.qdxl, convergence=convergence.qdxl,
+                           optimizer    = 'maxLik',
+                           max.function = 'loglik.johnsonsu.q',
+                           fit.params   = 'quant, delta, xi, lambda')
+        out.all <- rbind(out.all, temp)
+        cat('convergence for quant, delta, xi, lambda:', convergence.qdxl, '\n')
         
         ##----------------------
         ## estimate confidence limit using standard error to serve as starting point for search
-        ## estimates      <- as.numeric( out.bestfit.q$par )
+        ## estimates      <- as.numeric( out.qdxl$par )
         ## coef           <- data.frame(estimates, standard.error)
-        ## rownames(coef) <- names(out.bestfit.q$par)
+        ## rownames(coef) <- names(out.qdxl$par)
         dof    <- length(x) - 4    # 4 independent fitting parameters in Johnson SU
         student.t <- qt(1 - (1-conf)/sided, dof)  # 2.3326 for dof=598
-        se <- standard.error[1]
-        if (is.na(se)) {
-            se <- sd(x.avg)
-            cat('standard error for quantile = NA so standard deviation used in estimate\n')
-        }
-        quant.P.alpha.eff.l.guess <- quant.P - student.t * se
-        quant.P.alpha.eff.u.guess <- quant.P + student.t * se
+        quant.P.alpha.eff.l.guess <- quant.P - student.t * standard.error
+        quant.P.alpha.eff.u.guess <- quant.P + student.t * standard.error
         cat('Initial guesses for confidence interval for P=', P, '\n')
         cat(quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess, '\n\n')
         tol.approx <- c(tol.approx, quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess)
@@ -200,41 +227,60 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         loglik.fixedq <- function(quant, data, xcen, P, delta, xi, lambda, debug=FALSE) {
             ## first determine best fit delta, xi, and lambda for given quant (and P)
             x <- data  # using data rather than x as a parameter is needed for newton.raphson()
-            fit <- NA
-            tryCatch({
-                ## constraints for delta, xi, and/or lambda
-                ## A %*% param + B > 0
-                ## row 1: delta  > 0
-                ## row 2: lambda > 0
-                A <- matrix(c(1,0,0,  0,0,1), 2, 3, byrow=TRUE)
-                B <- matrix(c(0,0),              2, 1)
-                constraints <- list(ineqA=A, ineqB=B)
-                out.q <- NA
-                out.q <- maxLik::maxLik(loglik.johnsonsu.q.set,
-                                        start = c(delta, xi, lambda),  # delta, xi, lambda
-                                        x     = x,
-                                        xcen  = xcen,
-                                        quant = quant,
-                                        P     = P,
-                                        debug = debug,
-                                        constraints = constraints)
-                params.q <- as.list(out.q$estimate)
-                loglik   <- out.q$maximum
-            }, error = function(e) {
-                ## what to do if error
-                cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu.tol.r MODULE\n')
-                cat('         IN loglik.fixedq OPTIMIZATION ROUTINE.\n\n')
-                out.q    <- NA
-                params.q <- NA
-                loglik   <- NA
-            })
-            if (isFALSE(debug)) {
-                return(loglik)
+            ## constraints for delta, xi, and/or lambda
+            ## A %*% param + B > 0
+            ## row 1: delta  > 0
+            ## row 2: lambda > 0
+            A <- matrix(c(1,0,0,  0,0,1), 2, 3, byrow=TRUE)
+            B <- matrix(c(0,0),              2, 1)
+            constraints <- list(ineqA=A, ineqB=B)
+            out.dxl <- NA
+            out.dxl <- maxLik::maxLik(loglik.johnsonsu.q.set,
+                                      start = c(delta, xi, lambda),  # delta, xi, lambda
+                                      x     = x,
+                                      xcen  = xcen,
+                                      quant = quant,
+                                      P     = P,
+                                      debug = debug,
+                                      constraints = constraints,
+                                      iterlim = 2000)
+            if (out.dxl$message == 'successful convergence ') {
+                params.dxl      <- as.list(out.dxl$estimate)
+                loglik.dxl      <- out.dxl$maximum
+                convergence.dxl <- 'successful'
             } else {
-                return(list(fit=out.q, params=params.q, loglik=loglik))
+                cat('####################################################################################\n')
+                cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu when maximizing loglik.johnsonsu.q.set\n')
+                cat('         for quant =', quant, 'and P =', P,                                        '\n')
+                cat('####################################################################################\n')
+                params.dxl      <- list(delta=NA, xi=NA, lambda=NA)
+                loglik.dxl      <- NA
+                convergence.dxl <- out.dxl$message
+            }
+            if (isFALSE(debug)) {
+                return(loglik.dxl)
+            } else {
+                return(list(out    = out.dxl,
+                            loglik = loglik.dxl,
+                            params = params.dxl,
+                            convergence = convergence.dxl))
             }
         }
 
+
+        ## dlh
+        ## test fit at quant.P
+        out.dxl <- loglik.fixedq(quant.P.orig, x, xcen, P, delta.P, xi.P, lambda.P, debug=TRUE)
+        temp <- data.frame(gamma=NA, delta=out.dxl$params[[1]], xi=out.dxl$params[[2]],
+                           lambda=out.dxl$params[[3]], quant=quant.P.orig, P=P,
+                           loglik=out.dxl$loglik, convergence=out.dxl$convergence,
+                           optimizer    = 'maxLik',
+                           max.function = 'loglik.johnsonsu.q.set',
+                           fit.params   = 'delta, xi, lambda for given quant + P')
+        out.all <- rbind(out.all, temp)
+        cat('convergence for delta, xi, lambda at quant.P:', out.dxl$convergence, '\n')
+        
+        
         ##----------------------
         if (isTRUE(plots)) {
             xplot <- seq(xmin, xmax, length.out=301)
@@ -270,9 +316,9 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                       data    = x,
                                       xcen = xcen,
                                       P      = P,
-                                      delta  = delta,
-                                      xi     = xi,
-                                      lambda = lambda,
+                                      delta  = delta,  # initial guess for loglik.fixedq
+                                      xi     = xi,     # initial guess for loglik.fixedq
+                                      lambda = lambda, # initial guess for loglik.fixedq
                                       tol = 1e-5, n = 1000,
                                       plots=plots.nr)
             quant.P.alpha.eff.l <- out.nrl$root
@@ -285,9 +331,9 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                       data   = x,
                                       xcen   = xcen,
                                       P      = P,
-                                      delta  = delta,
-                                      xi     = xi,
-                                      lambda = lambda,
+                                      delta  = delta,  # initial guess for loglik.fixedq
+                                      xi     = xi,     # initial guess for loglik.fixedq
+                                      lambda = lambda, # initial guess for loglik.fixedq
                                       tol = 1e-5, n = 1000,
                                       plots=plots.nr)
             quant.P.alpha.eff.u <- out.nru$root
@@ -340,7 +386,8 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                 quant.P    = quant.P.save,
                 params     = params.save,
                 tol.approx = tol.approx,
-                tolerance  = tolerance))
+                tolerance  = tolerance,
+                out.all    = out.all))
 }
 
 
