@@ -141,23 +141,25 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
     A <- matrix(c(0,1,0,0,  0,0,0,1), 2, 4, byrow=TRUE)
     B <- matrix(c(0,0),               2, 1)
     constraints <- list(ineqA=A, ineqB=B)
-    out.bestfit <- NA
-    tryCatch({
-        out.bestfit <- maxLik::maxLik(loglik.johnsonsu,
-                                      start = unlist(param),
-                                      x     = x,
-                                      xcen  = xcen,
-                                      debug = debug,
-                                      constraints = constraints)
-        loglik.max.bestfit <- out.bestfit$maximum
-        parms.mle <- as.list(out.bestfit$estimate)
-        parms.mle$type <- 'SU'
-    }, error = function(e) {
-        ## what to do if error
+    out <- NA
+    out <- maxLik::maxLik(loglik.johnsonsu,
+                          start = unlist(param),
+                          x     = x,
+                          xcen  = xcen,
+                          debug = debug,
+                          constraints = constraints,
+                          iterlim = 2000)
+    parms.mle      <- as.list(out$estimate)
+    parms.mle$type <- 'SU'
+    loglik         <- out$maximum
+    convergence <- if (out$message == 'successful convergence ') {'successful'}
+                   else {out$message}
+    if (convergence != 'successful') {
+        cat('###############################################\n')
         cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu()\n')
-        parms.mle <- list(gamma=NA, delta=NA, xi=NA, lambda=NA, type=NA)
-    })
-
+        cat('###############################################\n')
+    }
+    
     ## add MLE parameters to params.compare dataframe
     temp <- as.data.frame(parms.mle)
     temp$description <- 'MLE'
@@ -173,9 +175,8 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
         curve(ExtDist::dJohnsonSU(x, params=parms.mle), min(x), max(x), add=TRUE)
         qqplot_nwj(x, type='j', jfit=parms.mle)
     }
-
     
-    return(list(parms=parms.mle, parms.compare=params.compare, loglik.max=loglik.max.bestfit))
+    return(list(parms=parms.mle, parms.compare=params.compare, loglik=loglik, convergence=convergence))
 }
 
 
