@@ -59,8 +59,8 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
     ## an example is here: https://stackoverflow.com/questions/45208176/the-weibull-distribution-in-r-extdist
 
     if (is.data.frame(x)) x <- x[1] # convert to vector
-
-    if (is.data.frame(xcen[1])) {
+  
+    if (is.data.frame(xcen)) {
         ## censored data also provided (only reason for following is if
         ## x.low and x.high were not the names of the two columns of data)
         xcen <- data.frame(x.low = xcen[[1]], x.high = xcen[[2]])
