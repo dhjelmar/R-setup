@@ -29,7 +29,7 @@ loglik.weibull <- function(x=NA, xcen=NA, param=c(shape, scale), debug=FALSE){
     return(loglik)
 }        
 
-mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, debug=FALSE) {
+mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
     
     ## weibull distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -56,7 +56,15 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
         ## censored data also provided (only reason for following is if
         ## x.low and x.high were not the names of the two columns of data)
         xcen <- data.frame(x.low = xcen[[1]], x.high = xcen[[2]])
+
+        ## calculate average value, ignoring NA, xcen to for use in estimating parameters
+        ## from packages that do not have censor capability
+        xcen.avg <- rowMeans(xcen, na.rm=TRUE)
+
+    } else {
+        xcen.avg <- NA
     }
+    x.avg <- as.numeric( na.omit( c(x, xcen.avg) ) )
     
     ## make sure Weibull is possible
     if (!is.na(x[1])        & min(x   , na.rm=TRUE) < 0) {
@@ -75,12 +83,12 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
     ## set initial guess for MLE fit
     if (param[1] == 'auto') {
         ## initial parameters not specified, so let R figure guess
-        tol_out_weib <- tolerance::exttol.int(x)
+        tol_out_weib <- tolerance::exttol.int(x.avg)
         shape   <- tol_out_weib$'shape.1'
         scale   <- tol_out_weib$'shape.2'
         param <- list(shape=shape, scale=scale)
         params.compare <- as.data.frame(param)
-        params.compare$description <- 'tolerance::exttol.int(x)'
+        params.compare$description <- 'tolerance::exttol.int'
         if (is.na(param$shape) | is.na(param$scale)) {
             ## exttol failed to converge 
             param <- list(shape = 1,
@@ -108,22 +116,24 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
     A <- matrix(c(1,0, 0,1), 2, 2, byrow=TRUE)
     B <- matrix(c(0,0))
     constraints <- list(ineqA=A, ineqB=B)
-    out.bestfit <- NA
-    tryCatch({
-        out.bestfit <- maxLik::maxLik(loglik.weibull,
-                                      start = unlist(param),
-                                      x     = x,
+    out <- NA
+    out <- maxLik::maxLik(loglik.weibull,
+                                  start = unlist(param),
+                                  x     = x,
                                       xcen  = xcen,
                                       debug = debug,
-                                      constraints = constraints)
-        loglik.max.bestfit <- out.bestfit$maximum
-        parms.mle <- as.list(out.bestfit$estimate)
-    }, error = function(e) {
-        ## what to do if error
-        cat('WARNING: CONVERGENCE FAILURE IN mle.weibull()\n')
-        parms.mle <- list(shape=NA, scale=NA)
-    })
-        
+                                      constraints = constraints,
+                                      iterlim = 2000)
+        parms.mle <- as.list(out$estimate)
+        loglik <- out$maximum
+    convergence <- if (out$message == 'successful convergence ') {'successful'}
+                   else {out$message}
+    if (convergence != 'successful') {
+        cat('###############################################\n')
+        cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu()\n')
+        cat('###############################################\n')
+    }
+    
     ## add MLE parameters to params.compare dataframe
     temp <- as.data.frame(parms.mle)
     temp$description <- 'MLE'
@@ -141,8 +151,8 @@ mle.weibull <- function(x, xcen=NA, param='auto', param.control=2, plots=FALSE, 
         curve(stats::dweibull(x, shape, scale), min(x), max(x), add=TRUE)
         qqplot_nwj(x, type='w', jfit=parms.mle)
     }
-
-    return(list(parms=parms.mle, parms.compare=params.compare, loglik.max=loglik.max.bestfit))
+    
+    return(list(parms=parms.mle, parms.compare=params.compare, loglik=loglik, convergence=convergence))
 }
 
 
