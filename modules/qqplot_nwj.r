@@ -56,7 +56,7 @@ qqplot_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NULL) {
         jparms <- jfit
         if (jfit[1] == 'mle') {
             out <- mle.johnsonsu(x)
-            jparms <- out$jparms
+            jparms <- out$parms
         }
 
         ## make QQ plot
