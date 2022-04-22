@@ -100,12 +100,13 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
     out.all$max.function <- 'loglik.johnsonsu'
     out.all$fit.params   <- 'gamma, delta, xi, lambda'
     cat('convergence for best estimate parameters:', out.all$convergence, '\n')
-    
+    cat('\n')
+   
     ##-----------------------------------------------------------------------------
     ## find confidence limit at level alpha.eff for requested coverage, P
     tol.limits <- NA
     tol.approx <- NA
-    params.q.save <- NA
+    ## params.q.save <- NA
     k <- 0
     xyplot <- NA
     quant.P.save <- NA
@@ -135,13 +136,14 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
         loglik.max <- loglik.johnsonsu.q(x, xcen, quant.param, P)
         loglik.tol <- loglik.max - qchisq(1 - alpha.eff, 1)/2   # qchisq(1-0.02, 1) = 5.411894
-        cat('MLE=', loglik.max, '; tolerance limit at MLE=', loglik.tol, '\n')
+        cat('P =', P, 'MLE =', loglik.max, '; tolerance limit at MLE =', loglik.tol, '\n')
         temp <- data.frame(gamma=gamma, delta=delta, xi=xi, lambda=lambda,
                            quant=quant.P.orig, P=P, loglik=loglik.max, convergence=NA,
                            optimizer    = NA,
                            max.function = NA,
                            fit.params   = 'quant calculated for P')
         out.all <- rbind(out.all, temp)
+        cat('\n')
 
         ##----------------------
         ## refit on alternate parameters to determine standard error for fit on quantile
@@ -162,6 +164,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                         debug = debug,
                                         constraints = constraints,
                                         iterlim = 2000)
+        print(summary(out.qdxl))
         convergence.qdxl <- if (out.qdxl$message == 'successful convergence ') {'successful'}
                             else {out.qdxl$message}
         if (convergence.qdxl != 'successful') {
@@ -175,22 +178,21 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         delta.P  <- params.qdxl[[2]]
         xi.P     <- params.qdxl[[3]]
         lambda.P <- params.qdxl[[4]]
-        params.qdxl$gamma <- qnorm(P) - delta.P * asinh( (quant.P-xi.P)/lambda.P )
-        params.q.save[k] <- list(params.qdxl)
+        gamma.P <- qnorm(P) - delta.P * asinh( (quant.P-xi.P)/lambda.P )
+        params.qdxl$gamma <- gamma.P
+        ## params.q.save[k] <- list(params.qdxl)
         print(as.data.frame(params.qdxl))
         ## following does not work for maxLik because hessian often has negative diagonals
         ## standard.error <- as.numeric( sqrt(diag(solve(out.qdxl$hessian))) )
         standard.error <- summary(out.qdxl)$estimate['quant', 'Std. error']
-        print(standard.error)
-        cat('standard error:', standard.error, '\n')
-        cat('\n')
-        temp <- data.frame(gamma=params.qdxl$gamma, delta=delta.P, xi=xi.P, lambda=lambda.P,
+        temp <- data.frame(gamma=gamma.P, delta=delta.P, xi=xi.P, lambda=lambda.P,
                            quant=quant.P, P=P, loglik=loglik.max.qdxl, convergence=convergence.qdxl,
                            optimizer    = 'maxLik',
                            max.function = 'loglik.johnsonsu.q',
                            fit.params   = 'quant, delta, xi, lambda')
         out.all <- rbind(out.all, temp)
         cat('convergence for quant, delta, xi, lambda:', convergence.qdxl, '\n')
+        cat('\n')
         
         ##----------------------
         ## estimate confidence limit using standard error to serve as starting point for search
@@ -244,6 +246,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                       debug = debug,
                                       constraints = constraints,
                                       iterlim = 2000)
+            ## print(summary(out.dxl))
             if (out.dxl$message == 'successful convergence ') {
                 params.dxl      <- as.list(out.dxl$estimate)
                 loglik.dxl      <- out.dxl$maximum
@@ -268,9 +271,10 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         }
 
 
-        ## dlh
-        ## test fit at quant.P
+        ## test fit at quant.P (could comment out this block of code)
+        cat('Attempting MLE fit on alternate parameters for P=', P, 'but with fixed quant=quant.P\n')
         out.dxl <- loglik.fixedq(quant.P.orig, x, xcen, P, delta.P, xi.P, lambda.P, debug=TRUE)
+        summary(out.dxl$out)
         temp <- data.frame(gamma=NA, delta=out.dxl$params[[1]], xi=out.dxl$params[[2]],
                            lambda=out.dxl$params[[3]], quant=quant.P.orig, P=P,
                            loglik=out.dxl$loglik, convergence=out.dxl$convergence,
@@ -278,16 +282,26 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                            max.function = 'loglik.johnsonsu.q.set',
                            fit.params   = 'delta, xi, lambda for given quant + P')
         out.all <- rbind(out.all, temp)
-        cat('convergence for delta, xi, lambda at quant.P:', out.dxl$convergence, '\n')
+        cat('convergence for delta, xi, lambda at quant.P:', out.dxl$convergence, '\n\n')
         
         
         ##----------------------
         if (isTRUE(plots)) {
             xplot <- seq(xmin, xmax, length.out=301)
             yplot <- NA
+            ## initial guess for 1st point
+            delta.plot <- delta
+            xi.plot <- xi
+            lambda.plot <- lambda
             for (ploti in 1:length(xplot)) {
                 ## if (ploti == 3) browser()
-                yplot[ploti] <- loglik.fixedq(xplot[ploti], x, xcen, P, delta.P, xi.P, lambda.P, debug=FALSE)
+                out <- loglik.fixedq(xplot[ploti], x, xcen, P, delta.plot, xi.plot, lambda.plot, debug=TRUE)
+                yplot[ploti] <- out$loglik
+                points(xplot[ploti], yplot[ploti], col='red')
+                ## better initial guess for next point
+                ## delta.plot   <- out$params[[1]]
+                ## xi.plot      <- out$params[[2]]
+                ## lambda.plot  <- out$params[[3]]
                 ## cat(ploti, xplot[ploti], yplot[ploti], '\n')
             }
             xyplot <- data.frame(quantile       = xplot[1:length(yplot)],
@@ -306,6 +320,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         }
 
         ## determine confidence bound as point where the likelihood ratio equals loglik.tol
+        cat('Attempting MLE fit on alternate parameters for P=', P, 'to find quant where loglik corresponds to tolerance limit\n')
         quant.P.alpha.eff.l <- NA
         quant.P.alpha.eff.u <- NA
         if (side.which == 'lower' | (P < 0.5 & sided == 2)) {
@@ -528,7 +543,7 @@ mle.johnsonsu.tol.test <- function() {
     x.low  <- 2.2
     x.high <- NA
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit4 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    fit4 <- fit.compare.cen(x, xcen, P=0.9, conf=0.9, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit4)
    
 }
