@@ -32,6 +32,8 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
     relax.use <- 1
 
     for (i in 2:(n+1)) {
+      
+        cat('Newton-Raphson iteration =', i-1, 'x = ', x0, ', y = ', f(x0, ...), '\n')
 
         ## Use first order derivative to make next guess, x1
         dx <- genD(func = f, ..., x = x0)$D[1] # First-order derivative f'(x0)
@@ -77,7 +79,7 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
         if (i > 100) relax.use <- relax
         x1.relaxed <- x0 + relax.use * (x1-x0)
         if ( (yvalue[i]-ytarget) / (yvalue[i-1]-ytarget) < 0) {
-            ## bracketed solution since successive y values have opposite sign
+            ## bracketed solution since successive y values - ytarget have opposite sign
             ## use bisection to keep solution from diverging
             x0 <- (x0 + x1.relaxed)/2
         } else {
