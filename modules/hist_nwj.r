@@ -102,12 +102,12 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
     if (grepl('j', type)) {
         ## ## Johnson distribution calculations
         fit.j <- mle.johnsonsu(x)
-        jparms <- fit.j$parm.compare
+        jparms <- fit.j$parms.compare
         if (jfit == 'mle' | isTRUE(tolerance)) {
-            jparms   <- fit.j$jparms
+            jparms   <- fit.j$parms
             if (isTRUE(tolerance)) {
-                tol_out_john <- mle.johnsonsu.tol(x, param=jparms,param.control=param.control,
-                                                  side.which=side, sided=sided, conf=conf, P=P, 
+                tol_out_john <- mle.johnsonsu.tol(x, param=jparms,
+                                                  side.which=side, sided=sided, P=P, conf=conf, 
                                                   plots=FALSE, debug=FALSE)
                 tolerance_limit_john.l <- tol_out_john$tolerance$tol.lower
                 tolerance_limit_john.u <- tol_out_john$tolerance$tol.upper
