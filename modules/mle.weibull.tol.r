@@ -13,6 +13,15 @@ loglik.weibull.q.set <- function(x=NA, xcen=NA, param=shape, quant, P, debug=FAL
     loglik.weibull(x, xcen, param=c(shape, scale), debug=FALSE)
 }
 
+## loglik.weibull.q.set.optim <- function(shape, x=NA, xcen=NA, quant, P, debug=FALSE){
+##     ## calculate log likelihhod for distribution and given parameters
+##     ## first parameter is the optimization parmaeter for optimize()
+##     ## browser()
+##     ## shape  <- param[[1]]
+##     scale  <- quant/(-log((1-P)))^(1/shape)
+##     loglik.weibull(x, xcen, param=c(shape, scale), debug=FALSE)
+## }
+
 mle.weibull.tol <- function(x, xcen=NA, param='auto',
                               side.which='upper', sided=1, P=0.99, conf=0.99, alpha.eff=NULL,
                               plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
@@ -80,12 +89,23 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
     shape  <- params$shape
     scale  <- params$scale
     params.save <- params
-    
+    params$type <- NULL
+    out.all  <- as.data.frame(params)
+    out.all$quant <- NA
+    out.all$P     <- NA
+    out.all$loglik <- out$loglik
+    out.all$convergence <- out$convergence
+    out.all$optimizer    <- 'maxLik'
+    out.all$max.function <- 'loglik.johnsonsu'
+    out.all$fit.params   <- 'gamma, shape'
+    cat('convergence for best estimate parameters:', out.all$convergence, '\n')
+    cat('\n')
+   
     ##-----------------------------------------------------------------------------
     ## find confidence limit at level alpha.eff for requested coverage, P
     tol.limits <- NA
     tol.approx <- NA
-    params.q.save <- NA
+    ## params.q.save <- NA
     k <- 0
     xyplot <- NA
     quant.P.save <- NA
@@ -104,16 +124,23 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
 
         ##----------------------
         ## fist set estimated parameters
-        quant.P <- stats::qweibull(P, params$shape, params$scale)
-        quant.P.save[k] <- quant.P
-        quant.param <- c(quant=quant.P, params$shape)
+        quant.P.orig <- stats::qweibull(P, params$shape, params$scale)
+        quant.P.save[k] <- quant.P.orig
+        quant.param <- list(quant=quant.P.orig, shape=params$shape)
 
         ##----------------------
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
         loglik.max <- loglik.weibull.q(x, xcen, quant.param, P)
         loglik.tol <- loglik.max - qchisq(1 - alpha.eff, 1)/2   # qchisq(1-0.02, 1) = 5.411894
-        cat('MLE=', loglik.max, '; tolerance limit at MLE=', loglik.tol, '\n')
+        cat('P =', P, 'MLE =', loglik.max, '; tolerance limit at MLE =', loglik.tol, '\n')
+        temp <- data.frame(shape=shape, scale=scale,
+                           quant=quant.P.orig, P=P, loglik=loglik.max, convergence=NA,
+                           optimizer    = NA,
+                           max.function = NA,
+                           fit.params   = 'quant calculated for P')
+        out.all <- rbind(out.all, temp)
+        cat('\n')
 
         ##----------------------
         ## refit on alternate parameters to determine standard error for fit on quantile
@@ -124,41 +151,52 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
         A <- matrix(c(0,1), 1, 2, byrow=TRUE)
         B <- 0
         constraints <- list(ineqA=A, ineqB=B)
-        out.bestfit.q <- NA
-        out.bestfit.q <- maxLik::maxLik(loglik.weibull.q,
-                                        start = unlist(quant.param),  # quant, shape
-                                        x     = x,
-                                        xcen  = xcen,
-                                        P     = P,
-                                        debug = debug,
-                                        constraints = constraints)
-        loglik.max.bestfit.q <- out.bestfit.q$maximum
-        params.q <- as.list(out.bestfit.q$estimate)
-        quant.P  <- params.q[[1]]
-        shape.P  <- params.q[[2]]
+        out.qs <- NA
+        out.qs <- maxLik::maxLik(loglik.weibull.q,
+                                   start = unlist(quant.param),  # quant, shape
+                                   x     = x,
+                                   xcen  = xcen,
+                                   P     = P,
+                                   debug = debug,
+                                   constraints = constraints,
+                                   iterlim = 2000)
+        print(summary(out.qs))
+        convergence.qs <- if (out.qs$message == 'successful convergence ') {'successful'}
+                            else {out.qs$message}
+        if (convergence.qs != 'successful') {
+            cat('####################################################################################\n')
+            cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu.tol when maximizing loglik.johnsonsu.q\n')
+            cat('####################################################################################\n')
+        }
+        loglik.max.qs <- out.qs$maximum
+        params.qs <- as.list(out.qs$estimate)
+        quant.P  <- params.qs[[1]]
+        shape.P  <- params.qs[[2]]
         scale.P  <- quant.P/(-log((1-P)))^(1/shape.P)
-        params.q$scale <- scale.P
-        params.q.save[k] <- list(params.q)
-        print(as.data.frame(params.q))
-        standard.error <- as.numeric( sqrt(diag(solve(out.bestfit.q$hessian))) )
-        print(standard.error)
-        cat('standard error:', standard.error, '\n')
+        params.qs$scale <- scale.P
+        ## params.q.save[k] <- list(params.qs)
+        print(as.data.frame(params.qs))
+        ## following does not work for maxLik because hessian often has negative diagonals
+        ## standard.error <- as.numeric( sqrt(diag(solve(out.qs$hessian))) )
+        standard.error <- summary(out.qs)$estimate['quant', 'Std. error']
+        temp <- data.frame(shape=shape.P, scale=scale.P,
+                           quant=quant.P, P=P, loglik=loglik.max.qs, convergence=convergence.qs,
+                           optimizer    = 'maxLik',
+                           max.function = 'loglik.johnsonsu.q',
+                           fit.params   = 'quant, shape')
+        out.all <- rbind(out.all, temp)
+        cat('convergence for quant, shape:', convergence.qs, '\n')
         cat('\n')
         
         ##----------------------
         ## estimate confidence limit using standard error to serve as starting point for search
-        ## estimates      <- as.numeric( out.bestfit.q$par )
+        ## estimates      <- as.numeric( out.qs$par )
         ## coef           <- data.frame(estimates, standard.error)
-        ## rownames(coef) <- names(out.bestfit.q$par)
+        ## rownames(coef) <- names(out.qs$par)
         dof    <- length(x) - 2    # 2 independent fitting parameters in Weibull
         student.t <- qt(1 - (1-conf)/sided, dof)  # 2.3326 for dof=598
-        se <- standard.error[1]
-        if (is.na(se)) {
-            se <- sd(x.avg)
-            cat('standard error for quantile = NA so standard deviation used in estimate\n')
-        }
-        quant.P.alpha.eff.l.guess <- quant.P - student.t * se
-        quant.P.alpha.eff.u.guess <- quant.P + student.t * se
+        quant.P.alpha.eff.l.guess <- quant.P - student.t * standard.error
+        quant.P.alpha.eff.u.guess <- quant.P + student.t * standard.error
         cat('Initial guesses for confidence interval for P=', P, '\n')
         cat(quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess, '\n\n')
         tol.approx <- c(tol.approx, quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess)
@@ -181,46 +219,80 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
         }
         
         ##----------------------
-        ## function to fit on delta, xi and lambda
-        loglik.fixedq <- function(quant, data, xcen=NA, P, shape=shape.P, debug=FALSE) {
-            ## first determine best fit delta, xi, and lambda for given x0=quant (and P)
+        ## function to fit on shape
+        loglik.fixedq <- function(quant, data, xcen, P, shape, debug=FALSE) {
+            ## first determine best fit delta, xi, and lambda for given quant (and P)
             x <- data  # using data rather than x as a parameter is needed for newton.raphson()
-            fit <- NA
-            tryCatch({
-                ## constraints for delta, xi, and/or lambda
-                ## A %*% param + B > 0
-                ## row 1: shape > 0
-                A <- matrix(c(1), 1, 1, byrow=TRUE)
-                B <- 0
-                constraints <- list(ineqA=A, ineqB=B)
-                out.q <- NA
-                ## browser()
-                out.q <- maxLik::maxLik(loglik.weibull.q.set,
-                                        start = shape,
-                                        x     = x,
-                                        xcen  = xcen,
-                                        quant = quant,
-                                        P     = P,
-                                        debug = debug,
-                                        constraints = constraints)
-                params.q <- as.list(out.q$estimate)
-                loglik   <- out.q$maximum
-            }, error = function(e) {
-                ## what to do if error
-                cat('WARNING: CONVERGENCE FAILURE IN mle.weibuloglik.tol.r MODULE\n')
-                cat('         IN loglik.fixedq OPTIMIZATION ROUTINE.\n\n')
-                out.q    <- NA
-                params.q <- NA
-                loglik   <- NA
-            })
-            if (isFALSE(debug)) {
-                return(loglik)
+            ## constraints for shape
+            ## A %*% param + B > 0
+            ## row 1: shape > 0
+            A <- matrix(c(1), 1, 1, byrow=TRUE)
+            B <- 0
+            constraints <- list(ineqA=A, ineqB=B)
+            out.q <- NA
+            ## browser()
+            ## maxLik
+            out.s <- maxLik::maxLik(loglik.weibull.q.set,
+                                    start = shape,
+                                    x     = x,
+                                    xcen  = xcen,
+                                    quant = quant,
+                                    P     = P,
+                                    debug = debug,
+                                    constraints = constraints,
+                                    iterlim = 2000)
+            if (out.s$message == 'successful convergence ') {
+                params.s      <- as.list(out.s$estimate)
+                loglik.s      <- out.s$maximum
+                convergence.s <- 'successful'
             } else {
-                return(list(fit=out.q, params=params.q, loglik=loglik))
+                cat('####################################################################################\n')
+                cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu when maximizing loglik.johnsonsu.q.set\n')
+                cat('         for quant =', quant, 'and P =', P,                                        '\n')
+                cat('####################################################################################\n')
+                params.s      <- list(shape=NA)
+                loglik.s      <- NA
+                convergence.s <- out.smessage
+            }
+
+
+            ## ## optim
+            ## out.q.optim <- stats::optim(par=c(shape=shape), # par holds optimization params
+            ##                             loglik.weibull.q.set,
+            ##                             x     = x,
+            ##                             xcen  = xcen,
+            ##                             quant = quant,
+            ##                             P     = P,
+            ##                             debug = debug)
+            ## out.q.optim <- stats::optim(par=c(shape=shape), # par holds optimization params
+            ##                             loglik.weibull.q.set,
+            ##                             x     = x,
+            ##                             xcen  = xcen,
+            ##                             quant = quant,
+            ##                             P     = P,
+            ##                             debug = debug,
+            ##                             method = 'Brent',
+            ##                             lower = 1E-15,
+            ##                             upper = max(x, xcen, na.rm=TRUE)*2)
+            ## ## optimize
+            ## out.q.optimize <- stats::optim(par=c(shape=shape), # par holds optimization params
+            ##                                loglik.weibull.q.set,
+            ##                                x     = x,
+            ##                                xcen  = xcen,
+            ##                                quant = quant,
+            ##                                P     = P,
+            ##                                debug = debug)
+            ## out <- optimize(loglik.weibull.q.set.optim, interval=c(1E-15, max(x, xcen, na.rm=TRUE)),
+            ##                 maximum = TRUE, x=x, xcen=xcen, quant=quant, P=P, debug=FALSE)
+
+            if (isFALSE(debug)) {
+                return(loglik.s)
+            } else {
+                return(list(out = out.s, loglik=loglik.s, params=params.s, convergence=convergence.s))
             }
         }
 
-        
+  
         ##----------------------
         if (isTRUE(plots)) {
             xplot <- seq(xmin, xmax, length.out=301)
@@ -229,6 +301,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                 ## if (ploti == 3) browser()
                 yplot[ploti] <- loglik.fixedq(xplot[ploti], x, xcen, P, shape.P, debug=FALSE)
                 ## cat(ploti, xplot[ploti], yplot[ploti], '\n')
+                points(xplot[ploti], yplot[ploti], col='red')
             }
             xyplot <- data.frame(quantile       = xplot[1:length(yplot)],
                                  log.likelihood = yplot,
@@ -244,9 +317,8 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                 return(yplot)
             }
         }
-        
+
         ## determine confidence bound as point where the likelihood ratio equals loglik.tol
-        quant.P.alpha.eff.l <- NA
         quant.P.alpha.eff.u <- NA
         if (side.which == 'lower' | (P < 0.5 & sided == 2)) {
             ## find lower tolerance limit
@@ -322,7 +394,8 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                 quant.P    = quant.P.save,
                 params     = params.save,
                 tol.approx = tol.approx,
-                tolerance  = tolerance))
+                tolerance  = tolerance,
+                out.all    = out.all))
 }
 
 
@@ -343,7 +416,8 @@ mle.weibull.tol.test <- function() {
     print(out.fit$parms.compare)
 
     ## weibull tolerance limits
-    out.tol <- mle.weibuloglik.tol(x, plots=TRUE)
+    out.tol <- mle.weibull.tol(x, P=0.99, conf=0.95, plots=TRUE) # 1-sided, upper 99/95 = 
+    tolerance::exttol.int(x)                                     # 1-sided, upper 99/95 = 2.0987
 
     ## incorporated into other functions
     plotspace(2,2)
