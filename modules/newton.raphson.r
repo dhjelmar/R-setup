@@ -1,5 +1,5 @@
 newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
-                           relax=0.8, plots=FALSE, main.adder=NULL) {
+                           relax=0.8, nrelax=30, plots=FALSE, plot.add=FALSE, main.adder=NULL) {
     ## use newton raphson to find x where f(x, ...) = ytarget
     ## where "..." is a list of additional arguments needed by f, if any
     ## starts search from xguess
@@ -28,21 +28,36 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
     xvalue[1] <- x0          # store x values
     yvalue[1] <- f(x0, ...)  # store y values
 
-    ## initial relaxation factor to be used during 1st 100 iterations
-    relax.use <- 1
-
+    tried <- 'initial guess'
     for (i in 2:(n+1)) {
-      
-        cat('Newton-Raphson iteration =', i-1, 'x = ', x0, ', y = ', f(x0, ...), '\n')
+
+        ## function value at current guess for x
+        y0 <- f(x0, ...)
+        cat('Newton-Raphson iteration =', i-1, 'x =', x0, ', y =', y0, ', yerror =', y0-ytarget, 'tried =', tried, '\n')
 
         ## Use first order derivative to make next guess, x1
         dx <- genD(func = f, ..., x = x0)$D[1] # First-order derivative f'(x0)
-        x1 <- x0 - ( (f(x0, ...)-ytarget) / dx)
+        x1 <- x0 - ( (y0 - ytarget) / dx)
+        
+        ## save new values of x and y
+        xvalue[i] <- x1
+        y1      <- f(x1, ...)
+        yvalue[i] <- y1
+        if (plots == TRUE & plot.add == TRUE) points(x1, y1, col='red', pch=3)
 
-        if (abs(x1 - x0) < tol & abs(f(x1, ...) - f(x0, ...)) < tol) {
-            ## difference between x0 and x1 is sufficiently small, so output the results
-            root.approx <- tail(xvalue, n=1)
-            res <- list('root' = root.approx, 'iterations' = xvalue)
+        ## if (abs(x1 - x0) < tol & abs(y1 - y0) < tol) {
+        ##     ## differences between x0 and x1 and between y0 and y1 are sufficiently small,
+        ##     ## so output the results
+        ## if (abs(x1 - x0) < tol & abs(y1 - ytarget) < tol) {
+        ##     ## differences between x0 and x1 and between y1 and ytarget are sufficiently small,
+        if (abs(y1 - ytarget) < tol) {
+            ## difference between y1 and ytarget is sufficiently small,
+            ## so output the results
+            if (plots == TRUE & plot.add == TRUE) points(x1, y1, col='red', pch=2)
+            cat('Newton-Raphson iteration =', i, 'x =', x1, ', y =', y1, ', yerror =', y1-ytarget, 'tried =', tried, '\n')
+            ## root.approx <- tail(xvalue, n=1)
+            ## res <- list('root' = root.approx, 'iterations' = xvalue)
+            res <- list(xiterations=xvalue, yiterations=yvalue, ytarget=ytarget, root=x1, convergence="successful")
             if (isTRUE(plots)) {
                 if (is.null(main.adder)) {
                     main <- 'Solution found within tolerance in newton.raphson()'
@@ -70,22 +85,29 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
             }
             return(res)
         }
-        
-        ## save new valeus of x and y
-        xvalue[i] <- x1
-        yvalue[i] <- f(x1, ...)
-        
+
         ## check whether solution is bracketed
-        if (i > 100) relax.use <- relax
-        x1.relaxed <- x0 + relax.use * (x1-x0)
         if ( (yvalue[i]-ytarget) / (yvalue[i-1]-ytarget) < 0) {
             ## bracketed solution since successive y values - ytarget have opposite sign
-            ## use bisection to keep solution from diverging
-            x0 <- (x0 + x1.relaxed)/2
+            ## interpolate to new x0 guess
+            xnext <- (x1 - x0)/(yvalue[i] - yvalue[i-1])*(ytarget - yvalue[i-1]) + x0
+            tried <- 'interpolation'
         } else {
-            ## have not bracketed solution so use X1 as next guess
-            x0 <- x1.relaxed
+            ## have not bracketed solution
+            xnext <- x1
+            tried <- 'slope used'
         }
+
+        if (i > nrelax) {
+            ## have already tried many iterations, so relax next guess
+            ## added a little variablility to relaxation factor to help keep it from getting stuck
+            relax.use <- relax*rnorm(1, 1, 0.01)
+            xnext <- x0 + relax.use * (xnext-x0)
+            tried <- paste(tried, ' with relaxation', sep='')
+        }
+
+        x0 <- xnext
+        
     }
 
     ## below here will not be reached if the search is successful
@@ -112,6 +134,9 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
            col   =c('black',         'red',                'red',          'black',    'blue'),
            pch   =c(19,              1,                    19,              NA,         NA),
            lty   =c(NA,              NA,                   NA,              1,          1))
+    res <- list(xiterations=xvalue, yiterations=yvalue, ytarget=ytarget, root=NA, convergence='failed')
+    return(res)
+
 }
 
 test_newton.raphson <- function() {
@@ -127,7 +152,7 @@ test_newton.raphson <- function() {
         z=2.4,
         xguess = mean(x),
         tol=1E-10,
-        plot='yes'
+        plots=TRUE
     )
     x.out$root
     
@@ -143,17 +168,9 @@ test_newton.raphson <- function() {
       z=400,
       xguess = 30,
       tol=1E-10,
-      plot='yes'
+      plots=TRUE
     )
     x.out$root
-    ## plot(x, y = x^2 + 11 + mean(x), main='wider view of function')
-    curve(x^2 + 11 + mean(x), -10, 32, main='wider view of function')
-    x.iter <- x.out$iterations
-    y.iter <- x.iter^2 + 11 + mean(x)
-    num <- length(x.iter)
-    points(x.iter     , y.iter     , col='red' , pch=1 , cex=2)
-    points(x.iter[1]  , y.iter[1]  , col='blue', pch=16, cex=2)
-    points(x.iter[num], y.iter[num], col='red' , pch=16, cex=2)
     
     ## example: same as above, but ytarget is not zero (this works)
     set.seed(1)
@@ -167,13 +184,13 @@ test_newton.raphson <- function() {
       parm1 = 11,
       parm2 = mean(x),
       tol=1E-10,
-      plot='yes'
+      plots=TRUE
     )
     x.out$root
     ## plot(x, y = x^2 + 11 + mean(x), main='wider view of function')
     curve(x^2 + 11 + mean(x), -10, 32, main='wider view of function')
-    x.iter <- x.out$iterations
-    y.iter <- x.iter^2 + 11 + mean(x)
+    x.iter <- x.out$xiterations
+    y.iter <- x.out$yiterations
     num <- length(x.iter)
     points(x.iter     , y.iter     , col='red' , pch=1 , cex=2)
     points(x.iter[1]  , y.iter[1]  , col='blue', pch=16, cex=2)
@@ -189,7 +206,7 @@ test_newton.raphson <- function() {
         z=2.4,
         xguess = mean(x),
         tol=1E-10,
-        plot='yes'
+        plots=TRUE
     )
     x.out$root
 
@@ -201,12 +218,13 @@ test_newton.raphson <- function() {
     ##          but that does not make the function abort
     x <- rnorm(1000)
     zero <- function(x, z)  (x - mean(x))/sd(x) - z
+    x.out <- NA
     x.out <- newton.raphson(
         zero,
         z=2.4,
         xguess = mean(x),
         tol=1E-10,
-        plot='yes'
+        plots=TRUE
     )
     x.out$root
 }
