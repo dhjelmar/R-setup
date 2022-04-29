@@ -287,26 +287,42 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         
         ##----------------------
         if (isTRUE(plots)) {
-            xplot <- seq(xmin, xmax, length.out=301)
-            yplot <- NA
             ## initial guess for 1st point
             delta.plot <- delta
             xi.plot <- xi
             lambda.plot <- lambda
+            ## plot fit above quant.P
+            xplot <- seq(quant.P, xmax, length.out=51)
+            yplot <- NA
             for (ploti in 1:length(xplot)) {
                 ## if (ploti == 3) browser()
                 out <- loglik.fixedq(xplot[ploti], x, xcen, P, delta.plot, xi.plot, lambda.plot, debug=TRUE)
                 yplot[ploti] <- out$loglik
-                points(xplot[ploti], yplot[ploti], col='red')
+                points(xplot[ploti], yplot[ploti], col='black')
+                if (yplot[ploti] < loglik.tol) break  # exit for loop
                 ## better initial guess for next point
                 ## delta.plot   <- out$params[[1]]
                 ## xi.plot      <- out$params[[2]]
                 ## lambda.plot  <- out$params[[3]]
                 ## cat(ploti, xplot[ploti], yplot[ploti], '\n')
             }
-            xyplot <- data.frame(quantile       = xplot[1:length(yplot)],
-                                 log.likelihood = yplot,
-                                 loglik.tol     = loglik.tol)
+            xyplot.upper <- data.frame(quantile       = xplot[1:length(yplot)],
+                                       log.likelihood = yplot,
+                                       loglik.tol     = loglik.tol)
+            ## plot fit below quant.P
+            xplot <- seq(quant.P, xmin, length.out=51)
+            yplot <- NA
+            for (ploti in 1:length(xplot)) {
+                ## if (ploti == 3) browser()
+                out <- loglik.fixedq(xplot[ploti], x, xcen, P, delta.plot, xi.plot, lambda.plot, debug=TRUE)
+                yplot[ploti] <- out$loglik
+                points(xplot[ploti], yplot[ploti], col='black')
+                if (yplot[ploti] < loglik.tol) break  # exit for loop
+            }
+            xyplot.lower <- data.frame(quantile       = xplot[1:length(yplot)],
+                                       log.likelihood = yplot,
+                                       loglik.tol     = loglik.tol)
+            xyplot <- rbind(xyplot.lower, xyplot.upper)
             points(xyplot$quantile, xyplot$log.likelihood)
             ## converged <- which(!is.na(yplot))
             ## points(xplot[converged], yplot[converged],
@@ -334,8 +350,12 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                       delta  = delta,  # initial guess for loglik.fixedq
                                       xi     = xi,     # initial guess for loglik.fixedq
                                       lambda = lambda, # initial guess for loglik.fixedq
-                                      tol = 1e-5, n = 1000,
-                                      plots=plots.nr)
+                                      tol = 1e-5, 
+                                      n = 1000,
+                                      relax = 0.8,
+                                      nrelax = 10,
+                                      plots=plots.nr,
+                                      plot.add=TRUE)
             quant.P.alpha.eff.l <- out.nrl$root
             if (is.null(quant.P.alpha.eff.l)) { quant.P.alpha.eff.l <- NA }
         } else {
@@ -349,8 +369,12 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                       delta  = delta,  # initial guess for loglik.fixedq
                                       xi     = xi,     # initial guess for loglik.fixedq
                                       lambda = lambda, # initial guess for loglik.fixedq
-                                      tol = 1e-5, n = 1000,
-                                      plots=plots.nr)
+                                      tol = 1e-5, 
+                                      n = 1000,
+                                      relax = 0.8,
+                                      nrelax = 10,
+                                      plots=plots.nr,
+                                      plot.add=TRUE)
             quant.P.alpha.eff.u <- out.nru$root
             if (is.null(quant.P.alpha.eff.u)) { quant.P.alpha.eff.u <- NA }
         }
@@ -387,7 +411,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
     P <- P.in
 
     ## collect tolerance values in dataframe similar to extol.int for weibull
-    tolerance <- data.frame(sided, alpha.eff=alpha.eff, conf, P, tol.lower, tol.upper)
+    tolerance <- data.frame(sided, alpha.eff=alpha.eff, P, conf, tol.lower, tol.upper)
 
     ## print final parameter comparison and tolerance limits
     print(as.data.frame(params.save))
@@ -436,17 +460,18 @@ mle.johnsonsu.tol.test <- function() {
     x <- iris$Sepal.Width
     plotspace(2,2)
     ## lower tolerance limit
+    ## wikipedia order: "100×p%/100×(1−α) tolerance interval"
     out.lower <- mle.johnsonsu.tol(data=x, param='auto',
-                                   side.which='lower', sided=1, conf=0.99, P=0.01, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/1')
+                                   side.which='lower', sided=1, P=0.01,  conf=0.99,
+                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 1/99')
     ## using default parameters except for 'plots'
     out.upper <- mle.johnsonsu.tol(data=x, param='auto',
-                                   side.which='upper', sided=1, conf=0.99, P=0.99, 
+                                   side.which='upper', sided=1, P=0.99,  conf=0.99,
                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
     ## lower and upper 2-sided tolerance limits
     ## test that 1-sided 99/99 is the same as a 2-sided 98/98
     out.twosided <- mle.johnsonsu.tol(data=x, param='auto',
-                                      side.which='both', sided=2, conf=0.98, P=0.98, 
+                                      side.which='both', sided=2, P=0.98,  conf=0.98,
                                       plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/98')
 
     
@@ -517,8 +542,8 @@ mle.johnsonsu.tol.test <- function() {
     xnum <- 50
     x.low  <- NA
     x.high <- 2.0
-    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit1a <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    xcen1 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit1a <- fit.compare.cen(x, xcen1, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit1a)
 
     plotspace(1,1)
@@ -526,16 +551,16 @@ mle.johnsonsu.tol.test <- function() {
     ## following shows that is true (99/99 for fit with xcen is >> that for fit to x)
     x.low  <- 3.7
     x.high <- NA
-    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit2 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    xcen2 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit2 <- fit.compare.cen(x, xcen2, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit2)
     
     ## data that are unknown over the middle range of data should strengthen confidence in 99/99
     ## following shows that is true (99/99 for fit with xcen is < that for fit to x)
-    x.low  <- 2.2
-    x.high <- 3.7
-    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit3 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    x.low  <- 2.6
+    x.high <- 3.5
+    xcen3 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit3 <- fit.compare.cen(x, xcen3, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit3)
     
     ## data that are unknown between almost the lowest value and Inf should have no real impact
@@ -543,8 +568,32 @@ mle.johnsonsu.tol.test <- function() {
     x.low  <- 2.2
     x.high <- NA
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    fit4 <- fit.compare.cen(x, xcen, P=0.9, conf=0.9, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    fit4 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit4)
    
+    ## many low censored points
+    xnum <-length(x)
+    x.low  <- NA
+    x.high <- 2.2
+    xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    fit5 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+    print(fit5)
+    
+    ## multiple censored data
+    xnum <- 2
+    x.low  <- NA
+    x.high <- 2.0
+    xcen1 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    x.low  <- 3.7
+    x.high <- NA
+    xcen2 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    x.low  <- 2.6
+    x.high <- 3.5
+    xcen3 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    xcen <- rbind(xcen1, xcen2, xcen3)
+    
+    out.tol <- mle.johnsonsu.tol(x, xcen, plots=TRUE)
+    out.qq <- qqplot_censored(x, xcen)
+    
 }
 
