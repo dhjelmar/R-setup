@@ -27,37 +27,21 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
     ## iterate to find where f(x, ...) = ytarget
     xvalue[1] <- x0          # store x values
     yvalue[1] <- f(x0, ...)  # store y values
+    y0        <- yvalue[1]
 
     tried <- 'initial guess'
     for (i in 2:(n+1)) {
 
         ## function value at current guess for x
-        y0 <- f(x0, ...)
         cat('Newton-Raphson iteration =', i-1, 'x =', x0, ', y =', y0, ', yerror =', y0-ytarget, 'tried =', tried, '\n')
-
-        ## Use first order derivative to make next guess, x1
-        dx <- genD(func = f, ..., x = x0)$D[1] # First-order derivative f'(x0)
-        x1 <- x0 - ( (y0 - ytarget) / dx)
         
-        ## save new values of x and y
-        xvalue[i] <- x1
-        y1      <- f(x1, ...)
-        yvalue[i] <- y1
-        if (plots == TRUE & plot.add == TRUE) points(x1, y1, col='red', pch=3)
-
-        ## if (abs(x1 - x0) < tol & abs(y1 - y0) < tol) {
-        ##     ## differences between x0 and x1 and between y0 and y1 are sufficiently small,
-        ##     ## so output the results
-        ## if (abs(x1 - x0) < tol & abs(y1 - ytarget) < tol) {
-        ##     ## differences between x0 and x1 and between y1 and ytarget are sufficiently small,
-        if (abs(y1 - ytarget) < tol) {
+        if (abs(y0 - ytarget) < tol) {
             ## difference between y1 and ytarget is sufficiently small,
             ## so output the results
-            if (plots == TRUE & plot.add == TRUE) points(x1, y1, col='red', pch=2)
-            cat('Newton-Raphson iteration =', i, 'x =', x1, ', y =', y1, ', yerror =', y1-ytarget, 'tried =', tried, '\n')
+            if (plots == TRUE & plot.add == TRUE) points(x0, y0, col='red', pch=2)
             ## root.approx <- tail(xvalue, n=1)
             ## res <- list('root' = root.approx, 'iterations' = xvalue)
-            res <- list(xiterations=xvalue, yiterations=yvalue, ytarget=ytarget, root=x1, convergence="successful")
+            res <- list(xiterations=xvalue, yiterations=yvalue, ytarget=ytarget, root=x0, convergence="successful")
             if (isTRUE(plots)) {
                 if (is.null(main.adder)) {
                     main <- 'Solution found within tolerance in newton.raphson()'
@@ -85,16 +69,21 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
             }
             return(res)
         }
+        
+        ## Use first order derivative to make next guess, x1
+        dx <- genD(func = f, ..., x = x0)$D[1] # First-order derivative f'(x0)
+        x1 <- x0 - ( (y0 - ytarget) / dx)
+        y1 <- f(x1, ...)
 
         ## check whether solution is bracketed
-        if ( (yvalue[i]-ytarget) / (yvalue[i-1]-ytarget) < 0) {
+        if ( (y1-ytarget) / (y0-ytarget) < 0) {
             ## bracketed solution since successive y values - ytarget have opposite sign
             ## interpolate to new x0 guess
-            xnext <- (x1 - x0)/(yvalue[i] - yvalue[i-1])*(ytarget - yvalue[i-1]) + x0
+            x1 <- (x1 - x0)/(y1 - y0)*(ytarget - y0) + x0
             tried <- 'interpolation'
         } else {
             ## have not bracketed solution
-            xnext <- x1
+            x1 <- x1
             tried <- 'slope used'
         }
 
@@ -102,12 +91,20 @@ newton.raphson <- function(f, ..., xguess=0, ytarget=0, tol = 1e-5, n = 1000,
             ## have already tried many iterations, so relax next guess
             ## added a little variablility to relaxation factor to help keep it from getting stuck
             relax.use <- relax*rnorm(1, 1, 0.01)
-            xnext <- x0 + relax.use * (xnext-x0)
+            x1 <- x0 + relax.use * (x1-x0)
             tried <- paste(tried, ' with relaxation', sep='')
         }
-
-        x0 <- xnext
         
+        ## save new values of x and y
+        y1 <- f(x1, ...)
+        if (plots == TRUE & plot.add == TRUE) points(x1, y1, col='red', pch=3)
+        xvalue[i] <- x1
+        yvalue[i] <- y1
+        
+        ## use x1 as the next "current" guess
+        x0 <- x1
+        y0 <- y1
+
     }
 
     ## below here will not be reached if the search is successful
