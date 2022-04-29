@@ -292,20 +292,55 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
             }
         }
 
-  
+
+        ## test fit at quant.P (could comment out this block of code)
+        cat('Attempting MLE fit on alternate parameters for P=', P, 'but with fixed quant=quant.P\n')
+        out.s <- loglik.fixedq(quant.P.orig, x, xcen, P, shape.P, debug=TRUE)
+        summary(out.s$out)
+        temp <- data.frame(shape=out.s$params[[1]], scale=NA,
+                           quant=quant.P.orig, P=P,
+                           loglik=out.s$loglik, convergence=out.s$convergence,
+                           optimizer    = 'maxLik',
+                           max.function = 'loglik.weibull.q.set',
+                           fit.params   = 'shape for given quant + P')
+        out.all <- rbind(out.all, temp)
+        cat('convergence for shape at quant.P:', out.s$convergence, '\n\n')
+        
+        
         ##----------------------
         if (isTRUE(plots)) {
-            xplot <- seq(xmin, xmax, length.out=301)
+            ## initial guess for 1st point
+            shape.plot <- shape
+            ## plot fit above quant.P
+            xplot <- seq(quant.P, xmax, length.out=51)
             yplot <- NA
             for (ploti in 1:length(xplot)) {
                 ## if (ploti == 3) browser()
-                yplot[ploti] <- loglik.fixedq(xplot[ploti], x, xcen, P, shape.P, debug=FALSE)
+                out <- loglik.fixedq(xplot[ploti], x, xcen, P, shape.plot, debug=TRUE)
+                yplot[ploti] <- out$loglik
+                points(xplot[ploti], yplot[ploti], col='black')
+                if (yplot[ploti] < loglik.tol) break  # exit for loop
+                ## better initial guess for next point
+                ## shape.plot   <- out$params[[1]]
                 ## cat(ploti, xplot[ploti], yplot[ploti], '\n')
-                points(xplot[ploti], yplot[ploti], col='red')
             }
-            xyplot <- data.frame(quantile       = xplot[1:length(yplot)],
-                                 log.likelihood = yplot,
-                                 loglik.tol     = loglik.tol)
+            xyplot.upper <- data.frame(quantile       = xplot[1:length(yplot)],
+                                       log.likelihood = yplot,
+                                       loglik.tol     = loglik.tol)
+            ## plot fit below quant.P
+            xplot <- seq(quant.P, xmin, length.out=51)
+            yplot <- NA
+            for (ploti in 1:length(xplot)) {
+                ## if (ploti == 3) browser()
+                out <- loglik.fixedq(xplot[ploti], x, xcen, P, shape.plot, debug=TRUE)
+                yplot[ploti] <- out$loglik
+                points(xplot[ploti], yplot[ploti], col='black')
+                if (yplot[ploti] < loglik.tol) break  # exit for loop
+            }
+            xyplot.lower <- data.frame(quantile       = xplot[1:length(yplot)],
+                                       log.likelihood = yplot,
+                                       loglik.tol     = loglik.tol)
+            xyplot <- rbind(xyplot.lower, xyplot.upper)
             points(xyplot$quantile, xyplot$log.likelihood)
             ## converged <- which(!is.na(yplot))
             ## points(xplot[converged], yplot[converged],
@@ -319,6 +354,8 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
         }
 
         ## determine confidence bound as point where the likelihood ratio equals loglik.tol
+        cat('Attempting MLE fit on alternate parameters for P=', P, 'to find quant where loglik corresponds to tolerance limit\n')
+        quant.P.alpha.eff.l <- NA
         quant.P.alpha.eff.u <- NA
         if (side.which == 'lower' | (P < 0.5 & sided == 2)) {
             ## find lower tolerance limit
@@ -329,8 +366,12 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                                       xcen = xcen,
                                       P      = P,
                                       shape  = shape,
-                                      tol = 1e-5, n = 1000,
-                                      plots=plots.nr)
+                                      tol = 1e-5, 
+                                      n = 1000,
+                                      relax = 0.8,
+                                      nrelax = 10,
+                                      plots=plots.nr,
+                                      plot.add=TRUE)
             quant.P.alpha.eff.l <- out.nrl$root
             if (is.null(quant.P.alpha.eff.l)) { quant.P.alpha.eff.l <- NA }
         } else {
@@ -342,8 +383,12 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                                       xcen   = xcen,
                                       P      = P,
                                       shape  = shape,
-                                      tol = 1e-5, n = 1000,
-                                      plots=plots.nr)
+                                      tol = 1e-5, 
+                                      n = 1000,
+                                      relax = 0.8,
+                                      nrelax = 10,
+                                      plots=plots.nr,
+                                      plot.add=TRUE)
             quant.P.alpha.eff.u <- out.nru$root
             if (is.null(quant.P.alpha.eff.u)) { quant.P.alpha.eff.u <- NA }
         }
@@ -380,7 +425,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
     P <- P.in
 
     ## collect tolerance values in dataframe similar to extol.int for weibull
-    tolerance <- data.frame(sided, alpha.eff=alpha.eff, conf, P, tol.lower, tol.upper)
+    tolerance <- data.frame(sided, alpha.eff=alpha.eff, P, conf, tol.lower, tol.upper)
 
     ## print final parameter comparison and tolerance limits
     print(as.data.frame(params.save))
@@ -431,33 +476,33 @@ mle.weibull.tol.test <- function() {
     x <- iris$Sepal.Width
     plotspace(2,2)
     ## lower tolerance limit
-    out.lower <- mle.weibuloglik.tol(data=x, param='auto',
-                                   side.which='lower', sided=1, conf=0.99, P=0.01, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/1')
+    out.lower <- mle.weibull.tol(data=x, param='auto',
+                                 side.which='lower', sided=1, conf=0.99, P=0.01, 
+                                 plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/1')
     ## using default parameters except for 'plots'
-    out.upper <- mle.weibuloglik.tol(data=x, param='auto',
-                                   side.which='upper', sided=1, conf=0.99, P=0.99, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
+    out.upper <- mle.weibull.tol(data=x, param='auto',
+                                 side.which='upper', sided=1, conf=0.99, P=0.99, 
+                                 plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
     ## lower and upper 2-sided tolerance limits
     ## test that 1-sided 99/99 is the same as a 2-sided 98/98
-    out.twosided <- mle.weibuloglik.tol(data=x, param='auto',
-                                      side.which='both', sided=2, conf=0.98, P=0.98, 
-                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/98')
+    out.twosided <- mle.weibull.tol(data=x, param='auto',
+                                    side.which='both', sided=2, conf=0.98, P=0.98, 
+                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/98')
 
     
     ## test that upper and lower 1-sided 75/99 are the same as a 2-sided 50/98  
     plotspace(2,2)
     ## lower and upper 1-sided tolerance limits
-    out.lower <- mle.weibuloglik.tol(data=x, param='auto',
-                                   side.which='lower', sided=1, conf=0.99, P=0.25, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/25')
-    out.upper <- mle.weibuloglik.tol(data=x, param='auto',
-                                   side.which='upper', sided=1, conf=0.99, P=0.75, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/75')
+    out.lower <- mle.weibull.tol(data=x, param='auto',
+                                 side.which='lower', sided=1, conf=0.99, P=0.25, 
+                                 plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/25')
+    out.upper <- mle.weibull.tol(data=x, param='auto',
+                                 side.which='upper', sided=1, conf=0.99, P=0.75, 
+                                 plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/75')
     ## lower and upper 2-sided tolerance limits
-    out.twosided <- mle.weibuloglik.tol(data=x, param='auto',
-                                      side.which='both', sided=2, conf=0.98, P=0.5, 
-                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/50')
+    out.twosided <- mle.weibull.tol(data=x, param='auto',
+                                    side.which='both', sided=2, conf=0.98, P=0.5, 
+                                    plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/50')
 
 
     ##-------------------------------------------------------------------
@@ -466,20 +511,20 @@ mle.weibull.tol.test <- function() {
     fit.compare.cen <- function(x, xcen, main=NULL) {
         ## plot histogram with no censored data and fit
         hist(x, freq=FALSE, border='black', main=main, xlim=c(2,5.4))
-        out.fit0 <- mle.weibuloglik.tol(x, xcen=NA, plots=FALSE)
+        out.fit0 <- mle.weibull.tol(x, xcen=NA, plots=FALSE)
         parms0 <- out.fit0$params
-        curve(stats::dweibull(x, parms0$shape, params0$scale), min(x), max(x), col='black', add=TRUE)
+        curve(stats::dweibull(x, parms0$shape, parms0$scale), min(x), max(x), col='black', add=TRUE)
         abline(v=out.fit0$tolerance$tol.upper, col='black', lty=2)
         ## plot histogram with all data treated as known fit at numeric value
         xcen.avg <- rowMeans(xcen, na.rm=TRUE) # use the average for interval data
         x.all <- c(x, xcen.avg)
         hist(x.all, freq=FALSE, border='red', add=TRUE)
-        out.fit1 <- mle.weibuloglik.tol(x.all, xcen=NA, plots=FALSE)
+        out.fit1 <- mle.weibull.tol(x.all, xcen=NA, plots=FALSE)
         parms1 <- out.fit1$params
-        curve(stats::dweibull(x, params1$shape, params1$scale), min(x), max(x), col='red', add=TRUE)
+        curve(stats::dweibull(x, parms1$shape, parms1$scale), min(x), max(x), col='red', add=TRUE)
         abline(v=out.fit1$tolerance$tol.upper, col='red', lty=2)
         ## plot fit if treat xcen as censored
-        out.fit2 <- mle.weibuloglik.tol(x, xcen=xcen, plots=FALSE)
+        out.fit2 <- mle.weibull.tol(x, xcen=xcen, plots=FALSE)
         parms2 <- out.fit2$params
         curve(stats::dweibull(x, parms2$shape, parms2$scale), min(x), max(x), col='blue', type='p', add=TRUE)
         abline(v=out.fit2$tolerance$tol.upper, col='blue', lty=2, lwd=2)
@@ -510,7 +555,7 @@ mle.weibull.tol.test <- function() {
     x.high <- 2.0
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit1a <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-    print(fit1)
+    print(fit1a)
     ## it may be that the fit was bad because the following does pull the 99/99 in as I would expect
     ## out.qq <- qqplot_nwj(x, type='j', mainadder = 'x only')
     ## x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
@@ -519,21 +564,22 @@ mle.weibull.tol.test <- function() {
     x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
     out.qq <- qqplot_nwj(x.all, type='j', mainadder='all')
     
+    x.low  <- NA
     x.high <- 2.14
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit1b <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     x.all <- na.omit(c(x, xcen$x.low, xcen$x.high))
     out.qq <- qqplot_nwj(x.all, type='j', mainadder='all')
     
+    x.low  <- NA
     x.high <- 2.15
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit1c <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-    out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='censored')
-    
+
+    x.low  <- NA
     x.high <- 2.2
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit1d <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-    out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='censored')
 
     plotspace(1,1)
     ## data that are high should push out the upper 99/99
@@ -559,6 +605,6 @@ mle.weibull.tol.test <- function() {
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit4 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit4)
-   
+    
 }
 
