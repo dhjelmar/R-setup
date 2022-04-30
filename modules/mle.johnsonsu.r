@@ -1,10 +1,21 @@
 loglik.johnsonsu <- function(x=NA, xcen=NA, param=c(gamma, delta, xi, lambda), debug=FALSE){
-    ## calculate log likelihhod for distribution and given parameters
+    ## calculate log likelihhod for distribution and given parameter
     if (is.data.frame(x)) x <- x[1] # convert to vector
+    if (is.data.frame(xcen)) {
+        ## if known data are inside xcen, move them to x and keep remainder in xcen
+        xcen.na  <- xcen[ is.na(rowSums(xcen)),]                  # censored rows with NA, if any
+        xcen.val <- xcen[!is.na(rowSums(xcen)),]                  # rows w/o NA, if any
+        x.add   <- xcen.val[xcen.val[[1]] == xcen.val[[2]],][[1]] # known values from xcen, if any
+        x <- as.numeric(na.omit(c(x, x.add)))                     # new set of known values
+        xcen.lowhigh <- xcen.val[xcen.val[[1]] != xcen.val[[2]],] # censored rows with no NA
+        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set ofcensored rows
+    }
+    ## set paramaters
     gamma  <- param[[1]]  
     delta  <- param[[2]]
     xi     <- param[[3]]
     lambda <- param[[4]]
+    ## likelihood contribution from x
     pdf <- 1
     if (!is.na(x[1])) {
         ## PDF for Johnson SU
@@ -15,6 +26,7 @@ loglik.johnsonsu <- function(x=NA, xcen=NA, param=c(gamma, delta, xi, lambda), d
         ## cdf <- pnorm(z)
         ## plot(z, cdf)
     }
+    ## likelihood contribution from xcen
     probability <- 1
     if (is.data.frame(xcen)) {
         ## following is equivalent to ExtDist::pJohnsonSU(xcen$x.low,  gamma, delta, xi, lambda)

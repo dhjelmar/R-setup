@@ -1,116 +1,116 @@
-qqplot_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NULL) {
+qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainadder=NULL) {
     ## creates normal, Weibull and/or Johnson qq plots
-
+    
     ## input: x    = vector of data
-    
-    ## make room for 1, 2 or 3 plots depending on length of string 'type'
-    nplots <- nchar(type)
-    if (nplots != 1) par(mfrow=c(1, nplots))
+    ##        xcen = dataframe of censored data
 
-    nparms <- NULL
-    wparms <- NULL
-    jparms <- NULL
-    if (grepl('n', type)) {
-        ## make normal QQ plot
-        main <- paste('Normal QQ Plot', mainadder, sep=" ")
-        nparms <- qualityTools::qqPlot(x, "normal",  col='black', main=main)
-    }
-    
-    if (grepl('w', type) & min(x)>0) {
-        ## obtain Weibull parameters
-        wparms <- wfit
-        if (wfit[1] == 'mle') {
-            out <- mle.weibull(x)
-            wparms <- out$parms
-        } else if (wfit[1] == 'exttol') {
-            ## tolerance package seems more robust than qualityTools
-            ##     wparms <- qualityTools::qqPlot(x, "Weibull", col='black', main=main)
-            ## also, tolerance packages is used in hist_nwj so more consistent
-            out     <- tolerance::exttol.int(x, alpha=0.05, P=0.95, side=1, dist='Weibull')
-            shape   <- out$'shape.1'
-            scale   <- out$'shape.2'
-            wparms  <- list(shape=shape, scale=scale)
-        }
+    if (!is.data.frame(xcen)) {
+        ## no censored data were supplied, so use standard qqplot_nwj function
+        out <- qqplot_nwj_xonly(x, type, wfit, jfit, mainadder)
+        return(out)
+
+    } else {
+        ## redefine xcen with specific names and only 2 columns if more were included
+        x.low  <- xcen[[1]]
+        x.high <- xcen[[2]]
+        xcen   <- data.frame(x.low, x.high)
         
-        ## make QQ plot
-        main <- paste('Weibull QQ Plot', mainadder, sep=" ")
-        ## qualityTools has nice confidence bounds on QQ plot but no ability for censored data
-        ## qualityTools::qqPlot(x, "Weibull", col='black', main=main, start=wparms)
-        ## sort data and add censored data, if needed, to prepare for QQ plot
-        ## na.last = NA removes missing values
-        ##         = TRUE puts missing values last
-        ##         = FALSE puts missing values first
-        x <- sort(x, na.last=NA)
-        xtheoretical <- stats::qweibull(ppoints(length(x)), shape=wparms$shape, scale=wparms$scale)
-        plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value', main=main)
-        abline(0,1, col='red')
-
-        
-    } else if (grepl('w', type)) {
-        ## some values are negative or zero so Weibull is not appropriate
-        cat('Weibull plot not made because not appropriate; some values not > 0\n')
-    }
-
-    if (grepl('j', type)) {        
-        ## obtain Johnson parameter estimates
-        jparms <- jfit
-        if (jfit[1] == 'mle') {
-            out <- mle.johnsonsu(x)
-            jparms <- out$parms
+        if (!is.na(x[1])) {
+            ## known values also supplied, so add to censored values
+            xcen2 <- data.frame(x.low=x, x.high=x)
+            xcen <- rbind(xcen, xcen2)
         }
-
-        ## make QQ plot
-        main <- paste('Johnson QQ Plot', mainadder, sep=" ")
-        ## sort data and add censored data, if needed, to prepare for QQ plot
-        ## na.last = NA removes missing values
-        ##         = TRUE puts missing values last
-        ##         = FALSE puts missing values first
-        x <- sort(x, na.last=NA)
-        xtheoretical <- SuppDists::qJohnson(ppoints(length(x)), jparms)
-        plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value', main=main)
-        abline(0,1, col='red')
-
-        ## quantiles_john <- qJohnson(ppoints(length(x)), jparms)
-        ## stats::qqplot(
-        ##     x = x,
-        ##     xlab = "Data",
-        ##     y = quantiles_john,
-        ##     ylab = 'Quantiles from "Johnson" Distribution',
-        ##     main = expression('Q-Q plot for "Johnson" Distribution'),
-        ##     col='black')
-        ## stats::qqline(x, distribution = function(p) qJohnson(p, jparms), col='red')
-        ## abline(0,1, col='blue', lty=2)
-        ## legend("bottomright",col=c('red', 'blue'), lty=c(1,2), legend=c('qqline', '45 degree line'))
     }
+
+    ## Kaplan and Meier method
+    ## see https://pdixon.stat.iastate.edu/stat505/Chapter%2011.pdf, p. 4
+    ## method seems to assume that known values provide boundaries to censored values
+    ## That is not generally true unless everything is evaluated at every inspection time.
+    ## As such, the algorithm in the paper does not directly apply.
+
+    ## instead, try: order observations based on x.high from low to high
+    ##               
+
     
-    return(list(nparms=nparms, wparms=wparms, jparms=jparms))
+    ## sort data from low to high
+    xcen <- xcen[order(xcen$x.low),]
+    xcen <- xcen[order(xcen$x.high),]
     
+    ## consider: N = observations
+    ##           J = number of unique known (uncensored) observations
+    N  <- nrow(xcen)
+    ## xu <- na.omit(unique(xcen[xcen3$x.low == xcen$x.high,]))
+    ## J  <- nrow(xu)
+    ## if (J < 1) {
+    ##     cat('ERROR: No known values\n')
+    ##     return()
+    ## }
+
+    ## create dataframe of the unique x values regardless of whether start or end of an interval
+    xcen <- as_tibble(xcen)
+    nobs <- nrow(xcen)
+    x.all <- c(xcen$x.low, xcen$x.high)
+    x <- unique(sort(x.all))
+    xu <- as.data.frame(x=x)
+    
+    xu$fail <- NA
+    xu$surv <- NA
+    xu$fail.ratio <- NA
+    xu$surv.ratio <- NA
+    for (i in 1:nrow(xu)) {
+      
+        ## count values that are less than or equal to x
+        xu$fail[i] <- sum(xcen$x.high <= x[i], na.rm=TRUE)
+        
+        ## count values that are greater than x
+        xu$surv[i] <- sum(xcen$x.low > x[i], na.rm=TRUE)
+        
+        ## observed ratios
+        xu$fail.ratio[i] <- xu$fail[i] / nobs
+        xu$surv.ratio[i] <- xu$surv[i] / nobs
+        
+    }
+    ## cumulative survival probability                         # useless?
+    xu$fail.cumsurv <- cumprod(1 - xu$fail.ratio)
+    xu$surv.cumsurv <- cumprod(1 - xu$surv.ratio)
+    
+    ## johnson su fit
+    out.fit <- mle.johnsonsu(xcen=xcen)
+    params <- out.fit$parms
+    gamma <- params$gamma
+    delta <- params$delta
+    xi    <- params$xi
+    lambda <- params$lambda
+    
+    ## determine CDF from predicted fit at each xu value
+    xu$cdf <- stats::pnorm(gamma+delta*asinh((xu$x-xi)/lambda))
+    
+    ## plot cumulative distribution for data vs. fit
+    plotspace(1,2)
+    plot(xu$surv.cumsurv, xu$cdf)                               # useless?
+    plot(xu$fail.ratio, xu$cdf)
+    abline(0,1, col='red')
+    
+    return(xu)
 }
 
-
-
-##-----------------------------------------------------------------------------
-qqplot_nwj_tests <- function() {
-
-    qqplot_nwj(mtcars$mpg)
-
-    x <- sort(mtcars$mpg)
-
-    ## comparisons for normal qq plot using same method as for Johnson qqplot
-    par(mfrow=c(1,2))
-    qualityTools::qqPlot(x, "normal",  col='black')
-    xtheoretical <- qnorm(ppoints(length(x)), mean = mean(x), sd = sd(x))
-    plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value')
-    abline(0,1, col='red')
-    
-    ## comparisons for Weibull qq plot using same method as for Johnson qqplot
-    par(mfrow=c(1,2))
-    qualityTools::qqPlot(x, "Weibull",  col='black')
-    tol_out <-  exttol.int(x, alpha =0.1, P=0.99, side=1)
-    shape <- tol_out$'shape.1'
-    scale <- tol_out$'shape.2'
-    xtheoretical <- qweibull(ppoints(length(x)), shape = shape, scale = scale)
-    plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value')
-    abline(0,1, col='red')
-
+qqplot_nwj_test <- function() {
+    source('setup.r')
+    x <- iris$Sepal.Width
+    xnum <- 20
+    x.low  <- NA
+    x.high <- 2.0
+    xcen1 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    x.low  <- 3.7
+    x.high <- NA
+    xcen2 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    x.low  <- 2.6
+    x.high <- 3.5
+    xcen3 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    x.low  <- 3.1234
+    x.high <- 3.1234
+    xcen4 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
+    xcen <- rbind(xcen1, xcen2, xcen3, xcen4)
+    out.qq <- qqplot_nwj(x, xcen, type='j')
+    return(out.qq)
 }
