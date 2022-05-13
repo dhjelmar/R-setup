@@ -1,6 +1,6 @@
 loglik.johnsonsu <- function(x=NA, xcen=NA, param=c(gamma, delta, xi, lambda), debug=FALSE){
     ## calculate log likelihhod for distribution and given parameter
-    if (is.data.frame(x)) x <- x[1] # convert to vector
+    if (is.data.frame(x)) x <- x[[1]] # convert to vector
     if (is.data.frame(xcen)) {
         ## if known data are inside xcen, move them to x and keep remainder in xcen
         xcen.na  <- xcen[ is.na(rowSums(xcen)),]                  # censored rows with NA, if any
@@ -70,7 +70,7 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
     ## alternately, could probably use bbmle::mle2() to determine coefficients
     ## an example is here: https://stackoverflow.com/questions/45208176/the-weibull-distribution-in-r-extdist
 
-    if (is.data.frame(x)) x <- x[1] # convert to vector
+    if (is.data.frame(x)) x <- x[[1]] # convert to vector
   
     if (is.data.frame(xcen)) {
         ## censored data also provided (only reason for following is if

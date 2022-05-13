@@ -23,12 +23,15 @@ loglik.weibull.q.set <- function(x=NA, xcen=NA, param=shape, quant, P, debug=FAL
 ## }
 
 mle.weibull.tol <- function(x, xcen=NA, param='auto',
-                              side.which='upper', sided=1, P=0.99, conf=0.99, alpha.eff=NULL,
+                              side.which='upper', sided=1, conf=0.99, alpha.eff=NULL, P=0.99,
                               plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
     
     ## weibull distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
     ## LR (Likelihood Ratio) appraoch to find tolerance limit
+    ## e.g., 95% upper confidence bound on the 99th percentile
+    ## wikipedia     convention: "100×p%    / 100×(1−α) tolerance interval"
+    ## more standard convention: "100×(1−α) / 100×p%    tolerance interval"
 
     ## input: x     = vector of known data
     ##        xcen  = dataframe of censored data
@@ -55,7 +58,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
     ##                      if you really want the lower bound on P=0.01, then specify P=0.1
     ##              >= 0.5 if 2-sided
     
-    if (is.data.frame(x)) x <- x[1] # convert to vector
+    if (is.data.frame(x)) x <- x[[1]] # convert to vector
 
     if (is.data.frame(xcen[1])) {
         ## censored data also provided (only reason for following is if
@@ -425,7 +428,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
     P <- P.in
 
     ## collect tolerance values in dataframe similar to extol.int for weibull
-    tolerance <- data.frame(sided, alpha.eff=alpha.eff, P, conf, tol.lower, tol.upper)
+    tolerance <- data.frame(sided, alpha.eff=alpha.eff, conf, P, tol.lower, tol.upper)
 
     ## print final parameter comparison and tolerance limits
     print(as.data.frame(params.save))
@@ -476,31 +479,31 @@ mle.weibull.tol.test <- function() {
     x <- iris$Sepal.Width
     plotspace(2,2)
     ## lower tolerance limit
-    out.lower <- mle.weibull.tol(data=x, param='auto',
+    out.lower <- mle.weibull.tol(x, param='auto',
                                  side.which='lower', sided=1, conf=0.99, P=0.01, 
                                  plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/1')
     ## using default parameters except for 'plots'
-    out.upper <- mle.weibull.tol(data=x, param='auto',
+    out.upper <- mle.weibull.tol(x, param='auto',
                                  side.which='upper', sided=1, conf=0.99, P=0.99, 
                                  plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
     ## lower and upper 2-sided tolerance limits
     ## test that 1-sided 99/99 is the same as a 2-sided 98/98
-    out.twosided <- mle.weibull.tol(data=x, param='auto',
+    out.twosided <- mle.weibull.tol(x, param='auto',
                                     side.which='both', sided=2, conf=0.98, P=0.98, 
                                     plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/98')
 
     
-    ## test that upper and lower 1-sided 75/99 are the same as a 2-sided 50/98  
+    ## test that upper 1-sided 99/75 and lower 1-sided 99/25 are the same as a 2-sided 98/50  
     plotspace(2,2)
     ## lower and upper 1-sided tolerance limits
-    out.lower <- mle.weibull.tol(data=x, param='auto',
+    out.lower <- mle.weibull.tol(x, param='auto',
                                  side.which='lower', sided=1, conf=0.99, P=0.25, 
                                  plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/25')
-    out.upper <- mle.weibull.tol(data=x, param='auto',
+    out.upper <- mle.weibull.tol(x, param='auto',
                                  side.which='upper', sided=1, conf=0.99, P=0.75, 
                                  plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/75')
     ## lower and upper 2-sided tolerance limits
-    out.twosided <- mle.weibull.tol(data=x, param='auto',
+    out.twosided <- mle.weibull.tol(x, param='auto',
                                     side.which='both', sided=2, conf=0.98, P=0.5, 
                                     plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/50')
 
