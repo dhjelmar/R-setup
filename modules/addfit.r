@@ -15,10 +15,10 @@ addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, pc
     slope     <- fit$coefficients[[2]]
 
     ## add vertical lines to plot
-    if ( !is.null(vlines[1]) & !is.na(vlines[1]) ) abline(v=vlines, lty=3, col=col)
+    if ( !is.nothing(vlines) ) abline(v=vlines, lty=3, col=col)
 
     ## add prediction to plot
-    if ( !is.null(vlines[1]) & !is.na(vlines[1]) ) {
+    if ( !is.nothing(vlines) ) {
         ## restrict fit to within vlines
         new.xx <- seq(min(vlines, na.rm=TRUE), max(vlines, na.rm=TRUE), len=100)
     } else {
@@ -45,7 +45,7 @@ addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, pc
 
     ## calculate rise of fit over range bounds if supplied,
     ## otherwise calculate rise over range of data
-    if ( !is.null(vlines[1]) & !is.na(vlines[1]) ) {
+    if ( !is.nothing(vlines) ) {
         rise <- (vlines[2] - vlines[1]) * slope
     } else {
         rise <- (max(xx) - min(xx)) * slope
