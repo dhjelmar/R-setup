@@ -168,8 +168,8 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                         constraints = constraints,
                                         iterlim = 2000)
         print(summary(out.qdxl))
-        convergence.qdxl <- if (out.qdxl$message == 'successful convergence ') {'successful'}
-                            else {out.qdxl$message}
+        convergence.qdxl <- if (out.qdxl$code == 0) {'successful'}
+                            else                    {out.qdxl$message}
         if (convergence.qdxl != 'successful') {
             cat('####################################################################################\n')
             cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu.tol when maximizing loglik.johnsonsu.q\n')
@@ -250,7 +250,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                       constraints = constraints,
                                       iterlim = 2000)
             ## print(summary(out.dxl))
-            if (out.dxl$message == 'successful convergence ') {
+            if (out.dxl$code == 0) {
                 params.dxl      <- as.list(out.dxl$estimate)
                 loglik.dxl      <- out.dxl$maximum
                 convergence.dxl <- 'successful'

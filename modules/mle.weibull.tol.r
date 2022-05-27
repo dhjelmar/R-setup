@@ -99,7 +99,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
     out.all$loglik <- out$loglik
     out.all$convergence <- out$convergence
     out.all$optimizer    <- 'maxLik'
-    out.all$max.function <- 'loglik.johnsonsu'
+    out.all$max.function <- 'loglik.weibull'
     out.all$fit.params   <- 'gamma, shape'
     cat('convergence for best estimate parameters:', out.all$convergence, '\n')
     cat('\n')
@@ -164,11 +164,11 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                                    constraints = constraints,
                                    iterlim = 2000)
         print(summary(out.qs))
-        convergence.qs <- if (out.qs$message == 'successful convergence ') {'successful'}
-                            else {out.qs$message}
+        convergence.qs <- if (out.qs$code == 0) {'successful'}
+                          else                  {out.qs$message}
         if (convergence.qs != 'successful') {
             cat('####################################################################################\n')
-            cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu.tol when maximizing loglik.johnsonsu.q\n')
+            cat('WARNING: CONVERGENCE FAILURE IN mle.weibull.tol when maximizing loglik.weibull.q\n')
             cat('####################################################################################\n')
         }
         loglik.max.qs <- out.qs$maximum
@@ -185,7 +185,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
         temp <- data.frame(shape=shape.P, scale=scale.P,
                            quant=quant.P, P=P, loglik=loglik.max.qs, convergence=convergence.qs,
                            optimizer    = 'maxLik',
-                           max.function = 'loglik.johnsonsu.q',
+                           max.function = 'loglik.weibull.q',
                            fit.params   = 'quant, shape')
         out.all <- rbind(out.all, temp)
         cat('convergence for quant, shape:', convergence.qs, '\n')
@@ -244,13 +244,13 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                                     debug = debug,
                                     constraints = constraints,
                                     iterlim = 2000)
-            if (out.s$message == 'successful convergence ') {
+            if (out.s$code == 0) {
                 params.s      <- as.list(out.s$estimate)
                 loglik.s      <- out.s$maximum
                 convergence.s <- 'successful'
             } else {
                 cat('####################################################################################\n')
-                cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu when maximizing loglik.johnsonsu.q.set\n')
+                cat('WARNING: CONVERGENCE FAILURE IN mle.weibull when maximizing loglik.weibull.q.set    \n')
                 cat('         for quant =', quant, 'and P =', P,                                        '\n')
                 cat('####################################################################################\n')
                 params.s      <- list(shape=NA)

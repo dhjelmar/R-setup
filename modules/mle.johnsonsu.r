@@ -95,6 +95,7 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
     parms.SuppDists <- SuppDists::JohnsonFit(x.avg)
     ## params.compare <- as.data.frame(t(unlist(parms.SuppDists)))
     params.compare <- as.data.frame(parms.SuppDists)
+    params.compare$loglik <- NA
     params.compare$description <- 'SuppDists::JohnsonFit'
 
     ##-----------------------------------------------------------------------------
@@ -106,6 +107,7 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
                            lambda  = parms.out$lambda,
                            type    = 'SU')
     temp <- as.data.frame(t(unlist(parms.ExtDist)))
+    temp$loglik <- NA
     temp$description <- 'ExtDist::eJohnsonSU'
     params.compare <- fastmerge(params.compare, temp)
 
@@ -137,6 +139,7 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
         parms <- param
     }
     temp <- as.data.frame(t(unlist(parms)))
+    temp$loglik <- loglik.johnsonsu(x, xcen, param=parms, debug=FALSE)
     temp$description <- 'Initial guess for MLE'
     params.compare <- fastmerge(params.compare, temp)
 
@@ -164,8 +167,8 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
     parms.mle      <- as.list(out$estimate)
     parms.mle$type <- 'SU'
     loglik         <- out$maximum
-    convergence <- if (out$message == 'successful convergence ') {'successful'}
-                   else {out$message}
+    convergence <- if (out$code == 0) {'successful'}
+                   else               {out$message}
     if (convergence != 'successful') {
         cat('###############################################\n')
         cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu()\n')
@@ -174,6 +177,7 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
     
     ## add MLE parameters to params.compare dataframe
     temp <- as.data.frame(parms.mle)
+    temp$loglik <- loglik.johnsonsu(x, xcen, param=parms.mle, debug=FALSE)
     temp$description <- 'MLE'
     params.compare <- fastmerge(params.compare, temp)
 

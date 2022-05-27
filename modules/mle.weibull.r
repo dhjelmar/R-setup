@@ -17,7 +17,7 @@ loglik.weibull <- function(x=NA, xcen=NA, param=c(shape, scale), debug=FALSE){
     pdf <- 1
     if (!is.na(x[1])) {
         pdf <- shape / scale^shape * x^(shape-1) * exp(-(x/scale)^shape)
-        ## the above is equivalent
+        ## the following is equivalent to the above
         ## pdf <- stats::dweibull(x, shape, scale)
         ## cdf <- pnorm(z)
         ## plot(z, cdf)
@@ -100,6 +100,7 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
         scale   <- tol_out_weib$'shape.2'
         param <- list(shape=shape, scale=scale)
         params.compare <- as.data.frame(param)
+        params.compare$loglik <- NA
         params.compare$description <- 'tolerance::exttol.int'
         if (is.na(param$shape) | is.na(param$scale)) {
             ## exttol failed to converge 
@@ -111,10 +112,12 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
         shape <- param$shape
         scale <- param$scale
         params.compare <- as.data.frame(param)
+        params.compare$loglik <- NA
         params.compare$description <- 'user provided parameters'
     }
     
     temp <- as.data.frame(t(unlist(param)))
+    temp$loglik <- loglik.weibull(x, xcen, param=c(shape, scale), debug=FALSE)
     temp$description <- 'initial guess for MLE'
     params.compare <- fastmerge(params.compare, temp)
     
@@ -130,24 +133,27 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
     constraints <- list(ineqA=A, ineqB=B)
     out <- NA
     out <- maxLik::maxLik(loglik.weibull,
-                                  start = unlist(param),
-                                  x     = x,
-                                      xcen  = xcen,
-                                      debug = debug,
-                                      constraints = constraints,
-                                      iterlim = 2000)
-        parms.mle <- as.list(out$estimate)
-        loglik <- out$maximum
-    convergence <- if (out$message == 'successful convergence ') {'successful'}
-                   else {out$message}
+                          start = unlist(param),
+                          x     = x,
+                          xcen  = xcen,
+                          debug = debug,
+                          constraints = constraints,
+                          iterlim = 2000)
+    parms.mle <- as.list(out$estimate)
+    shape  <- parms.mle$shape
+    scale  <- parms.mle$scale
+    loglik <- out$maximum
+    convergence <- if (out$code == 0) {'successful'}
+                   else               {out$message}
     if (convergence != 'successful') {
         cat('###############################################\n')
-        cat('WARNING: CONVERGENCE FAILURE IN mle.johnsonsu()\n')
+        cat('WARNING: CONVERGENCE FAILURE IN mle.weibull()  \n')
         cat('###############################################\n')
     }
     
     ## add MLE parameters to params.compare dataframe
     temp <- as.data.frame(parms.mle)
+    temp$loglik <- loglik.weibull(x, xcen, param=c(shape, scale), debug=FALSE)
     temp$description <- 'MLE'
     params.compare <- fastmerge(params.compare, temp)
 
@@ -156,8 +162,6 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
 
     if (isTRUE(plots)) {
         out.hist <- hist(x, plot=FALSE)
-        shape <- parms.mle$shape
-        scale <- parms.mle$scale
         curve.points <- stats::dweibull(x, shape, scale)
         hist(x, freq=FALSE, ylim=range(out.hist$density, curve.points))
         curve(stats::dweibull(x, shape, scale), min(x), max(x), add=TRUE)
