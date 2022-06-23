@@ -199,5 +199,29 @@ mle.normal.test <- function() {
     x.high <- NA
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit.compare(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
-}
+
+    out.fit <- mle.normal(x, xcen, plots=FALSE)
+    sdev <-seq(sd(x)/1.05, sd(x)*1.05, length.out = 100) 
+    loglik <- NA
+    for (i in 1:length(sdev)) { 
+        loglik[i] <- loglik.normal(x, xcen, param=c(out.fit$parms$xbar, sdev[i]))
+    }
+    plot(sdev, loglik)
+    points(out.fit$parms$sdev, out.fit$loglik, col='red', pch=16)
+    
+    out.fit <- mle.normal(x, xcen, plots=FALSE)
+    loglik <- df.init(c('param1', 'param2', 'loglik'))
+    param1 <- seq(out.fit$parms[[1]]/1.05, out.fit$params[[1]]*1.05, length.out=100)
+    param2 <- seq(out.fit$parms[[2]]/1.05, out.fit$params[[2]]*1.05, length.out=100)
+    j <- 0
+    for (i1 in 1:length(param1)) { 
+      for (i2 in 1:length(param2)) {
+        j <- j+1
+        loglik$param1[j] <- param1[i1]
+        loglik$param2[j] <- param2[i2]
+        loglik$loglik[j] <- loglik.normal(x, xcen, param=c(loglik$param1[j], loglik$param2[j]))
+    }
+    plot(sdev, loglik)
+    points(out.fit$parms$sdev, out.fit$loglik, col='red', pch=16)
+    }
 
