@@ -8,7 +8,8 @@ loglik.johnsonsu <- function(x=NA, xcen=NA, param=c(gamma, delta, xi, lambda), d
         x.add   <- xcen.val[xcen.val[[1]] == xcen.val[[2]],][[1]] # known values from xcen, if any
         x <- as.numeric(na.omit(c(x, x.add)))                     # new set of known values
         xcen.lowhigh <- xcen.val[xcen.val[[1]] != xcen.val[[2]],] # censored rows with no NA
-        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set ofcensored rows
+        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set of censored rows
+        names(xcen) <- c('x.low', 'x.high')                       # rename
     }
     ## set paramaters
     gamma  <- param[[1]]  
