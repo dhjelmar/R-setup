@@ -98,9 +98,26 @@ library(stringi)       # need for stri_split_fixed function
 library(stringr)       # need for str_extract function
 library(tolerance)
 
-## (.packages())          # shows packages that are loaded
-## search()              # little different from above but not sure how (includes more)
-sessionInfo()        # info on R-version loaded packages
+## print version of R
+R.Version()$version.string
+
+loaded <- function() {
+    ## identify loaded packages
+    loaded <- data.frame(Package=(.packages()))
+    ## (.packages())          # shows packages that are loaded
+    ## search()               # little different from above but not sure how (includes more)
+    ## sessionInfo()          # info on R-version loaded packages
+    ## identify all installed packages and version numbers
+    ip <- as.data.frame(installed.packages()[,c(1, 3:4)])
+    ## merge to only list loaded packages and version numbers
+    loaded <- merge(loaded, ip, by = 'Package')   # all=TRUE would keep all lines in both dataframes
+    ## convert to matrix to change from factors to character then back to dataframe
+    loaded <- as.data.frame(as.matrix(loaded))
+    ## following does not seem to work on chromebook, so not doing if os != 'unix'
+    if (os != 'unix') loaded$Priority[is.na(loaded$Priority)] <- 'loaded'
+    return(loaded)
+}
+loaded()
 
 ###----------------------------------------------------------------------------
 ### Load local .R and .r files
