@@ -127,7 +127,7 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainad
             }
             ## add theoretical quantiles
             xall$wtheoretical <- stats::qweibull(ppoints(nrow(xall)), shape=params$shape, scale=params$scale)
-            main <- paste('Censored Weibull QQ Plot', mainadder, sep=" ")
+            main <- paste('Censored Weibull QQ Plot (not checked)', mainadder, sep=" ")
             ## plot only known points
             xplot <- xall[xall$type == 'known',]
             plot(xplot$x.high, xplot$wtheoretical, xlab='Observed value, x', ylab='Expected value', main=main)
@@ -144,7 +144,7 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainad
             }
             ## add theoretical quantiles
             xall$jtheoretical <- SuppDists::qJohnson(ppoints(nrow(xall)), parms=params)
-            main <- paste('Censored Johnson SU QQ Plot', mainadder, sep=" ")
+            main <- paste('Censored Johnson SU QQ Plot (not checked)', mainadder, sep=" ")
                 ## plot only known points
             xplot <- xall[xall$type == 'known',]
             plot(xplot$x.high, xplot$jtheoretical, xlab='Observed value, x', ylab='Expected value', main=main)
