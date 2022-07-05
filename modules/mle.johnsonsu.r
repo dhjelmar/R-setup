@@ -148,7 +148,7 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
     param <- parms[1:4]   # list(gamma, delta, xi, lambda)
     
     ##-----------------------------------------------------------------------------
-    ## determine best fit using nll
+    ## determine best fit using log likelihood
     ## print('Attempting MLE fit on regular parameters')
     ## constraints for gamma, delta, xi, and/or lambda
     ## A %*% param + B > 0
