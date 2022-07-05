@@ -6,7 +6,7 @@ readall <- function(datasource,
                     range=NULL,           # Excel only: cell range in quotes including 1 line header; overrides header.row and data.start.row
                     col.names=NULL,       # Used to replace column names
                     rename=TRUE,          # If true, change special characters and spaces in read names to "_";  not used if col.names is specified
-                    na=c('NA', 'na', 'NaN', ''), # strings to read as NA rather than character
+                    na=c('NA', 'na', 'NaN', 'N/A', 'n/a', ''), # strings to read as NA rather than character
                     suppress=FALSE        # default prints output of variable names; set to true to suppress output
                     ) {
 
