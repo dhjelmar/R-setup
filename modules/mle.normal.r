@@ -8,7 +8,8 @@ loglik.normal <- function(x=NA, xcen=NA, param=c(xbar, sdev), debug=FALSE){
         x.add   <- xcen.val[xcen.val[[1]] == xcen.val[[2]],][[1]] # known values from xcen, if any
         x <- as.numeric(na.omit(c(x, x.add)))                     # new set of known values
         xcen.lowhigh <- xcen.val[xcen.val[[1]] != xcen.val[[2]],] # censored rows with no NA
-        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set ofcensored rows
+        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set of censored rows
+        names(xcen) <- c('x.low', 'x.high')                       # rename
     }
     ## set parameters
     xbar  <- param[[1]]  
@@ -40,7 +41,7 @@ loglik.normal <- function(x=NA, xcen=NA, param=c(xbar, sdev), debug=FALSE){
     return(loglik)
 }        
 
-mle.normal <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
+mle.normal <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, debug=FALSE) {
     
     ## normal distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -52,7 +53,10 @@ mle.normal <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
     ##        param = initial guess for fit parameters for: mean and sd
     ##                if type is also provided, it will not be used
     ##              = 'auto' (default) uses calculated mean and standard deviation for initial guess of parameters
-
+    
+    ## options: plots  = create histogram with fit and qqplot (qqplot currently based only on x)
+    ##          plot3d = create 3D plot of the fit; max likelihood shown with red sphere
+    
     ## based on approach found here:
     ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
     ## https://personal.psu.edu/abs12/stat504/Lecture/lec3_4up.pdf
@@ -143,6 +147,25 @@ mle.normal <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
         qqplot_nwj(x, type='n', jfit=parms.mle)
     }
     
+    if (isTRUE(plot3d)) {
+        ## plot the fit
+        loglik.plot <- df.init(c('param1', 'param2', 'loglik'))
+        param1 <- seq(parms.mle[[1]]/1.05, parms.mle[[1]]*1.05, length.out=100)
+        param2 <- seq(parms.mle[[2]]/1.05, parms.mle[[2]]*1.05, length.out=100)
+        j <- 0
+        for (i1 in 1:length(param1)) {
+            for (i2 in 1:length(param2)) {
+                j <- j+1
+                loglik.plot[j, 1] <- param1[i1]
+                loglik.plot[j, 2] <- param1[i2]
+                loglik.plot[j, 3] <- loglik.normal(x, xcen, param=c(loglik.plot$param1[j], loglik.plot$param2[j]))
+            }
+        }
+        rgl::plot3d(loglik.plot, xlab='mean', ylab='sd', zlab='loglik')
+        rgl::points3d(x = parms.mle[[1]], y = parms.mle[[2]], z=loglik,
+                      col='red', size=10, add=TRUE)
+    }
+
     return(list(parms=parms.mle, parms.compare=params.compare, loglik=loglik, convergence=convergence))
 }
 
@@ -200,28 +223,8 @@ mle.normal.test <- function() {
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit.compare(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
 
-    out.fit <- mle.normal(x, xcen, plots=FALSE)
-    sdev <-seq(sd(x)/1.05, sd(x)*1.05, length.out = 100) 
-    loglik <- NA
-    for (i in 1:length(sdev)) { 
-        loglik[i] <- loglik.normal(x, xcen, param=c(out.fit$parms$xbar, sdev[i]))
-    }
-    plot(sdev, loglik)
-    points(out.fit$parms$sdev, out.fit$loglik, col='red', pch=16)
-    
-    out.fit <- mle.normal(x, xcen, plots=FALSE)
-    loglik <- df.init(c('param1', 'param2', 'loglik'))
-    param1 <- seq(out.fit$parms[[1]]/1.05, out.fit$params[[1]]*1.05, length.out=100)
-    param2 <- seq(out.fit$parms[[2]]/1.05, out.fit$params[[2]]*1.05, length.out=100)
-    j <- 0
-    for (i1 in 1:length(param1)) { 
-      for (i2 in 1:length(param2)) {
-        j <- j+1
-        loglik$param1[j] <- param1[i1]
-        loglik$param2[j] <- param2[i2]
-        loglik$loglik[j] <- loglik.normal(x, xcen, param=c(loglik$param1[j], loglik$param2[j]))
-    }
-    plot(sdev, loglik)
-    points(out.fit$parms$sdev, out.fit$loglik, col='red', pch=16)
-    }
+    ## plot the fit
+    out.fit <- mle.normal(x, xcen, plot3d=TRUE)
+
+}
 
