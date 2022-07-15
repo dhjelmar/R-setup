@@ -190,7 +190,8 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
         curve.points <- ExtDist::dJohnsonSU(x, params=parms.mle)
         hist(x, freq=FALSE, ylim=range(out.hist$density, curve.points))
         curve(ExtDist::dJohnsonSU(x, params=parms.mle), min(x), max(x), add=TRUE)
-        qqplot_nwj(x, type='j', jfit=parms.mle)
+        ## xcen likely not correctly used in qqplot
+        qqplot_nwj(x, xcen, type='j', jfit=parms.mle)
     }
     
     return(list(parms=parms.mle, parms.compare=params.compare, loglik=loglik, convergence=convergence))

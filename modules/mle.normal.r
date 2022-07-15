@@ -144,7 +144,8 @@ mle.normal <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, d
         curve.points <- stats::dnorm(x, mean=xbar, sd=sdev)
         hist(x, freq=FALSE, ylim=range(out.hist$density, curve.points))
         curve(stats::dnorm(x, mean=xbar, sd=sdev), min(x), max(x), add=TRUE)
-        qqplot_nwj(x, type='n', jfit=parms.mle)
+        ## xcen likely not correctly used in qqplot
+        qqplot_nwj(x, xcen, type='n', jfit=parms.mle)
     }
     
     if (isTRUE(plot3d)) {

@@ -169,7 +169,8 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, 
         curve.points <- stats::dweibull(x, shape, scale)
         hist(x, freq=FALSE, ylim=range(out.hist$density, curve.points))
         curve(stats::dweibull(x, shape, scale), min(x), max(x), add=TRUE)
-        qqplot_nwj(x, type='w', jfit=parms.mle)
+        ## xcen likely not correctly used in qqplot
+        qqplot_nwj(x, xcen, type='w', jfit=parms.mle)
     }
     
     if (isTRUE(plot3d)) {
