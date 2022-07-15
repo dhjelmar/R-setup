@@ -1,4 +1,4 @@
-scaledf <- function(df, meanvec = NULL, scaledata = NULL, scalefactor = 2, zeromin = FALSE) {
+scaledf <- function(df, meanvec = NULL, scaledata = NULL, scalefactor = 2, zeromin = FALSE, suffix=NA) {
     ## centers and scales a dataframe
     ## df          = dataframe of parameters to be scaled
     ## meanvec     = vector of mean values for centering
@@ -10,7 +10,8 @@ scaledf <- function(df, meanvec = NULL, scaledata = NULL, scalefactor = 2, zerom
     ##               (1 results in  0 to +1 if zeroed   and ranges of scaledata are equal distant from mean)
     ## zeromin     = FALSE (default) results in center of scaled df at 0 if ranges of scaledata are equal distant from mean)
     ##             = TRUE results in min of scaled df at 0 if ranges of scaledata are equal distant from mean)
-    ## suffix "_s" to be added to each variable to identify it is scaled
+    ## suffix      = NA (default) does nothing
+    ##             = character (e.g., "_s") adds character to each variable to identify it is scaled
     
     ## center data
     if (missing(meanvec))   meanvec <- apply(df, 2, mean)  # use mean of df  to center
@@ -27,9 +28,11 @@ scaledf <- function(df, meanvec = NULL, scaledata = NULL, scalefactor = 2, zerom
     ## adjust location center if needed
     if (zeromin == TRUE) dfs <- sweep(dfs, 2, (scalefactor/2), "+")
     
-    ## ## convert to dataframe and ad suffix to column names
-    ## dfs <- data.frame(dfs)
-    ## names(dfs) <- paste(names(dfs), "_s", sep = "")
+    ## convert to dataframe and a suffix to column names
+    if (!is.na(suffix)) {
+        dfs <- data.frame(dfs)
+        names(dfs) <- paste(names(dfs), "_s", sep = "")
+    }
     
     ## return parameters
     return( list(dfs=dfs, meanvec=meanvec, scaledata=scaledata, scalefactor=scalefactor, zeromin=zeromin) )
