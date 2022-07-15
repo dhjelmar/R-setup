@@ -1,4 +1,4 @@
-qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainadder=NULL) {
+qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle', mainadder=NULL) {
     ## creates normal, Weibull and/or Johnson qq plots
     
     ## input: x    = vector of data
@@ -6,7 +6,7 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainad
 
     if (!is.data.frame(xcen)) {
         ## no censored data were supplied, so use standard qqplot_nwj function
-        out <- qqplot_nwj_xonly(x, type, wfit, jfit, mainadder)
+        out <- qqplot_nwj_xonly(x, type, nfit, wfit, jfit, mainadder)
         return(out)
 
     } else {
@@ -112,9 +112,21 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainad
     for (ichar in type.list) {
         
         if (grepl('n', ichar)) {
-            cat('##################################################################\n')
-            cat('functionality for censored, normal distribution not programmed yet\n')
-            cat('##################################################################\n')
+            if (length(type) > 1) {
+                ## user provided parameters
+                params <- nfit
+            } else {
+                ## determine fit parameters
+                fit <- mle.normal(x, xcen)
+                params <- fit$parms
+            }
+            ## add theoretical quantiles
+            xall$wtheoretical <- stats::qnorm(ppoints(nrow(xall)), mean=params[[1]], sd=params[[2]])
+            main <- paste('Censored Weibull QQ Plot (not checked)', mainadder, sep=" ")
+            ## plot only known points
+            xplot <- xall[xall$type == 'known',]
+            plot(xplot$x.high, xplot$wtheoretical, xlab='Observed value, x', ylab='Expected value', main=main)
+            abline(0,1,col='red')    
 
         } else if (grepl('w', ichar)) {
             if (length(type) > 1) {
