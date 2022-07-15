@@ -1,12 +1,12 @@
 mindistance <- function(vec, df=dfxs) {
     ## Function to find distance from vector vec to nearest point in dataframe df
-    # subtract vec from dataframe column
+    ## subtract vec from dataframe column
     dif   <- sweep(df, 2, vec, "-")
-    # head(dif,2)
-    # sumsquare each row of dataframe of diferences
+    ## head(dif,2)
+    ## sumsquare each row of dataframe of diferences
     sq    <- function(x) { sum(x^2) }
     difsq <- apply(dif, 1, sq)
-    # return the minimum distance
+    ## return the minimum distance
     mindist <- sqrt( min(difsq) )
     return(mindist)
 }
@@ -16,9 +16,13 @@ negative_mindistance <- function(vec, df=dfxs){
 }
 
 ## Tests of function
+## dfxs  <- mtcars
+## vec <- as.numeric(mtcars[1,]) + rnorm(1)
+## mindistance(vec, dfxs)
+
 
 ## ## add center point to database for testing
-## testdata <- dfxs
+## testdata <- dfxs[,1:6]
 ## vec <- c(0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
 ## testdata <- rbind(vec, testdata)
 ## head(testdata)
