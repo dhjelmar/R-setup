@@ -21,7 +21,7 @@ loglik.johnsonsu.q.set <- function(x=NA, xcen=NA, param=c(delta, xi, lambda), qu
 
 mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                               side.which='upper', sided=1, conf=0.99, alpha.eff=NULL, P=0.99,
-                              plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
+                              plots=FALSE, plots.xlim=NULL, plots.nr=FALSE, debug=FALSE, main=NULL) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -216,6 +216,10 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
             quant.dif <- quant.P.alpha.eff.u.guess - quant.P
             xmin <- quant.P.alpha.eff.l.guess - 1.1*quant.dif
             xmax <- quant.P.alpha.eff.u.guess + 1.1*quant.dif
+            if (!is.null(plots.xlim)) {
+                xmin <- min(plots.xlim)
+                xmax <- max(plots.xlim)
+            }
             xplot <- seq(xmin, xmax, length.out=101)
             yplot <- NA
             plot(quant.P.save[k], loglik.max, col='blue', pch=16, cex=2,
@@ -298,11 +302,11 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
             xplot <- seq(quant.P, xmax, length.out=51)
             yplot <- NA
             for (ploti in 1:length(xplot)) {
-                ## if (ploti == 3) browser()
+                ## if (ploti == 32) browser()
                 out <- loglik.fixedq(xplot[ploti], x, xcen, P, delta.plot, xi.plot, lambda.plot, debug=TRUE)
                 yplot[ploti] <- out$loglik
                 points(xplot[ploti], yplot[ploti], col='black')
-                if (yplot[ploti] < loglik.tol) break  # exit for loop
+                if (is.null(plots.xlim) & yplot[ploti] < loglik.tol) break  # exit for loop
                 ## better initial guess for next point
                 ## delta.plot   <- out$params[[1]]
                 ## xi.plot      <- out$params[[2]]
