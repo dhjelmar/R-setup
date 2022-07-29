@@ -80,7 +80,7 @@ os <- .Platform$OS.type
 ## of the above, only would load inside R
 ##    install.packages("qualityTools")
 ##    may also have installed plotly inside R
-library(qualityTools)
+library(qualityTools)  # need for qqplots
 library(matlib)
 library(tibble)
 library(readxl)
@@ -137,9 +137,9 @@ loaded <- function() {
 if (os == "windows") {
     setup.path <- c("~/Programs/GitHub_home/R-setup/modules")
 } else if (os == 'unix') {
-    setup.path <- c("~/GitHub_repos/R-setup/modules",
-                    ##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS
-                    "~/ProgramFiles/R_packages/rgl/R"      )
+    setup.path <- c(##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS and Debian
+                    ##"~/ProgramFiles/R_packages/rgl/R",       # available on Debian
+		    "~/GitHub_repos/R-setup/modules")          # these are my modules
 } else {
     # assume Colab (.Platform returns NULL)
     setup.path <- c("/content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules")
