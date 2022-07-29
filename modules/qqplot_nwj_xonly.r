@@ -1,5 +1,5 @@
 qqplot_nwj_xonly <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NULL) {
-    ## creates normal, Weibull and/or Johnson qq plots
+    ## creates normal, Weibull and/or Johnson SU qq plots
 
     ## input: x    = vector of data
     
@@ -52,7 +52,7 @@ qqplot_nwj_xonly <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NU
     }
 
     if (grepl('j', type)) {        
-        ## obtain Johnson parameter estimates
+        ## obtain Johnson SU parameter estimates
         jparms <- jfit
         if (jfit[1] == 'mle') {
             out <- mle.johnsonsu(x)
@@ -60,7 +60,7 @@ qqplot_nwj_xonly <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NU
         }
 
         ## make QQ plot
-        main <- paste('Johnson QQ Plot', mainadder, sep=" ")
+        main <- paste('Johnson SU QQ Plot', mainadder, sep=" ")
         ## sort data and add censored data, if needed, to prepare for QQ plot
         ## na.last = NA removes missing values
         ##         = TRUE puts missing values last
@@ -96,14 +96,14 @@ qqplot_nwj_tests <- function() {
 
     x <- sort(mtcars$mpg)
 
-    ## comparisons for normal qq plot using same method as for Johnson qqplot
+    ## comparisons for normal qq plot using same method as for Johnson SU qqplot
     par(mfrow=c(1,2))
     qualityTools::qqPlot(x, "normal",  col='black')
     xtheoretical <- qnorm(ppoints(length(x)), mean = mean(x), sd = sd(x))
     plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value')
     abline(0,1, col='red')
     
-    ## comparisons for Weibull qq plot using same method as for Johnson qqplot
+    ## comparisons for Weibull qq plot using same method as for Johnson SU qqplot
     par(mfrow=c(1,2))
     qualityTools::qqPlot(x, "Weibull",  col='black')
     tol_out <-  exttol.int(x, alpha =0.1, P=0.99, side=1)

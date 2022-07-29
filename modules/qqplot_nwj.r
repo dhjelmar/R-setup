@@ -1,5 +1,5 @@
 qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle', mainadder=NULL) {
-    ## creates normal, Weibull and/or Johnson qq plots
+    ## creates normal, Weibull and/or Johnson SU qq plots
     
     ## input: x    = vector of data
     ##        xcen = dataframe of censored data
