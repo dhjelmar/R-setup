@@ -158,7 +158,7 @@ mle.normal <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, d
             for (i2 in 1:length(param2)) {
                 j <- j+1
                 loglik.plot[j, 1] <- param1[i1]
-                loglik.plot[j, 2] <- param1[i2]
+                loglik.plot[j, 2] <- param2[i2]
                 loglik.plot[j, 3] <- loglik.normal(x, xcen, param=c(loglik.plot$param1[j], loglik.plot$param2[j]))
             }
         }
