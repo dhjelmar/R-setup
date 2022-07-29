@@ -5,8 +5,10 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='
     ##        xcen = dataframe of censored data
 
     if (!is.data.frame(xcen)) {
-        ## no censored data were supplied, so use standard qqplot_nwj function
-        out <- qqplot_nwj_xonly(x, type, nfit, wfit, jfit, mainadder)
+        ## no censored data were supplied, so:
+	##    - use standard qqplot_nwj function
+	##    - no reason to use mle fit for normal (and not currently supported by qqplot_nwj_xonly)
+        out <- qqplot_nwj_xonly(x, type=type, wfit=wfit, jfit=jfit, mainadder=mainadder)
         return(out)
 
     } else {
