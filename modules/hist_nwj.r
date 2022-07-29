@@ -180,19 +180,31 @@ hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', bre
     ymax <- max(out$density, maxdensity)
     ## create plot
     if (is.null(main)) main <- paste('Histogram of', xname, sep=" ")
-    hist(x, breaks=breaks,
-         xlab = xname,
-         xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
-         ylim=c(0,maxdensity),
-         freq=FALSE,
-         main=main,
-         plot=plot)
+    if (length(breaks) == 1) {
+        hist(x, breaks=breaks,
+             xlab = xname,
+             xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
+             ylim=c(0,maxdensity),
+             freq=FALSE,
+             main=main,
+             plot=plot)
+    } else {
+        hist(x, breaks=breaks,
+             xlab = xname,
+             xlim=c(xmin,xmax+(xmax-xmin)/length(breaks)), 
+             ylim=c(0,maxdensity),
+             freq=FALSE,
+             main=main,
+             plot=plot,
+             xaxt='n')                           # do not plot and label the x-axis
+        axis(side=1, at=breaks, labels=breaks)   # use breaks vector for x-axis instead
+    }
     if (subtitle == 'yes') {
         n <- w <- j <- NULL
         if (grepl('n', type)) n <- 'red = normal,'
         if (grepl('w', type)) w <- 'blue = Weibull,'
-        if (grepl('j', type)) j <- 'black = Johnson'
-        ## subtitle <- list('line color: red = normal, blue = Weibull, black = Johnson',
+        if (grepl('j', type)) j <- 'black = Johnson SU'
+        ## subtitle <- list('line color: red = normal, blue = Weibull, black = Johnson SU',
         ##                  'line type: solid = distribution or mean, dashed = bound')
         subtitle <- list(paste('line color:', n, w, j, sep=' '),
                          'line type: solid = distribution or mean; dashed = bound')
