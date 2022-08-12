@@ -80,6 +80,8 @@ os <- .Platform$OS.type
 ## of the above, only would load inside R
 ##    install.packages("qualityTools")
 ##    may also have installed plotly inside R
+## for qualityTOols, may need to rerun following:
+## remotes::install_version('qualityTools', '1.55')  # google search shows v1.55 is latest
 library(qualityTools)  # need for qqplots
 library(matlib)
 library(tibble)
