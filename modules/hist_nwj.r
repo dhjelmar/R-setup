@@ -126,7 +126,7 @@ hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', bre
         ## ## Johnson distribution calculations
         fit.j <- mle.johnsonsu(x)
         jparms <- fit.j$parms.compare
-        if (jfit == 'mle' | isTRUE(tolerance)) {
+        if (jfit[[1]] == 'mle' | isTRUE(tolerance)) {
             jparms   <- fit.j$parms
             if (isTRUE(tolerance)) {
                 tol_out_john <- mle.johnsonsu.tol(x, param=jparms,
@@ -289,14 +289,21 @@ hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', bre
 
 }
 
-## set.seed(1)
-## jparms <- list(gamma = -1.039, delta = 1.66, xi = 14.46, lambda = 6.95, type    = 'SU')
-## xjohn <- SuppDists::rJohnson(999, parms=jparms) + 2
-## out   <- hist_nwj(xjohn, jfit=jparms)
-##
-## x <- rnorm(1000, 100, 1)
-## out <- hist_nwj(x)
-## out <- hist_nwj(x, type='n')
-## out <- hist_nwj(x, type='w')
-## out <- hist_nwj(x, type='j')
-## out <- hist_nwj(x, type='nw')
+hist_nwj_test <- function() {
+    set.seed(1)
+    jparms <- list(gamma = -1.039, delta = 1.66, xi = 14.46, lambda = 6.95, type    = 'SU')
+    x <- SuppDists::rJohnson(999, parms=jparms) + 2
+    plotspace(1,2)
+    out   <- hist_nwj(x)
+    out   <- hist_nwj(x, jfit=jparms)
+    
+    ## out <- hist_nwj(x, type='n')
+    ## out <- hist_nwj(x, type='w')
+    ## out <- hist_nwj(x, type='j')
+    ## out <- hist_nwj(x, type='nw')
+    plotspace(2,2)
+    out.hist <- hist_nwj(x)
+    out.qq.norm <- qqplot_nwj(x, type='n')
+    out.qq.weib <- qqplot_nwj(x, type='w')
+    out.qq.john <- qqplot_nwj(x, type='j')
+}
