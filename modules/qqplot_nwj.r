@@ -1,12 +1,14 @@
-qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainadder=NULL) {
-    ## creates normal, Weibull and/or Johnson qq plots
+qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle', mainadder=NULL) {
+    ## creates normal, Weibull and/or Johnson SU qq plots
     
     ## input: x    = vector of data
     ##        xcen = dataframe of censored data
 
     if (!is.data.frame(xcen)) {
-        ## no censored data were supplied, so use standard qqplot_nwj function
-        out <- qqplot_nwj_xonly(x, type, wfit, jfit, mainadder)
+        ## no censored data were supplied, so:
+	##    - use standard qqplot_nwj function
+	##    - no reason to use mle fit for normal (and not currently supported by qqplot_nwj_xonly)
+        out <- qqplot_nwj_xonly(x, type=type, wfit=wfit, jfit=jfit, mainadder=mainadder)
         return(out)
 
     } else {
@@ -40,15 +42,25 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainad
 
     }
 
-    ## Kaplan and Meier method
-    ## see https://pdixon.stat.iastate.edu/stat505/Chapter%2011.pdf, p. 7
+    ## create qqplot of only x (known) data
+    out <- qqplot_nwj_xonly(x, type=type, wfit=wfit, jfit=jfit,
+                            mainadder=paste(mainadder, '; censored data, if any, ignored', sep=''))
+    return(list(out=out, x=x, xcen=xcen, xall=xall))
 
-    ## sort data from low to high and renumber
-    ## for the same x.high value, sort so censored observations are below known observations
-    xall <- xall[order(xall$x.low, na.last=FALSE),]
-    xall <- xall[order(xall$x.high),]
-    rownames(xall) <- 1:nrow(xall)
 
+    ##-----------------------------------------------------------------------------
+    ## Kaplan and Meier method for qqplot of censored data
+    
+    ## I found something here, but not clear it is what I am looking for and did not seem to work.
+    ##     https://pdixon.stat.iastate.edu/stat505/Chapter%2011.pdf, p. 7
+    ## The following is that attempt.
+    
+    ## ## sort data from low to high and renumber
+    ## ## for the same x.high value, sort so censored observations are below known observations
+    ## xall <- xall[order(xall$x.low, na.last=FALSE),]
+    ## xall <- xall[order(xall$x.high),]
+    ## rownames(xall) <- 1:nrow(xall)
+    ## 
     ## ##-----------------------------------------------------------------------------
     ## ## consider: N = observations
     ## ##           J = number of unique known (uncensored) observations
@@ -87,16 +99,23 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainad
     ## xu$fail.cumsurv <- cumprod(1 - xu$fail.ratio)
     ## xu$surv.cumsurv <- cumprod(1 - xu$surv.ratio)
     ## 
-    ## ## johnson su fit
-    ## out.fit <- mle.johnsonsu(xcen=xall)
+    ## ## ## johnson su fit
+    ## ## out.fit <- mle.johnsonsu(xcen=xall)
+    ## ## params <- out.fit$parms
+    ## ## gamma <- params$gamma
+    ## ## delta <- params$delta
+    ## ## xi    <- params$xi
+    ## ## lambda <- params$lambda
+    ## ## ## determine CDF from predicted fit at each xu value
+    ## ## xu$cdf <- stats::pnorm(gamma+delta*asinh((xu$x-xi)/lambda))
+    ##
+    ## ## weibull fit
+    ## out.fit <- mle.weibull(xcen=xall)
     ## params <- out.fit$parms
-    ## gamma <- params$gamma
-    ## delta <- params$delta
-    ## xi    <- params$xi
-    ## lambda <- params$lambda
-    ## 
+    ## shape <- params$shape
+    ## scale <- params$scale
     ## ## determine CDF from predicted fit at each xu value
-    ## xu$cdf <- stats::pnorm(gamma+delta*asinh((xu$x-xi)/lambda))
+    ## ## xu$cdf <- stats::pnorm(1 - exp(-(xu$x/scale)^shape))
     ## 
     ## ## plot cumulative distribution for data vs. fit
     ## ## plotspace(1,2)
@@ -108,134 +127,74 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', wfit='mle', jfit='mle', mainad
     ##
     ##-----------------------------------------------------------------------------
 
-    type.list <- strsplit(type, "")[[1]]
-    for (ichar in type.list) {
-        
-        if (grepl('n', ichar)) {
-            cat('##################################################################\n')
-            cat('functionality for censored, normal distribution not programmed yet\n')
-            cat('##################################################################\n')
 
-        } else if (grepl('w', ichar)) {
-            if (length(type) > 1) {
-                ## user provided parameters
-                params <- wfit
-            } else {
-                ## determine fit parameters
-                fit <- mle.weibull(x, xcen)
-                params <- fit$parms
-            }
-            ## add theoretical quantiles
-            xall$wtheoretical <- stats::qweibull(ppoints(nrow(xall)), shape=params$shape, scale=params$scale)
-            main <- paste('Censored Weibull QQ Plot', mainadder, sep=" ")
-            ## plot only known points
-            xplot <- xall[xall$type == 'known',]
-            plot(xplot$x.high, xplot$wtheoretical, xlab='Observed value, x', ylab='Expected value', main=main)
-            abline(0,1,col='red')    
-            
-        } else if (grepl('j', ichar)) {
-            if (length(type) > 1) {
-                ## user provided parameters
-                params <- jfit
-            } else {
-                ## determine fit parameters
-                fit <- mle.johnsonsu(x, xcen)
-                params <- fit$parms
-            }
-            ## add theoretical quantiles
-            xall$jtheoretical <- SuppDists::qJohnson(ppoints(nrow(xall)), parms=params)
-            main <- paste('Censored Johnson SU QQ Plot', mainadder, sep=" ")
-                ## plot only known points
-            xplot <- xall[xall$type == 'known',]
-            plot(xplot$x.high, xplot$jtheoretical, xlab='Observed value, x', ylab='Expected value', main=main)
-            abline(0,1,col='red')    
-    
-        }
-        
-    }
-    
-    return(list(xall=xall, xplot=xplot))
+    ##-----------------------------------------------------------------------------
+    ## Following was another failed attempt using probability of known values for y-axis.
+    ## Problem is probably knowing what to use for the x-axis for each point.
+
+    ## type.list <- strsplit(type, "")[[1]]
+    ## for (ichar in type.list) {
+    ##     
+    ##     if (grepl('n', ichar)) {
+    ##         if (length(type) > 1) {
+    ##             ## user provided parameters
+    ##             params <- nfit
+    ##         } else {
+    ##             ## determine fit parameters
+    ##             fit <- mle.normal(x, xcen)
+    ##             params <- fit$parms
+    ##         }
+    ##         ## add theoretical quantiles
+    ##         xall$wtheoretical <- stats::qnorm(ppoints(nrow(xall)), mean=params[[1]], sd=params[[2]])
+    ##         main <- paste('Censored Weibull QQ Plot (not checked)', mainadder, sep=" ")
+    ##         ## plot only known points
+    ##         xplot <- xall[xall$type == 'known',]
+    ##         plot(xplot$x.high, xplot$wtheoretical, xlab='Observed value, x', ylab='Expected value', main=main)
+    ##         abline(0,1,col='red')    
+    ## 
+    ##     } else if (grepl('w', ichar)) {
+    ##         if (length(type) > 1) {
+    ##             ## user provided parameters
+    ##             params <- wfit
+    ##         } else {
+    ##             ## determine fit parameters
+    ##             fit <- mle.weibull(x, xcen)
+    ##             params <- fit$parms
+    ##         }
+    ##         ## add theoretical quantiles
+    ##         xall$wtheoretical <- stats::qweibull(ppoints(nrow(xall)), shape=params$shape, scale=params$scale)
+    ##         main <- paste('Censored Weibull QQ Plot (not checked)', mainadder, sep=" ")
+    ##         ## plot only known points
+    ##         xplot <- xall[xall$type == 'known',]
+    ##         plot(xplot$x.high, xplot$wtheoretical, xlab='Observed value, x', ylab='Expected value', main=main)
+    ##         abline(0,1,col='red')    
+    ##         
+    ##     } else if (grepl('j', ichar)) {
+    ##         if (length(type) > 1) {
+    ##             ## user provided parameters
+    ##             params <- jfit
+    ##         } else {
+    ##             ## determine fit parameters
+    ##             fit <- mle.johnsonsu(x, xcen)
+    ##             params <- fit$parms
+    ##         }
+    ##         ## add theoretical quantiles
+    ##         xall$jtheoretical <- SuppDists::qJohnson(ppoints(nrow(xall)), parms=params)
+    ##         main <- paste('Censored Johnson SU QQ Plot (not checked)', mainadder, sep=" ")
+    ##             ## plot only known points
+    ##         xplot <- xall[xall$type == 'known',]
+    ##         plot(xplot$x.high, xplot$jtheoretical, xlab='Observed value, x', ylab='Expected value', main=main)
+    ##         abline(0,1,col='red')    
+    ## 
+    ##     }
+    ##     
+    ## }
+    ## 
+    ## return(list(xall=xall, xplot=xplot))
 }
 
 qqplot_nwj_test <- function() {
-    source('setup.r')
-  
     set.seed(1)
-    x <- runif(1000, 1, 2)
-    plotspace(1,4)
-    fit <- mle.johnsonsu(x)
-    out.hist <- hist_nwj(x, type='j', tolerance=FALSE)
-    xcen.known <- data.frame(x.low=x, x.high=x)
-    out.qq <- qqplot_nwj(x, type='j')
-    out.qq <- qqplot_nwj(x=NA, xcen.known, type='j', mainadder='x as censored')
-    xcen <- data.frame(x.low=c(NA, NA), x.high=c(1.3, 1.4))
-    out.qq <- qqplot_nwj(x, xcen, type='j', mainadder = 'x + xcen')
-    
-    x <- iris$Sepal.Width    # range 2 to 4.4
-    x <- c(x, 6)             # much larger than largest x
-    xcen.known <- data.frame(x.low=x, x.high=x)
-    xnum <- 1
-    x.low  <- NA
-    x.high <- 3.0
-    xcen1 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    x.low  <- 3.7
-    x.high <- NA
-    xcen2 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    x.low  <- 2.6
-    x.high <- 3.5
-    xcen3 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    x.low  <- 3.1234
-    x.high <- 3.1234
-    xcen4 <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
-    xcen <- rbind(xcen1, xcen2, xcen3, xcen4)
-    plotspace(1,3)
-    out.qq <- qqplot_nwj(x, type='j')
-    out.qq <- qqplot_nwj(x=NA, xcen.known, type='j')   # not useful
-    out.qq <- qqplot_nwj(x, xcen, type='j')
-    
-    
-    ## subset of above
-    x <- head(iris$Sepal.Width, 10)    # range 2 to 4.4
-    x <- c(x, 6)             # much larger than largest x
-    xcen.known <- data.frame(x.low=x, x.high=x)
-    plotspace(1,3)
-    out.qq <- qqplot_nwj(x, type='j')
-    out.qq <- qqplot_nwj(x=NA, xcen.known, type='j', mainadder='x=NA')   # not useful
-    out.qq <- qqplot_nwj(x, xcen, type='j', mainadder='x and xcen')
-    
-    
-    set.seed(1)
-    x <- rnorm(1000)
-    x2 <- 4
-    x <- c(x, x2)
-    xcen <- data.frame(x.low=x, x.high=x)
-    plotspace(1,3)
-    out.hist <- hist_nwj(x, type='j', tolerance=FALSE)
-    out.qq <- qqplot_nwj(x, xcen=NA, type='j')
-    out.qq <- qqplot_nwj(x, xcen, type='j')
-
-    
-    ## two distributions thrown together
-    x1 <- rnorm(200, 0.3, 0.1)
-    x2 <- rnorm(200, 0.7, 0.1)
-    x <- c(x1, x2)
-    out.hist <- hist_nwj(x, type='j', tolerance=FALSE)
-    out.qq <- qqplot_nwj(x, xcen=NA, type='j')
-    xcen <- data.frame(x.low=x, x.high=x)
-    out.qq <- qqplot_nwj(x=NA, xcen, type='j')
-    
-    
-    
-    ## example in paper
-    x.low  <- c(NA, NA, 5, NA, 15)
-    x.high <- c( 4,  4, 5, 14, 15)
-    xcen <- data.frame(x.low=x.low, x.high=x.high)
-    out.qq <- qqplot_nwj(x=NA, xcen=xcen, type='j')
-    ##    x fail surv fail.ratio surv.ratio fail.cumsurv surv.cumsurv       cdf
-    ## 1  4    2    2        0.4        0.4        0.600        0.600 0.5212980
-    ## 2  5    3    1        0.6        0.2        0.240        0.480 0.5748700 <- known
-    ## 3 14    4    1        0.8        0.2        0.048        0.384 0.9160881
-    ## 4 15    5    0        1.0        0.0        0.000        0.384 0.9342868 <- known
-    
-    return(out.qq)
+    x <- rnorm(1000, 1, 2)
+    out <- qqplot_nwj(x)
 }

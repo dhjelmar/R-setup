@@ -1,4 +1,4 @@
-hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, breaks=NULL,
+hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', breaks=NULL,
                      tolerance=TRUE, side='upper', sided=1, P=0.99, conf=0.99,
                      main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
     ## plot histogram and normal, Weibull, and Johnson distributions
@@ -6,17 +6,22 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
     ## P = coverage proportion (tolerance interval only)
     ## conf = confidence used for tolerance limit
     ## breaks = number of bins used in the histogram (default auto determines number)
-    ## wfit  = 'auto' uses tolerance::exttol.int for initial guess at shape and scale
-    ##       = list of user specified parameters for initial guess
-    ## jfit  = 'auto' uses ExtDist::eJohnsonSU or SuppDists::JohnsonFit
-    ##          in atttempts at initial guesses at fit parameters
-    ##       = list of user specified parameters for initial guess
-    ##         e.g., jfit <- list(gamma   = -1.039,
-    ##                            delta   = 1.66,
-    ##                            xi      = 14.46,
-    ##                            lambda  = 6.95,
-    ##                            type    = 'SU')
-    ##              johnson_tol(mtcars$mpg, jfit=jparms)
+    ## nfit  = 'standard' uses mean(x) and sd(x) for parameters
+    ##       = 'mle' uses maximum likelihood estimate
+    ##       = vector or list for user supplied parameters (order: mean, sd; 1st 2 parameters used; names not used)
+    ## wfit  = 'mle' uses maximum likelihood estimate
+    ##       = 'exttol.int' uses tolerance::exttol.int to determine shape and scale
+    ##       = vector or list for user supplied parameters (order: shape, scale; 1st 2 parameters used; names not used)
+    ## jfit  = 'mle' uses maximum likelihood estimate
+    ##       = 'SuppDists' uses SuppDists::JohnsonFit
+    ##       = 'ExtDist'   uses ExtDist::eJohnsonSU 
+    ##       = vector or list for user supplied parameters (order: gamma, delta, xi, lambda; 1st 4 parameters used; names not used)
+    ##         e.g., jparms <- list(gamma   = -1.039,
+    ##                              delta   = 1.66,
+    ##                              xi      = 14.46,
+    ##                              lambda  = 6.95,
+    ##                              type    = 'SU')
+    ##               mle.johnsonsu(mtcars$mpg, jfit=jparms)
     ## mle  = TRUE uses maximum likelihood estimate for fit and likelihood ratio for tolerance limit
     ## main = title for histogram (default is "Histogram of ...")
     ## subtitle = 'yes' = puts description of lines in subtitle
@@ -34,8 +39,8 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
     xname <- deparse(substitute(x))
 
     ## initialize parameters
-    xmean <- NA
-    xsd   <- NA
+    xmean <- mean(x)         # may get overwritten later
+    xsd   <- sd(x)           # may get overwritten later
     shape <- NA
     scale <- NA
     jparms <- NA
@@ -54,11 +59,29 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
     
     if (grepl('n', type)) {
         ## normal distribution calculations
-        xmean <- mean(x)
-        xsd   <- sd(x)
-        tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=sided)
-        tolerance_limit_norm.l <- tol_out_norm[[4]]
-        tolerance_limit_norm.u <- tol_out_norm[[5]]
+	if (nfit == 'mle') {
+            out.fit <- mle.normal(x, xcen)
+            xmean <- out.fit$xbar
+            xsd   <- out.fit$sdev
+            tol_out_norm <- NA
+            tolerance_limit_norm.l <- NA
+            tolerance_limit_norm.u <- NA
+
+        } else if (is.numeric(nfit[[1]])) {
+            ## user supplied parameters
+            xmean <- nfit[[1]]
+            xsd   <- nfit[[2]]
+            tol_out_norm <- NA
+            tolerance_limit_norm.l <- NA
+            tolerance_limit_norm.u <- NA
+
+        } else {
+            xmean <- mean(x)
+            xsd   <- sd(x)
+            tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=sided)
+            tolerance_limit_norm.l <- tol_out_norm[[4]]
+            tolerance_limit_norm.u <- tol_out_norm[[5]]
+        }
     }
         
     if (grepl('w', type)) {
@@ -85,10 +108,10 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
                 scale   <- tol_out_weib$'shape.2'
                 tolerance_limit_weib.l <- tol_out_weib[[5]]
                 tolerance_limit_weib.u <- tol_out_weib[[6]]
-            } else if (is.numeric(wfit[1])) {
+            } else if (is.numeric(wfit[[1]])) {
                 ## user supplied parameters
-                shape <- wfit[1]
-                scale <- wfit[2]
+                shape <- wfit[[1]]
+                scale <- wfit[[2]]
                 tol_out_weib <- NA
             } else {
                 ## no other method programmed
@@ -103,7 +126,7 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
         ## ## Johnson distribution calculations
         fit.j <- mle.johnsonsu(x)
         jparms <- fit.j$parms.compare
-        if (jfit == 'mle' | isTRUE(tolerance)) {
+        if (jfit[[1]] == 'mle' | isTRUE(tolerance)) {
             jparms   <- fit.j$parms
             if (isTRUE(tolerance)) {
                 tol_out_john <- mle.johnsonsu.tol(x, param=jparms,
@@ -139,8 +162,6 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
     }
     chuncks <- (xmax-xmin)/1000
     xrange  <- seq(xmin,xmax,by=chuncks)
-    xmean   <- mean(x)
-    xsd     <- sd(x)
     if (grepl('n', type)) xdensity_norm <- stats::dnorm(xrange,xmean,xsd)    
     if (grepl('w', type)) xdensity_weib <- stats::dweibull(xrange,shape=shape,scale=scale)
     if (grepl('j', type)) xdensity_john <- SuppDists::dJohnson(xrange, jparms)
@@ -159,19 +180,31 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
     ymax <- max(out$density, maxdensity)
     ## create plot
     if (is.null(main)) main <- paste('Histogram of', xname, sep=" ")
-    hist(x, breaks=breaks,
-         xlab = xname,
-         xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
-         ylim=c(0,maxdensity),
-         freq=FALSE,
-         main=main,
-         plot=plot)
+    if (length(breaks) == 1) {
+        hist(x, breaks=breaks,
+             xlab = xname,
+             xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
+             ylim=c(0,maxdensity),
+             freq=FALSE,
+             main=main,
+             plot=plot)
+    } else {
+        hist(x, breaks=breaks,
+             xlab = xname,
+             xlim=c(xmin,xmax+(xmax-xmin)/length(breaks)), 
+             ylim=c(0,maxdensity),
+             freq=FALSE,
+             main=main,
+             plot=plot,
+             xaxt='n')                           # do not plot and label the x-axis
+        axis(side=1, at=breaks, labels=breaks)   # use breaks vector for x-axis instead
+    }
     if (subtitle == 'yes') {
         n <- w <- j <- NULL
         if (grepl('n', type)) n <- 'red = normal,'
         if (grepl('w', type)) w <- 'blue = Weibull,'
-        if (grepl('j', type)) j <- 'black = Johnson'
-        ## subtitle <- list('line color: red = normal, blue = Weibull, black = Johnson',
+        if (grepl('j', type)) j <- 'black = Johnson SU'
+        ## subtitle <- list('line color: red = normal, blue = Weibull, black = Johnson SU',
         ##                  'line type: solid = distribution or mean, dashed = bound')
         subtitle <- list(paste('line color:', n, w, j, sep=' '),
                          'line type: solid = distribution or mean; dashed = bound')
@@ -256,13 +289,21 @@ hist_nwj <- function(x, type='nwj', wfit='mle', jfit='mle', param.control=2, bre
 
 }
 
-## set.seed(1)
-## jparms <- list(gamma = -1.039, delta = 1.66, xi = 14.46, lambda = 6.95, type    = 'SU')
-## xjohn <- SuppDists::rJohnson(999, parms=jparms) + 2
-## out   <- hist_nwj(xjohn, jfit=jparms)
-## 
-## out <- hist_nwj(mtcars$mpg)
-## out <- hist_nwj(mtcars$mpg, type='n')
-## out <- hist_nwj(mtcars$mpg, type='w')
-## out <- hist_nwj(mtcars$mpg, type='j')
-## out <- hist_nwj(mtcars$mpg, type='nw')
+hist_nwj_test <- function() {
+    set.seed(1)
+    jparms <- list(gamma = -1.039, delta = 1.66, xi = 14.46, lambda = 6.95, type    = 'SU')
+    x <- SuppDists::rJohnson(999, parms=jparms) + 2
+    plotspace(1,2)
+    out   <- hist_nwj(x)
+    out   <- hist_nwj(x, jfit=jparms)
+    
+    ## out <- hist_nwj(x, type='n')
+    ## out <- hist_nwj(x, type='w')
+    ## out <- hist_nwj(x, type='j')
+    ## out <- hist_nwj(x, type='nw')
+    plotspace(2,2)
+    out.hist <- hist_nwj(x)
+    out.qq.norm <- qqplot_nwj(x, type='n')
+    out.qq.weib <- qqplot_nwj(x, type='w')
+    out.qq.john <- qqplot_nwj(x, type='j')
+}

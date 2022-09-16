@@ -80,7 +80,9 @@ os <- .Platform$OS.type
 ## of the above, only would load inside R
 ##    install.packages("qualityTools")
 ##    may also have installed plotly inside R
-library(qualityTools)
+## for qualityTOols, may need to rerun following:
+## remotes::install_version('qualityTools', '1.55')  # google search shows v1.55 is latest
+library(qualityTools)  # need for qqplots
 library(matlib)
 library(tibble)
 library(readxl)
@@ -98,9 +100,24 @@ library(stringi)       # need for stri_split_fixed function
 library(stringr)       # need for str_extract function
 library(tolerance)
 
-## (.packages())          # shows packages that are loaded
-## search()              # little different from above but not sure how (includes more)
-sessionInfo()        # info on R-version loaded packages
+## print version of R
+R.Version()$version.string
+
+loaded <- function() {
+    ## identify loaded packages
+    package <- data.frame(Package=(.packages()))
+    ## (.packages())          # shows packages that are loaded
+    ## search()               # little different from above but not sure how (includes more)
+    ## sessionInfo()          # info on R-version loaded packages
+    ## identify all installed packages and version numbers
+    ip <- as.data.frame(installed.packages()[,c(1,3)])
+    ## merge to only list loaded packages and version numbers
+    package <- merge(package, ip, by = 'Package')   # all=TRUE would keep all lines in both dataframes
+    ## convert to matrix to change from factors to character then back to dataframe
+    package <- as.data.frame(as.matrix(package))
+    return(package)
+}
+## loaded()
 
 ###----------------------------------------------------------------------------
 ### Load local .R and .r files
@@ -122,9 +139,9 @@ sessionInfo()        # info on R-version loaded packages
 if (os == "windows") {
     setup.path <- c("~/Programs/GitHub_home/R-setup/modules")
 } else if (os == 'unix') {
-    setup.path <- c("~/GitHub_repos/R-setup/modules",
-                    ##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS
-                    "~/ProgramFiles/R_packages/rgl/R"      )
+    setup.path <- c(##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS and Debian
+                    ##"~/ProgramFiles/R_packages/rgl/R",       # available on Debian
+		    "~/GitHub_repos/R-setup/modules")          # these are my modules
 } else {
     # assume Colab (.Platform returns NULL)
     setup.path <- c("/content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules")

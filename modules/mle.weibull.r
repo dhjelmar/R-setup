@@ -8,7 +8,8 @@ loglik.weibull <- function(x=NA, xcen=NA, param=c(shape, scale), debug=FALSE){
         x.add   <- xcen.val[xcen.val[[1]] == xcen.val[[2]],][[1]] # known values from xcen, if any
         x <- as.numeric(na.omit(c(x, x.add)))                     # new set of known values
         xcen.lowhigh <- xcen.val[xcen.val[[1]] != xcen.val[[2]],] # censored rows with no NA
-        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set ofcensored rows
+        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set of censored rows
+        names(xcen) <- c('x.low', 'x.high')                       # rename
     }
     ## set parameters
     shape  <- param[[1]]  
@@ -41,7 +42,7 @@ loglik.weibull <- function(x=NA, xcen=NA, param=c(shape, scale), debug=FALSE){
     return(loglik)
 }        
 
-mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
+mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, debug=FALSE) {
     
     ## weibull distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -54,6 +55,9 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
     ##                if type is also provided, it will not be used
     ##              = 'auto' (default) uses tolerance::exttol.int() for initial guess of parameters
     ##                and will try using list(shape=1, scale=1) if that fails
+    
+    ## options: plots  = create histogram with fit and qqplot (qqplot currently based only on x)
+    ##          plot3d = create 3D plot of the fit; max likelihood shown with red sphere
 
     ## based on approach found here:
     ## https://www.r-bloggers.com/2019/08/maximum-likelihood-estimation-from-scratch/
@@ -165,9 +169,29 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE) {
         curve.points <- stats::dweibull(x, shape, scale)
         hist(x, freq=FALSE, ylim=range(out.hist$density, curve.points))
         curve(stats::dweibull(x, shape, scale), min(x), max(x), add=TRUE)
-        qqplot_nwj(x, type='w', jfit=parms.mle)
+        ## xcen likely not correctly used in qqplot
+        qqplot_nwj(x, xcen, type='w', jfit=parms.mle)
     }
     
+    if (isTRUE(plot3d)) {
+        ## plot the fit
+        loglik.plot <- df.init(c('param1', 'param2', 'loglik'))
+        param1 <- seq(parms.mle[[1]]/1.05, parms.mle[[1]]*1.05, length.out=100)
+        param2 <- seq(parms.mle[[2]]/1.05, parms.mle[[2]]*1.05, length.out=100)
+        j <- 0
+        for (i1 in 1:length(param1)) {
+            for (i2 in 1:length(param2)) {
+                j <- j+1
+                loglik.plot[j, 1] <- param1[i1]
+                loglik.plot[j, 2] <- param1[i2]
+                loglik.plot[j, 3] <- loglik.weibull(x, xcen, param=c(loglik.plot$param1[j], loglik.plot$param2[j]))
+            }
+        }
+        rgl::plot3d(loglik.plot, xlab='mean', ylab='sd', zlab='loglik')
+        rgl::points3d(x = parms.mle[[1]], y = parms.mle[[2]], z=loglik,
+                      col='red', size=10, add=TRUE)
+    }
+
     return(list(parms=parms.mle, parms.compare=params.compare, loglik=loglik, convergence=convergence))
 }
 
@@ -224,5 +248,9 @@ mle.weibull.test <- function() {
     x.high <- NA
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
     fit.compare(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
+
+    ## plot the fit
+    out.fit <- mle.weibull(x, xcen, plot3d=TRUE)
+
 }
 

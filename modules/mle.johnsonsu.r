@@ -8,7 +8,8 @@ loglik.johnsonsu <- function(x=NA, xcen=NA, param=c(gamma, delta, xi, lambda), d
         x.add   <- xcen.val[xcen.val[[1]] == xcen.val[[2]],][[1]] # known values from xcen, if any
         x <- as.numeric(na.omit(c(x, x.add)))                     # new set of known values
         xcen.lowhigh <- xcen.val[xcen.val[[1]] != xcen.val[[2]],] # censored rows with no NA
-        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set ofcensored rows
+        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set of censored rows
+        names(xcen) <- c('x.low', 'x.high')                       # rename
     }
     ## set paramaters
     gamma  <- param[[1]]  
@@ -147,7 +148,7 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
     param <- parms[1:4]   # list(gamma, delta, xi, lambda)
     
     ##-----------------------------------------------------------------------------
-    ## determine best fit using nll
+    ## determine best fit using log likelihood
     ## print('Attempting MLE fit on regular parameters')
     ## constraints for gamma, delta, xi, and/or lambda
     ## A %*% param + B > 0
@@ -189,7 +190,8 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
         curve.points <- ExtDist::dJohnsonSU(x, params=parms.mle)
         hist(x, freq=FALSE, ylim=range(out.hist$density, curve.points))
         curve(ExtDist::dJohnsonSU(x, params=parms.mle), min(x), max(x), add=TRUE)
-        qqplot_nwj(x, type='j', jfit=parms.mle)
+        ## xcen likely not correctly used in qqplot
+        qqplot_nwj(x, xcen, type='j', jfit=parms.mle)
     }
     
     return(list(parms=parms.mle, parms.compare=params.compare, loglik=loglik, convergence=convergence))
