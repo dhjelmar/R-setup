@@ -1,6 +1,8 @@
-df.duplicates <- function(df, tol=0.01, tol.type='fraction', remove=TRUE) {
+df.duplicates <- function(df, tol=0.01, vector=NA, tol.type='fraction', remove=TRUE) {
     ## input: df       = numeric, 2D dataframe
     ##        tol      = tolerance
+    ##        vector   = NA (default) looks for duplicates of all rows in df
+    ##                 = vector looks for duplicates only of supplied vector
     ##        tol.type = 'fraction' indicates tolerance is the 
     ##                   specified fraction of value being compared 
     ##                   (i.e., tolerance = tol * df[i,j])
@@ -13,13 +15,18 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', remove=TRUE) {
     df.out <- df
     if (isFALSE(remove)) df.out$duplicate <- NA
     for (row in 1:nrow(df)) {
+        
         ## define vector, vec, to be compared to each row of df
-        vec <- df[row,]
+        if (is.na(vector[1])) {
+            vec <- df[row,]
+        } else {
+            vec <- vector
+        }
         
         if (isFALSE(remove)) {
             out <- data.frame(matrix(nrow=ncol(df), ncol=nrow(df)))
         } else {
-            out <- data.frame(matrix(nrow=ncol(df.out), ncol=nrow(df.out)))
+            out <- data.frame(matrix(nrow=ncol(df), ncol=nrow(df.out)))
         }
         
         for (col in 1:ncol(df)) {
@@ -43,6 +50,14 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', remove=TRUE) {
         ## duplcates are any rows in df that are the same in every column
         duplicates <- list(which(apply(out, 2, all)))    # all tests entire vector for true
         dup.vec <- as.vector(duplicates[[1]])
+        
+        if (!is.na(vector[1])) {
+            df.out <- df.out[dup.vec,]
+            df.out <- rbind(df.out, vector)
+            colnames(df.out) <- colnames(df)
+            rownames(df.out)[nrow(df.out)] <- 'target'
+            break
+        }
         
         if (isFALSE(remove)) {
             ## add list of duplicates to dataframe column
@@ -74,6 +89,9 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', remove=TRUE) {
 }
 
 df.duplicates_test <- function() {
+
+    ##--------------------------------
+    cat('\n\n##--------------------------------\n')
     cat('original dataframe\n')
     df <- data.frame(aa=c(    1,    1,    1,    2),
                      bb=c(  100,  101,   99,  110),
@@ -82,23 +100,49 @@ df.duplicates_test <- function() {
                      ee=c(  100,  102,  100,  100))
     print(df)
     
-    tol=0.1
-    tol=3
     
+    ##--------------------------------
+    cat('\n\n##--------------------------------\n')
+    tol=0.1
+
     cat('\nidentify duplicates based on fractional tolerance =', tol, '\n')
     duplicates <- df.duplicates(df, tol=tol, tol.type='fraction', remove=FALSE)
     print(duplicates)
-    
+
     cat('\nremove duplicates based on fractional tolerance =', tol, '\n')
     duplicates <- df.duplicates(df, tol=tol, tol.type='fraction', remove=TRUE)
     print(duplicates)
-    
+
+    cat('\nfind duplicates of provided vector based on fractional tolerance =', tol, '\n')
+    duplicates <- df.duplicates(df, tol=tol, vector=c(aa=1,bb=100,cc=1000,dd=10000,ee=100),
+                                tol.type='fraction', remove=TRUE)
+    print(duplicates)
+
+    cat('\nfind duplicates of provided vector based on fractional tolerance =', tol, '\n')
+    duplicates <- df.duplicates(df, tol=tol, vector=c(aa=1,bb=100,cc=1008,dd=10000,ee=100),
+                                tol.type='fraction', remove=TRUE)
+    print(duplicates)
+
+
+    ##--------------------------------
+    cat('\n\n##--------------------------------\n')
+    tol=3
+
     cat('\nidentify duplicates based on absolute tolerance =', tol, '\n')
     duplicates <- df.duplicates(df, tol=tol, tol.type='absolute', remove=FALSE)
     print(duplicates)
-    
+
     cat('\nremove duplicates based on absolute tolerance =', tol, '\n')
     duplicates <- df.duplicates(df, tol=tol, tol.type='absolute', remove=TRUE)
     print(duplicates)
-}
 
+    cat('\nfind duplicates of provided vector based on absolute tolerance =', tol, '\n')
+    duplicates <- df.duplicates(df, tol=tol, vector=c(aa=1,bb=100,cc=1000,dd=10000,ee=100),
+                                tol.type='absolute', remove=TRUE)
+    print(duplicates)
+    cat('\nfind duplicates of provided vector based on absolute tolerance =', tol, '\n')
+    duplicates <- df.duplicates(df, tol=tol, vector=c(aa=1,bb=100,cc=1008,dd=10000,ee=100),
+                                tol.type='absolute', remove=TRUE)
+    print(duplicates)
+}
+df.duplicates_test()
