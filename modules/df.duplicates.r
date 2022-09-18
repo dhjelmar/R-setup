@@ -63,12 +63,21 @@ df.duplicates <- function(df, tol=0.01, vector=NA, param=NA, tol.type='fraction'
         
         for (i in 1:nparam) {
             ## use lapply to look at every row in shrinking df.out for same value (within tol) in each column
+            vec.col.i     <- vec[[vec.cols[i]]]
+            df.out.col.i  <- df.out[,df.cols[i]]
             if (tol.type == 'fraction') {
                 ## use fractional tolerance
-                out[i,] <- unlist(lapply(df.out[,df.cols[i]], function(x) dplyr::near(x, vec[[vec.cols[i]]], tol=tol*x)))
+                tol.col.i <- tol*vec.col.i
+                out[i,] <- unlist(lapply(df.out.col.i, function(x) dplyr::near(x, vec.col.i, tol=tol*x)))
+                ## if instead wanted to base tolerance on size of vec.col.i   
+                ## then would not need the complicated use of unlist(lapply()) and could do the following:
+                ## out[i,] <- dplyr::near(vec.col.i, df.out.col.i, tol=tol.col.i)
             } else {
                 ## use absolute tolerance
-                out[i,] <- unlist(lapply(df.out[,df.cols[i]], function(x) dplyr::near(x, vec[[vec.cols[i]]], tol=tol)))
+                tol.col.i <- tol
+                out[i,] <- dplyr::near(vec.col.i, df.out.col.i, tol=tol.col.i)
+                ## since tol is a constant, there is no need for unlist(lapply())
+                ## and the output of the above is identical regardless of whether vec.col.i or df.out.col.i is first
             }
         }  
         
@@ -173,4 +182,4 @@ df.duplicates_test <- function(tol.fraction=0.1, tol.absolute=3) {
     print(duplicates)
 
 }
-## df.duplicates_test(0.1, 3)
+df.duplicates_test(0.1, 3)
