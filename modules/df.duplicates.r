@@ -1,19 +1,55 @@
-df.duplicates <- function(df, tol=0.01, vector=NA, tol.type='fraction', remove=TRUE) {
-    ## input: df       = numeric, 2D dataframe
-    ##        tol      = tolerance
-    ##        vector   = NA (default) looks for duplicates of all rows in df
-    ##                 = vector looks for duplicates only of supplied vector
-    ##        tol.type = 'fraction' indicates tolerance is the 
-    ##                   specified fraction of value being compared 
-    ##                   (i.e., tolerance = tol * df[i,j])
-    ##                 = 'absolute' indicates tolerance is the
-    ##                    actual value of the tolerance
-    ##                    (i.e., tolerance = tol)
-    ##        remove   = TRUE (default) removes duplicates from df
-    ##                 = FALSE just identifies duplicates in a new "duplicate" parameter
+df.duplicates <- function(df, tol=0.01, vector=NA, param=NA, tol.type='fraction') {
+    ## input:   df       = numeric, 2D dataframe
+    ##          tol      = tolerance
+    ##          tol.type = 'fraction' indicates tolerance is the 
+    ##                     specified fraction of value being compared 
+    ##                     (i.e., tolerance = tol * df[i,j])
+    ##                   = 'absolute' indicates tolerance is the
+    ##                      actual value of the tolerance
+    ##                      (i.e., tolerance = tol)
+
+    ## options: vector   = NA (default) looks for duplicates of all rows in df
+    ##                   = vector looks for duplicates only of supplied vector
+    ##          param    = vector of parameters to use from within df and vector
+
+    ## first define an operator that preserves matching order unlike %in%
+    '%ino%' <- function(x, table) {
+        ## credit to https://stackoverflow.com/questions/10586652/r-preserve-order-when-using-matching-operators-in
+        ## can use similar to %in% but do not need to put it in which()
+        xSeq <- seq(along = x)
+        names(xSeq) <- x
+        Out <- xSeq[as.character(table)]
+        Out[!is.na(Out)]
+    }
     
+    ##-----------------------------------------------------------------------------
+    ## determine which columns of df and, if specified, vector to use in search
+    if (!is.na(param[1])) {
+        ## param is used to determine which columns of df and vector to use
+        df.cols  <- names(df) %ino% param
+        if (!is.na(vector[1])) {
+            vec.cols <- names(vector) %ino% param
+        } else {
+            vec.cols <- df.cols
+        }
+            
+    } else if (!is.na(vector[1])) {
+        ## vector is used to determine which columns of df to use (all vector columns used)
+        df.cols  <- names(df) %ino% names(vector)
+        vec.cols <- 1:length(vector)
+
+    } else {
+        ## only df is specified, so use all parameters
+        df.cols <- 1:ncol(df)
+        vec.cols <- df.cols
+    }
+    nparam <- length(df.cols)
+        
+    ##-----------------------------------------------------------------------------
+    ## search for near duplicates
     df.out <- df
-    if (isFALSE(remove)) df.out$duplicate <- NA
+    df$duplicate <- NA
+    dups.to.remove.all <- NA
     for (row in 1:nrow(df)) {
         
         ## define vector, vec, to be compared to each row of df
@@ -23,72 +59,71 @@ df.duplicates <- function(df, tol=0.01, vector=NA, tol.type='fraction', remove=T
             vec <- vector
         }
         
-        if (isFALSE(remove)) {
-            out <- data.frame(matrix(nrow=ncol(df), ncol=nrow(df)))
-        } else {
-            out <- data.frame(matrix(nrow=ncol(df), ncol=nrow(df.out)))
-        }
+        out <- data.frame(matrix(nrow=nparam, ncol=nrow(df.out)))
         
-        for (col in 1:ncol(df)) {
-            ## use lapply to look at every row for same value (within tol) in each column
-            if (isFALSE(remove)) {
-                if (tol.type == 'fraction') {
-                    out[col,] <- unlist(lapply(df[,col], function(x) dplyr::near(x, vec[col], tol=tol*x)))
-                } else {
-                    out[col,] <- unlist(lapply(df[,col], function(x) dplyr::near(x, vec[col], tol=tol)))
-                }
+        for (i in 1:nparam) {
+            ## use lapply to look at every row in shrinking df.out for same value (within tol) in each column
+            if (tol.type == 'fraction') {
+                ## use fractional tolerance
+                out[i,] <- unlist(lapply(df.out[,df.cols[i]], function(x) dplyr::near(x, vec[[vec.cols[i]]], tol=tol*x)))
             } else {
-                ## insetad of above, look in shrinking df.nodup as duplicates are removed
-                if (tol.type == 'fraction') {
-                    out[col,] <- unlist(lapply(df.out[,col], function(x) dplyr::near(x, vec[col], tol=tol*x)))
-                } else {
-                    out[col,] <- unlist(lapply(df.out[,col], function(x) dplyr::near(x, vec[col], tol=tol)))
-                }
+                ## use absolute tolerance
+                out[i,] <- unlist(lapply(df.out[,df.cols[i]], function(x) dplyr::near(x, vec[[vec.cols[i]]], tol=tol)))
             }
         }  
         
         ## duplcates are any rows in df that are the same in every column
-        duplicates <- list(which(apply(out, 2, all)))    # all tests entire vector for true
+        duplicates <- list(which(apply(out, 2, function(x) all(x, na.rm=TRUE) )))    # all tests entire vector for true
         dup.vec <- as.vector(duplicates[[1]])
-        
+        ## above is the row(s) in df.out; what row(s) is dup.vec in df?
+        dup.vec.df <- as.numeric(rownames(df.out[dup.vec,]))
+
         if (!is.na(vector[1])) {
+            ## only need this one time through
             df.out <- df.out[dup.vec,]
-            df.out <- rbind(df.out, vector)
-            colnames(df.out) <- colnames(df)
+            if (!is.na(param[1])) vector <- subset(as.data.frame(t(vector)), select=param)
+            df.out <- fastmerge(df.out, vector)
+            ## colnames(df.out) <- colnames(df)
             rownames(df.out)[nrow(df.out)] <- 'target'
-            break
+            return(df.out)
         }
-        
-        if (isFALSE(remove)) {
-            ## add list of duplicates to dataframe column
-            df.out$duplicate[row] <- list(dup.vec)
             
-        } else {
-            ## reduce dataframe by removing duplicates as they are found
-            ## if (row == 4) browser()
-            if (length(dup.vec) > 1) {
-                ## more than just the row being evaluated was ientified as a duplicate
-                ## remove the row being evaluated from the list of rows to be removed
-                ##    dups.to.remove <- dup.vec[-row]
-                ## better yet, remove row being evaluated and earlier rows from list to be removed
-                dups.to.remove <- dup.vec[dup.vec>row]
-                ## find location in df.out
-                loc <- which(rownames(df.out) %in% dups.to.remove)
-                ## eliminate remainng rows
-                if (length(loc) > 0) df.out <- df.out[-loc,]
-            }
-            ## cat('\n')
-            ## cat('row ', row, 'has duplicates:', dups.to.remove, '\n')
-            ## print(df.out)
-        }
+        ## add list of duplicates to dataframe column
+        ## need to add to df, not df.out, because row corresponds to df
+        ## purpose of df.out is only to facilitate search
+        ## if (row == 3) browser()
+        df$duplicate[row] <- list(dup.vec.df)
         
+        ## reduce dataframe by removing duplicates as they are found
+        ## if (row == 4) browser()
+        if (length(dup.vec) > 1) {
+            ## more than just the row being evaluated was ientified as a duplicate
+            ## remove the row being evaluated from the list of rows to be removed
+            ##    dups.to.remove <- dup.vec[-row]
+            ## better yet, remove row being evaluated and earlier rows from list to be removed
+            dups.to.remove <- dup.vec.df[dup.vec.df>row]
+            ## find location in df.out
+            loc <- which(rownames(df.out) %in% dups.to.remove)
+            ## eliminate remainng rows
+            if (length(loc) > 0) df.out <- df.out[-loc,]
+            ## add dups.to.remove to growing list for later use with df
+            dups.to.remove.all <- c(dups.to.remove.all, dups.to.remove)
+        }
+        ## cat('\n')
+        ## cat('row ', row, 'has duplicates:', dups.to.remove, '\n')
+        ## print(df.out)
+  
     }
     
-    return(df.out)
+    ## remove initial NA from dups.to.remove.all
+    dups.to.remove.all <- as.numeric(dups.to.remove.all[-1])
+    ## remove duplicates from df
+    df <- df[-dups.to.remove.all,]
+    return(df)
     
 }
 
-df.duplicates_test <- function() {
+df.duplicates_test <- function(tol.fraction=0.1, tol.absolute=3) {
 
     ##--------------------------------
     cat('\n\n##--------------------------------\n')
@@ -102,47 +137,40 @@ df.duplicates_test <- function() {
     
     
     ##--------------------------------
-    cat('\n\n##--------------------------------\n')
-    tol=0.1
+    cat('\n##--------------------------------\n')
+
+    tol <- tol.fraction
 
     cat('\nidentify duplicates based on fractional tolerance =', tol, '\n')
-    duplicates <- df.duplicates(df, tol=tol, tol.type='fraction', remove=FALSE)
-    print(duplicates)
-
-    cat('\nremove duplicates based on fractional tolerance =', tol, '\n')
-    duplicates <- df.duplicates(df, tol=tol, tol.type='fraction', remove=TRUE)
-    print(duplicates)
-
-    cat('\nfind duplicates of provided vector based on fractional tolerance =', tol, '\n')
-    duplicates <- df.duplicates(df, tol=tol, vector=c(aa=1,bb=100,cc=1000,dd=10000,ee=100),
-                                tol.type='fraction', remove=TRUE)
+    duplicates <- df.duplicates(df, tol=tol, tol.type='fraction')
     print(duplicates)
 
     cat('\nfind duplicates of provided vector based on fractional tolerance =', tol, '\n')
     duplicates <- df.duplicates(df, tol=tol, vector=c(aa=1,bb=100,cc=1008,dd=10000,ee=100),
-                                tol.type='fraction', remove=TRUE)
+                                tol.type='fraction')
     print(duplicates)
 
 
     ##--------------------------------
-    cat('\n\n##--------------------------------\n')
-    tol=3
-
+    cat('\n##--------------------------------\n')
+    
+    tol <- tol.absolute
+    
     cat('\nidentify duplicates based on absolute tolerance =', tol, '\n')
-    duplicates <- df.duplicates(df, tol=tol, tol.type='absolute', remove=FALSE)
+    duplicates <- df.duplicates(df, tol=tol, tol.type='absolute')
     print(duplicates)
 
-    cat('\nremove duplicates based on absolute tolerance =', tol, '\n')
-    duplicates <- df.duplicates(df, tol=tol, tol.type='absolute', remove=TRUE)
-    print(duplicates)
-
-    cat('\nfind duplicates of provided vector based on absolute tolerance =', tol, '\n')
-    duplicates <- df.duplicates(df, tol=tol, vector=c(aa=1,bb=100,cc=1000,dd=10000,ee=100),
-                                tol.type='absolute', remove=TRUE)
-    print(duplicates)
     cat('\nfind duplicates of provided vector based on absolute tolerance =', tol, '\n')
     duplicates <- df.duplicates(df, tol=tol, vector=c(aa=1,bb=100,cc=1008,dd=10000,ee=100),
-                                tol.type='absolute', remove=TRUE)
+                                tol.type='absolute')
     print(duplicates)
+
+    cat('\nfor specified parameters, find duplicates of provided vector based on absolute tolerance =', tol, '\n')
+    duplicates <- df.duplicates(df, tol=tol,
+                                param=c('aa', 'dd'),
+                                vector=c(dd=10000,aa=1,bb=100,ee=100),
+                                tol.type='absolute')
+    print(duplicates)
+
 }
-df.duplicates_test()
+## df.duplicates_test(0.1, 3)
