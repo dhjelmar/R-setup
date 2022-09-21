@@ -3,24 +3,17 @@ df.duplicates <- function(df, tol=0.01, vector=NA, param=NA, tol.type='fraction'
     ##          tol      = tolerance
     ##          tol.type = 'fraction' indicates tolerance is the 
     ##                     specified fraction of value being compared 
-    ##                     (i.e., tolerance = tol * df[i,j])
+    ##                     (i.e., tolerance = tol * max(vector + df[i,j], 1E-6)
     ##                   = 'absolute' indicates tolerance is the
-    ##                      actual value of the tolerance
-    ##                      (i.e., tolerance = tol)
+    ##                      actual value of the tolerance on df and vec
+    ##                      (i.e., tolerance = 2*tol)
 
     ## options: vector   = NA (default) looks for duplicates of all rows in df
     ##                   = vector looks for duplicates only of supplied vector
     ##          param    = vector of parameters to use from within df and vector
 
-    ## first define an operator that preserves matching order unlike %in%
-    '%ino%' <- function(x, table) {
-        ## credit to https://stackoverflow.com/questions/10586652/r-preserve-order-when-using-matching-operators-in
-        ## can use similar to %in% but do not need to put it in which()
-        xSeq <- seq(along = x)
-        names(xSeq) <- x
-        Out <- xSeq[as.character(table)]
-        Out[!is.na(Out)]
-    }
+    ## renumber df
+    rownames(df) <- 1:nrow(df)
     
     ##-----------------------------------------------------------------------------
     ## determine which columns of df and, if specified, vector to use in search
@@ -59,7 +52,7 @@ df.duplicates <- function(df, tol=0.01, vector=NA, param=NA, tol.type='fraction'
             vec <- vector
         }
         
-        out <- data.frame(matrix(nrow=nparam, ncol=nrow(df.out)))
+        out <- data.frame(matrix(nrow=nrow(df.out), ncol=nparam))
         
         for (i in 1:nparam) {
             ## use lapply to look at every row in shrinking df.out for same value (within tol) in each column
@@ -68,21 +61,17 @@ df.duplicates <- function(df, tol=0.01, vector=NA, param=NA, tol.type='fraction'
             if (tol.type == 'fraction') {
                 ## use fractional tolerance
                 tol.col.i <- tol*vec.col.i
-                out[i,] <- unlist(lapply(df.out.col.i, function(x) dplyr::near(x, vec.col.i, tol=tol*x)))
-                ## if instead wanted to base tolerance on size of vec.col.i   
-                ## then would not need the complicated use of unlist(lapply()) and could do the following:
-                ## out[i,] <- dplyr::near(vec.col.i, df.out.col.i, tol=tol.col.i)
+                out[,i] <- unlist(lapply(df.out.col.i, function(x) dplyr::near(x, vec.col.i,
+                                                                               tol=tol*max(x+vec.col.i, 1E-6))))
             } else {
                 ## use absolute tolerance
                 tol.col.i <- tol
-                out[i,] <- dplyr::near(vec.col.i, df.out.col.i, tol=tol.col.i)
-                ## since tol is a constant, there is no need for unlist(lapply())
-                ## and the output of the above is identical regardless of whether vec.col.i or df.out.col.i is first
+                out[,i] <- dplyr::near(df.out.col.i, vec.col.i, tol=2*tol.col.i)
             }
         }  
         
         ## duplcates are any rows in df that are the same in every column
-        duplicates <- list(which(apply(out, 2, function(x) all(x, na.rm=TRUE) )))    # all tests entire vector for true
+        duplicates <- list(which(apply(out, 1, function(x) all(x, na.rm=TRUE) )))    # all tests entire vector for true
         dup.vec <- as.vector(duplicates[[1]])
         ## above is the row(s) in df.out; what row(s) is dup.vec in df?
         dup.vec.df <- as.numeric(rownames(df.out[dup.vec,]))
@@ -90,7 +79,17 @@ df.duplicates <- function(df, tol=0.01, vector=NA, param=NA, tol.type='fraction'
         if (!is.na(vector[1])) {
             ## only need this one time through
             df.out <- df.out[dup.vec,]
-            if (!is.na(param[1])) vector <- subset(as.data.frame(t(vector)), select=param)
+            if (!is.na(param[1])) {
+                if (is.data.frame(vector)) {
+                    ## if vector input was actually entered as a dataframe row
+                    ## then can directly select paramters used in the searh using subset()
+                    vector <- subset(vector, select=param)
+                } else {
+                    ## if vector was actually entered as a vactor
+                    ## then need to transpose vector and turn it into a dataframe first
+                    vector <- subset(as.data.frame(t(vector)), select=param)
+                }
+            }
             df.out <- fastmerge(df.out, vector)
             ## colnames(df.out) <- colnames(df)
             rownames(df.out)[nrow(df.out)] <- 'target'
@@ -127,8 +126,9 @@ df.duplicates <- function(df, tol=0.01, vector=NA, param=NA, tol.type='fraction'
     ## remove initial NA from dups.to.remove.all
     dups.to.remove.all <- as.numeric(dups.to.remove.all[-1])
     ## remove duplicates from df
-    df <- df[-dups.to.remove.all,]
-    return(df)
+    df.kept    <- df[-dups.to.remove.all,]
+    df.removed <- df[ dups.to.remove.all,]
+    return(list(df.kept=df.kept, df.removed=df.removed))
     
 }
 
@@ -182,4 +182,4 @@ df.duplicates_test <- function(tol.fraction=0.1, tol.absolute=3) {
     print(duplicates)
 
 }
-df.duplicates_test(0.1, 3)
+## df.duplicates_test(0.1, 3)
