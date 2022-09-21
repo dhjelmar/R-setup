@@ -175,7 +175,7 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, 
     
     if (isTRUE(plot3d)) {
         ## plot the fit
-        loglik.plot <- df.init(c('param1', 'param2', 'loglik'))
+        loglik.plot <- df.init(0, c('param1', 'param2', 'loglik'))
         param1 <- seq(parms.mle[[1]]/1.05, parms.mle[[1]]*1.05, length.out=100)
         param2 <- seq(parms.mle[[2]]/1.05, parms.mle[[2]]*1.05, length.out=100)
         j <- 0
