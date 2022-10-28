@@ -213,7 +213,7 @@ plotfit <- function(xx,
         ## lines extended to max(vlines, data)
         vpair <- c(vlines[i*2-1], vlines[i*2])
         if (interval != 'noline') {
-            ## add fit to plot
+            ## add points and fit to plot
             out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], pch=pch, vlines=vpair,
                             interval=interval, alpha=alpha, sided=sided)
             eq[i] <- out$equation
@@ -234,9 +234,13 @@ plotfit <- function(xx,
                                                 intercept = out$intercept,
                                                 rise      = out$rise))
             }
+        } else {
+            ## only add points to plot
+            points(xx, yy, col=color, pch=pch)
         }
             
         ## color points even though there is only one fit
+        ## browser()
         if (isTRUE(colorpoints) & nfit == 1) {
             points(xx, yy, col=color, pch=pch)
         }
