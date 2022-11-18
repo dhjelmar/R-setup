@@ -6,7 +6,7 @@ readall <- function(datasource,
                     range=NULL,           # Excel only: cell range in quotes including 1 line header; overrides header.row and data.start.row
                     col.names=NULL,       # Used to replace column names
                     rename=TRUE,          # If true, change special characters and spaces in read names to "_";  not used if col.names is specified
-                    na=c('NA', 'na', 'NaN', 'N/A', 'n/a', ''), # strings to read as NA rather than character
+                    na=c('NA', 'na', 'N/A', 'n/a', 'NaN', 'nan', ''), # strings to read as NA rather than character
                     suppress=FALSE        # default prints output of variable names; set to true to suppress output
                     ) {
 
@@ -47,10 +47,10 @@ readall <- function(datasource,
             ## range is defined so this takes precedence
             if (header.row !=0) {
                 ## simple structure with a single header row followed by data in the provided range
-                df <- read_excel(datasource, sheet=sheet, col_names=TRUE,  range=range, na=na)
+                df <- read_excel(datasource, sheet=sheet, col_names=TRUE,  range=range, na=na, guess_max=1E6)
             } else {
                 ## no header provided
-                df <- read_excel(datasource, sheet=sheet, col_names=FALSE, range=range, na=na)
+                df <- read_excel(datasource, sheet=sheet, col_names=FALSE, range=range, na=na, guess_max=1E6)
             }
 
         } else {
@@ -65,30 +65,30 @@ readall <- function(datasource,
                 ## no header row supplied
                 if (is.null(n_max)) {
                     ## read to end of file
-                    df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, na=na)
+                    df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, na=na, guess_max=1E6)
                 } else {
                     ## read specified number of rows
-                    df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, n_max=n_max, na=na)
+                    df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, n_max=n_max, na=na, guess_max=1E6)
                 }                    
             } else if (data.start.row == header.row + 1) {
                 ## data immediately follows single row header so read both together
                 if (is.null(n_max)) {
                     ## read to end of file
-                    df <- read_excel(datasource, sheet=sheet, col_names=TRUE, skip=header.row-1, na=na)
+                    df <- read_excel(datasource, sheet=sheet, col_names=TRUE, skip=header.row-1, na=na, guess_max=1E6)
                 } else {
                     ## add 1 to n_max to read header plus specified number of data rows
-                    df <- read_excel(datasource, sheet=sheet, col_names=TRUE, skip=header.row-1, n_max=n_max+1, na=na)
+                    df <- read_excel(datasource, sheet=sheet, col_names=TRUE, skip=header.row-1, n_max=n_max+1, na=na, guess_max=1E6)
                 }
             } else {
                 ## lines between header row and data
                 ## read header
-                hd <- read_excel(datasource, sheet=sheet, col_names=TRUE,  skip=header.row-1, n_max=1, na=na)
+                hd <- read_excel(datasource, sheet=sheet, col_names=TRUE,  skip=header.row-1, n_max=1, na=na, guess_max=1E6)
                 if (is.null(n_max)) {
                     ## read data to end of file
-                    df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, na=na)
+                    df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, na=na, guess_max=1E6)
                 } else {
                     ## read specified number of data rows
-                    df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, n_max=n_max, na=na)
+                    df <- read_excel(datasource, sheet=sheet, col_names=FALSE, skip=data.start.row-1, n_max=n_max, na=na, guess_max=1E6)
                 }                    
                 ## assign header names to columns (added [] to following to strip off blank columns with header names)
                 names(df) <- colnames(hd)[1:length(names(df))]
