@@ -62,9 +62,10 @@ os <- .Platform$OS.type
 ## conda install r-tolerance    # finally available on ChromeOS in 8/2021
 ## conda install r-IAPWS95
 ##
-## Following not tried with Conda but installed inside JL
+## Following not tried with Conda but installed inside JL or RStudtio
 ## install.packages("DT")
 ## install.packages('tolerance')   # worked on Windows in Rstudio
+## install.packages('DescTools')   # needed for Closest() used in plotfit; requires R >= 4.0.0
 
 ##----------------------------------------------------------------------------
 
