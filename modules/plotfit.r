@@ -164,17 +164,25 @@ plotfit <- function(xx,
     
     ##-----------------------------------------------------------------------------
     ## define plot parameters
-    xmax   <- max(xlimspec, xx, xx, vlines, na.rm=TRUE)
-    xmin   <- min(xlimspec, xx, xx, vlines, na.rm=TRUE)
-    ylimspec <- range(ylimspec, yy, yy, na.rm=TRUE)
+    if (is.null(xlimspec)) {
+        xmax   <- max(xx, vlines, na.rm=TRUE)
+        xmin   <- min(xx, vlines, na.rm=TRUE)
+    } else {
+        xmax   <- max(xlimspec)
+        xmin   <- min(xlimspec)
+    }
+    
     if (isTRUE(colorpoints) & is.na(legendloc)) {
         ## make extra room for legend
         xmax_plot <- xmax + (xmax-xmin)*0.2
     } else {
         xmax_plot <- xmax
     }
-    xlimspec <- range(xmin, xmax_plot)
-        
+
+    if (is.null(xlimspec)) xlimspec <- range(xmin, xmax_plot)
+    if (is.null(ylimspec)) ylimspec <- range(ylimspec, yy, na.rm=TRUE)
+
+    
     ##-----------------------------------------------------------------------------
     ## setup for output jpeg file
     if (!missing(outputfile)) jpeg(filename=outputfile)
@@ -235,8 +243,11 @@ plotfit <- function(xx,
                                                 rise      = out$rise))
             }
         } else {
-            ## only add points to plot
+            ## add points to plot but no fit
             points(xx, yy, col=color, pch=pch)
+            ## add vertical lines if specified
+            if ( !is.nothing(vlines) ) abline(v=vlines, lty=3, col=color)
+            
         }
             
         ## color points even though there is only one fit
@@ -303,7 +314,8 @@ plotfit <- function(xx,
 }
 
 testplots <- function() {
-    source('/home/dlhjel/GitHub_repos/R-setup/setup.r')
+    ## source('/home/dlhjel/GitHub_repos/R-setup/setup.r')
+    source('F:/Documents/01_Dave/Programs/GitHub_home/R-setup/setup.r')
     df <- mtcars
     plotspace(1,3)
     plotfit(df$hp, df$mpg)
