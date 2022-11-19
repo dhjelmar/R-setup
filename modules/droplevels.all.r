@@ -1,21 +1,22 @@
 droplevels.all <- function(df) {
     ## drop all levels from dataframe, df
-    df.num <- df
-    for (i in 1:ncol(df)) {
-        ## as.numeric will convert a non-numeric character to NA and issue a warning
-        ## supperssWarnings keeps the warning from being printed to screen
-        suppressWarnings( df.num[,i] <- as.numeric(as.character(df.num[,i])) )
-    }
-    ## df.num
-    df.sum <- colSums(df.num)
-    for (i in 1:ncol(df)) {
-        if (isFALSE(is.na(df.sum[i]))) {
-            ## column is all numeric
-            df[,i] <- df.num[,i]
-        } else {
-            ## column is not all numeric
-            df[,i] <- as.character(df[,i])
-        }
-    }
+    fac_cols <- sapply(df, is.factor)                   # Identify all factor columns
+    df[fac_cols] <- lapply(df[fac_cols], as.character)  # Convert all factors to characters
     return(df)
+}
+
+
+droplevels.all.test <- function() {
+    df <- data.frame(x1 = letters[1:5],                           # Create example data
+                     x2 = 1:5,
+                     x3 = "XXX",
+                     x4 = c('one', 'two', 'three', 'four', 'five'),
+                     x5 = c(1.0, 2, 3, 4, 5.2))
+    df$x4 <- as.character(df$x4)
+    print(as_tibble(df))
+    cat('\n')
+    out <- droplevels.all(df)
+    print(as_tibble(out))
+    cat('\n')
+    print(out[,4])
 }
