@@ -69,6 +69,7 @@ os <- .Platform$OS.type
 ## install.packages('superml')
 ## install.packages('xts')
 ## install.packages('quantmod')
+## install.packages('pracma')      # needed for pracma::newtonRaphson()
 
 ##----------------------------------------------------------------------------
 
