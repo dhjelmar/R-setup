@@ -13,7 +13,16 @@ qqplot_nwj_xonly <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NU
     if (grepl('n', type)) {
         ## make normal QQ plot
         main <- paste('Normal QQ Plot', mainadder, sep=" ")
-        nparms <- qualityTools::qqPlot(x, "normal",  col='black', main=main)
+        ## qualityTools package not being maintained so replaced here
+        ## nparms <- qualityTools::qqPlot(x, "normal",  col='black', main=main)
+        nparms <- list(mean=mean(x), sd=sd(x))
+        x <- sort(x, na.last=NA)
+        xtheoretical <- qnorm(ppoints(length(x)), mean = mean(x), sd = sd(x))
+        main <- paste('Normal QQ Plot', mainadder, sep=" ")
+        plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value', main=main)
+        abline(0,1, col='red')
+        ## car::qqPlot(x, envelope=0.95, xlab='Expected Quantiles', ylab='Observed Values')
+        
     }
     
     if (grepl('w', type) & min(x)>0) {
@@ -92,25 +101,37 @@ qqplot_nwj_xonly <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NU
 ##-----------------------------------------------------------------------------
 qqplot_nwj_tests <- function() {
 
-    qqplot_nwj(mtcars$mpg)
+    x <- mtcars$mpg
+    set.seed(15)
+    x <- rweibull(1000, shape=55, scale = 2)
+    x <- sort(x)
+    qqplot_nwj(x)
 
-    x <- sort(mtcars$mpg)
+    par(mfrow=c(2,2))
 
     ## comparisons for normal qq plot using same method as for Johnson SU qqplot
-    par(mfrow=c(1,2))
-    qualityTools::qqPlot(x, "normal",  col='black')
+    ## qualityTools::qqPlot(x, "normal",  col='black')
+    car::qqPlot(x, envelope=0.95, xlab='Expected Quantile', ylab='Observed Value', 
+                main='Normal Distribution QQ Plot using car::qqPlot()')
     xtheoretical <- qnorm(ppoints(length(x)), mean = mean(x), sd = sd(x))
-    plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value')
+    plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value',
+         main='Normal Distribution QQ Plot using qnorm(ppoints())')
     abline(0,1, col='red')
     
     ## comparisons for Weibull qq plot using same method as for Johnson SU qqplot
-    par(mfrow=c(1,2))
-    qualityTools::qqPlot(x, "Weibull",  col='black')
+    ## qualityTools::qqPlot(x, "Weibull",  col='black')
+    out     <- tolerance::exttol.int(x, alpha=0.05, P=0.95, side=1, dist='Weibull')
+    shape   <- out$'shape.1'
+    scale   <- out$'shape.2'
+    car::qqPlot(x, distribution='weibull', shape=shape, scale=scale,
+                envelope=0.95, xlab='Expected Quantile', ylab='Observed Value', 
+                main='Weibull Distribution QQ Plot using car::qqPlot()')
     tol_out <-  exttol.int(x, alpha =0.1, P=0.99, side=1)
     shape <- tol_out$'shape.1'
     scale <- tol_out$'shape.2'
     xtheoretical <- qweibull(ppoints(length(x)), shape = shape, scale = scale)
-    plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value')
+    plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value',
+         main='Weibull Distribution QQ Plot using qnorm(ppoints())')
     abline(0,1, col='red')
 
 }
