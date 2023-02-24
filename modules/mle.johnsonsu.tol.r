@@ -21,7 +21,7 @@ loglik.johnsonsu.q.set <- function(x=NA, xcen=NA, param=c(delta, xi, lambda), qu
 
 mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                               side.which='upper', sided=1, conf=0.99, alpha.eff=NULL, P=0.99,
-                              plots=FALSE, plots.xlim=NULL, plots.nr=FALSE, debug=FALSE, main=NULL) {
+                              plots=FALSE, plots.xlim=NULL, debug=FALSE, main=NULL) {
     
     ## johnsonsu distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -334,6 +334,17 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
             ## converged <- which(!is.na(yplot))
             ## points(xplot[converged], yplot[converged],
             ##        xlab='quantile', ylab='log likelihood', col='red')
+
+            ## remake plot because lowest points may be off scale
+            plot(quant.P.save[k], loglik.max, col='blue', pch=16, cex=2,
+                 xlab='quantile', ylab='log likelihood',
+                 xlim=range(xmin, xmax, xyplot$quantile),
+                 ylim=range(loglik.max, loglik.tol, xyplot$log.likelihood),
+                 main=main)
+            points(xyplot$quantile, xyplot$log.likelihood, col='black')
+            abline(h=loglik.tol)
+            abline(v=c(quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess), col='red', lty=2)
+            
             plotit <- function(xplot=0.994, col='blue', pch=16, cex=2) {
                 ## this is just for using interactively if debugging
                 yplot <- loglik.fixedq(xplot, x, xcen, P, delta.P, xi.P, lambda.P, debug=FALSE)
@@ -348,40 +359,83 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         quant.P.alpha.eff.u <- NA
         if (side.which == 'lower' | (P < 0.5 & sided == 2)) {
             ## find lower tolerance limit
-            out.nrl <- newton.raphson(f = loglik.fixedq,
-                                      xguess = quant.P.alpha.eff.l.guess,
-                                      ytarget = loglik.tol,
-                                      data    = x,
-                                      xcen = xcen,
-                                      P      = P,
-                                      delta  = delta,  # initial guess for loglik.fixedq
-                                      xi     = xi,     # initial guess for loglik.fixedq
-                                      lambda = lambda, # initial guess for loglik.fixedq
-                                      tol = 1e-5, 
-                                      n = 1000,
-                                      relax = 0.8,
-                                      nrelax = 10,
-                                      plots=plots.nr,
-                                      plot.add=TRUE)
+
+            ## out.nrl <- newton.raphson(f = loglik.fixedq,
+            ##                           xguess = quant.P.alpha.eff.l.guess,
+            ##                           ytarget = loglik.tol,
+            ##                           data    = x,
+            ##                           xcen = xcen,
+            ##                           P      = P,
+            ##                           delta  = delta,  # initial guess for loglik.fixedq
+            ##                           xi     = xi,     # initial guess for loglik.fixedq
+            ##                           lambda = lambda, # initial guess for loglik.fixedq
+            ##                           tol = 1e-5, 
+            ##                           n = 1000,
+            ##                           relax = 0.8,
+            ##                           nrelax = 10,
+            ##                           plots=plots.nr,
+            ##                           plot.add=TRUE)
+
+            out.nrl <- newton.raphson.target(fun     = loglik.fixedq,
+                                             ytarget = loglik.tol,
+                                             x0      = quant.P.alpha.eff.l.guess,
+                                             maxiter = 2000,
+                                             tol     = 1E-5,
+                                             data    = x,
+                                             xcen    = xcen,
+                                             P       = P,
+                                             delta   = delta,  # initial guess for loglik.fixedq
+                                             xi      = xi,     # initial guess for loglik.fixedq
+                                             lambda  = lambda) # initial guess for loglik.fixedq
+
             quant.P.alpha.eff.l <- out.nrl$root
             if (is.null(quant.P.alpha.eff.l)) { quant.P.alpha.eff.l <- NA }
         } else {
             ## find upper tolerance limit
-            out.nru <- newton.raphson(f = loglik.fixedq,
-                                      xguess = quant.P.alpha.eff.u.guess,
-                                      ytarget = loglik.tol,
-                                      data   = x,
-                                      xcen   = xcen,
-                                      P      = P,
-                                      delta  = delta,  # initial guess for loglik.fixedq
-                                      xi     = xi,     # initial guess for loglik.fixedq
-                                      lambda = lambda, # initial guess for loglik.fixedq
-                                      tol = 1e-5, 
-                                      n = 1000,
-                                      relax = 0.8,
-                                      nrelax = 10,
-                                      plots=plots.nr,
-                                      plot.add=TRUE)
+
+            ## out.nru <- newton.raphson(f = loglik.fixedq,
+            ##                           xguess = quant.P.alpha.eff.u.guess,
+            ##                           ytarget = loglik.tol,
+            ##                           data   = x,
+            ##                           xcen   = xcen,
+            ##                           P      = P,
+            ##                           delta  = delta,  # initial guess for loglik.fixedq
+            ##                           xi     = xi,     # initial guess for loglik.fixedq
+            ##                           lambda = lambda, # initial guess for loglik.fixedq
+            ##                           tol = 1e-5, 
+            ##                           n = 1000,
+            ##                           relax = 0.8,
+            ##                           nrelax = 10,
+            ##                           plots=plots.nr,
+            ##                           plot.add=TRUE)
+
+            out.nru <- newton.raphson.target(fun     = loglik.fixedq,
+                                             ytarget = loglik.tol,
+                                             x0      = quant.P.alpha.eff.u.guess,
+                                             maxiter = 2000,
+                                             tol     = 1E-5,
+                                             data    = x,
+                                             xcen    = xcen,
+                                             P       = P,
+                                             delta   = delta,  # initial guess for loglik.fixedq
+                                             xi      = xi,     # initial guess for loglik.fixedq
+                                             lambda  = lambda) # initial guess for loglik.fixedq
+
+            investigate <- function() {
+                qvec <- seq(1.05, 1.1, by=0.002)
+                a <- df.int(rows=length(qvec), columns=c('quantile', 'loglik'))
+                for (ii in 1:length(qvec)) {
+                    a[ii,1] <- qvec[ii]
+                    a[ii,2] <- loglik.fixedq(quant=qvec[ii], data=x, xcen=xcen,
+                                             P=P, delta=delta, xi=xi, lambda=lambda)
+                    cat('ii=',ii,'; a[ii,1]=',a[ii,1],'; a[ii,2]=',a[ii,2],'\n')
+                }
+                plot(xyplot$quantile, xyplot$log.likelihood,
+                     xlim=range(xyplot$quantile, a$quantile),
+                     ylim=range(xyplot$log.likelihood, a$loglik))
+                points(a$quantile,a$loglik,col='red')
+            }
+            
             quant.P.alpha.eff.u <- out.nru$root
             if (is.null(quant.P.alpha.eff.u)) { quant.P.alpha.eff.u <- NA }
         }
@@ -469,16 +523,16 @@ mle.johnsonsu.tol.test <- function() {
     ## lower tolerance limit
     out.lower <- mle.johnsonsu.tol(x, param='auto',
                                    side.which='lower', sided=1, conf=0.99, P=0.01,
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/1')
+                                   plots=TRUE, debug=FALSE, main='lower, 1-sided 99/1')
     ## using default parameters except for 'plots'
     out.upper <- mle.johnsonsu.tol(x, param='auto',
                                    side.which='upper', sided=1, conf=0.99, P=0.99,
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/99')
+                                   plots=TRUE, debug=FALSE, main='upper, 1-sided 99/99')
     ## lower and upper 2-sided tolerance limits
     ## test that 1-sided 99/99 is the same as a 2-sided 98/98
     out.twosided <- mle.johnsonsu.tol(x, param='auto',
                                       side.which='both', sided=2, conf=0.98, P=0.98,
-                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/98')
+                                      plots=TRUE, debug=FALSE, main='2-sided 98/98')
 
     
     ## test that upper 1-sided 99/75 and lower 1-sided 99/25 are the same as a 2-sided 98/50  
@@ -486,14 +540,14 @@ mle.johnsonsu.tol.test <- function() {
     ## lower and upper 1-sided tolerance limits
     out.lower <- mle.johnsonsu.tol(x, param='auto',
                                    side.which='lower', sided=1, conf=0.99, P=0.25, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='lower, 1-sided 99/25')
+                                   plots=TRUE, debug=FALSE, main='lower, 1-sided 99/25')
     out.upper <- mle.johnsonsu.tol(x, param='auto',
                                    side.which='upper', sided=1, conf=0.99, P=0.75, 
-                                   plots=TRUE, plots.nr=FALSE, debug=FALSE, main='upper, 1-sided 99/75')
+                                   plots=TRUE, debug=FALSE, main='upper, 1-sided 99/75')
     ## lower and upper 2-sided tolerance limits
     out.twosided <- mle.johnsonsu.tol(x, param='auto',
                                       side.which='both', sided=2, conf=0.98, P=0.5, 
-                                      plots=TRUE, plots.nr=FALSE, debug=FALSE, main='2-sided 98/50')
+                                      plots=TRUE, debug=FALSE, main='2-sided 98/50')
 
 
     ##-------------------------------------------------------------------
@@ -577,7 +631,7 @@ mle.johnsonsu.tol.test <- function() {
     fit4 <- fit.compare.cen(x, xcen, main=paste(xnum, 'censored points from', x.low, 'to', x.high, sep=' ' ))
     print(fit4)
    
-    ## many low censored points
+    ## many low censored points (throwing errors?)
     xnum <-length(x)
     x.low  <- NA
     x.high <- 2.2
