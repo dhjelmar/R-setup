@@ -1,4 +1,4 @@
-df.duplicates <- function(df, tol=0.01, target=NA, param=NA, tol.type='fraction') {
+df.duplicates <- function(df, tol=0.01, tol.type='fraction', target=NA, param=NA) {
     ## input:   df       = numeric, 2D dataframe
     ##          tol      = tolerance
     ##          tol.type = 'fraction' indicates tolerance is the 
@@ -145,7 +145,7 @@ df.duplicates <- function(df, tol=0.01, target=NA, param=NA, tol.type='fraction'
         df.removed <- df[ dups.to.remove.all,]
     }
     
-    return(list(df.kept=df.kept, df.removed=df.removed))
+    return(list(df.kept=df.kept, df.removed=df.removed, df.all=df.out))
     
 }
 
