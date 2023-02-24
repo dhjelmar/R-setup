@@ -14,6 +14,7 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', target=NA, param=NA
 
     ## renumber df
     rownames(df) <- 1:nrow(df)
+    df.renum <- df
 
     
     ##-----------------------------------------------------------------------------
@@ -145,7 +146,7 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', target=NA, param=NA
         df.removed <- df[ dups.to.remove.all,]
     }
     
-    return(list(df.kept=df.kept, df.removed=df.removed, df.all=df.out))
+    return(list(df.kept=df.kept, df.removed=df.removed, df.renum=df.renum))
     
 }
 
