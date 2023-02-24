@@ -205,6 +205,7 @@ plotfit <- function(xx,
     ##-----------------------------------------------------------------------------
     ## add points, fits and vlines
     eq      <- NA
+    pred    <- NA
     lineloc <- 1.5
     for (i in 1:nfit) {
 
@@ -225,6 +226,7 @@ plotfit <- function(xx,
             out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], pch=pch, vlines=vpair,
                             interval=interval, alpha=alpha, sided=sided)
             eq[i] <- out$equation
+            pred[i] <- list(out$pred)
             
             if (i == 1) {
                 if (nfit == 1) {
@@ -307,7 +309,7 @@ plotfit <- function(xx,
         if (interval == 'nolne') {
             return(list(legend = legendprint))
         } else {
-            return(list(fits = fits, legend = legendprint))
+            return(list(fits = fits, legend = legendprint, pred=pred))
         }
     }
 
