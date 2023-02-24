@@ -22,7 +22,7 @@
 ##        Some of these are R packages that wold not install with conda
 ##        Some of these are R functions I wrote
 
-#----------------------------------------------------------------------------
+##----------------------------------------------------------------------------
 
 ## If launch from Conda, may not be able to read some *.r files.
 ## To fix, set the encoding by default to UTF-8 as follows:
@@ -34,7 +34,7 @@
 ##
 ## Now the files that were open as blank should appear with code.
 
-#----------------------------------------------------------------------------
+##----------------------------------------------------------------------------
 
 ## identify operating system
 os <- .Platform$OS.type
@@ -66,6 +66,9 @@ os <- .Platform$OS.type
 ## install.packages("DT")
 ## install.packages('tolerance')   # worked on Windows in Rstudio
 ## install.packages('DescTools')   # needed for Closest() used in plotfit; requires R >= 4.0.0
+## install.packages('superml')
+## install.packages('xts')
+## install.packages('quantmod')
 
 ##----------------------------------------------------------------------------
 
@@ -83,7 +86,7 @@ os <- .Platform$OS.type
 ##    may also have installed plotly inside R
 ## for qualityTOols, may need to rerun following:
 ## remotes::install_version('qualityTools', '1.55')  # google search shows v1.55 is latest
-library(qualityTools)  # need for qqplots
+## library(qualityTools)  # need for qqplots <-- REMOVED FROM CRAN BECAUSE NOT BEING MAINTAINED
 library(matlib)
 library(tibble)
 library(readxl)
@@ -141,15 +144,15 @@ if (os == "windows") {
     setup.path <- c("~/Programs/GitHub_home/R-setup/modules")
 } else if (os == 'unix') {
     setup.path <- c(##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS and Debian
-                    ##"~/ProgramFiles/R_packages/rgl/R",       # available on Debian
-		    "~/GitHub_repos/R-setup/modules")          # these are my modules
+        ##"~/ProgramFiles/R_packages/rgl/R",       # available on Debian
+        "~/GitHub_repos/R-setup/modules")          # these are my modules
 } else {
-    # assume Colab (.Platform returns NULL)
+    ## assume Colab (.Platform returns NULL)
     setup.path <- c("/content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules")
 }
 r_files <- list.files(setup.path, pattern="*.[rR]$", full.names=TRUE)
 for (f in r_files) {
-  ## cat("f =",f,"\n")
-  source(f)
+    ## cat("f =",f,"\n")
+    source(f)
 }
 
