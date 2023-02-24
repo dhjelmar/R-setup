@@ -12,7 +12,7 @@ newton.raphson.target <- function(fun, ytarget=0, x0, maxiter=1000, tol=1E-5, ..
 }
 
 
-newton.raphson.target_test () {
+newton.raphson.target_test <- function() {
     ##----------------------
     ## FIRST TEST HOME GROWN newton.raphson()
 
