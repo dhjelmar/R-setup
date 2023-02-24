@@ -202,8 +202,9 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         ## estimates      <- as.numeric( out.qdxl$par )
         ## coef           <- data.frame(estimates, standard.error)
         ## rownames(coef) <- names(out.qdxl$par)
-        dof    <- length(x) - 4    # 4 independent fitting parameters in Johnson SU
+        dof    <- length(x.avg) - 4    # 4 independent fitting parameters in Johnson SU
         student.t <- qt(1 - (1-conf)/sided, dof)  # 2.3326 for dof=598
+        if (is.nothing(standard.error) | standard.error == Inf) standard.error <- 0.001 * quant.P
         quant.P.alpha.eff.l.guess <- quant.P - student.t * standard.error
         quant.P.alpha.eff.u.guess <- quant.P + student.t * standard.error
         cat('Initial guesses for confidence interval for P=', P, '\n')
