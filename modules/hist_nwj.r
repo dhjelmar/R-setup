@@ -1,10 +1,17 @@
-hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', breaks=NULL,
+hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='mle',
+                     xlabel=NA, hist.xavg=FALSE, breaks=NULL,
                      tolerance=TRUE, side='upper', sided=1, P=0.99, conf=0.99,
                      main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
     ## plot histogram and normal, Weibull, and Johnson distributions
     ## adds lines for upper tolerance limits for given alpha and proportion
+    ## x = vector of data
+    ## xcen = dataframe of censored data
+    ##        (1st column = low value or NA; 2nd column = high value or NA)
     ## P = coverage proportion (tolerance interval only)
     ## conf = confidence used for tolerance limit
+    ## hist.xavg = FALSE (default) only plots x on hitogram
+    ##             (default changes to TRUE if x=NA)
+    ##           = TRUE plots x and average xcen values on histogram
     ## breaks = number of bins used in the histogram (default auto determines number)
     ## nfit  = 'standard' uses mean(x) and sd(x) for parameters
     ##       = 'mle' uses maximum likelihood estimate
@@ -29,14 +36,46 @@ hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', bre
     ##          = user specified, single line subtitle
     ## suppress = 'yes' creates plot but does not return calculated values to the screen
     ##            (e.g., fit parameters and tolerance limits)
+
+    if (is.na(xlabel)) {
+        ## no label supplied so instead use name of variable passed in
+        xlabel <- deparse(substitute(x))
+    }
+
+    if (is.data.frame(x)) x <- x[[1]] # convert to vector if dataframe supplied instead
+
+    if (is.data.frame(xcen)) {
+        ## if known data are inside xcen, move them to x and keep remainder in xcen
+        xcen.na  <- xcen[ is.na(rowSums(xcen)),]                   # censored rows with NA, if any
+        xcen.val <- xcen[!is.na(rowSums(xcen)),]                   # rows w/o NA, if any
+        x.add    <- xcen.val[xcen.val[[1]] == xcen.val[[2]],][[1]] # known values from xcen, if any
+        x        <- as.numeric(na.omit(c(x, x.add)))               # new set of known values
+        xcen.lowhigh <- xcen.val[xcen.val[[1]] != xcen.val[[2]],]  # censored rows with no NAme
+        xcen <- rbind(xcen.lowhjigh, xcen.na)                      # new set of censored rows
+        names(xcen) <- c('x.low', 'x.high')                        # rename
+
+        ## calcualte average xcen value (ignoring NA) to use in estimating parameters
+        ## from packages that do not have censor capability
+        xcen.avg <- rowMeans(xcen, na.rm=TRUE)
+
+    } else {
+        xcen.avg <- NA
+    }
+    x.avg <- as.numeric( na.omit( c(x, xcen.avg) ) )
+
+    ## if there are no known values, use average of censored values for histogram
+    if (is.na(x[1]) | isTRUE(hist.xavg)) {
+        ## user specified to use x.avg values in histogram or no known x values were supplied
+        x.hist <- x.avg
+    } else {
+        ## default behavior
+        x.hist <- x
+    }
     
     proportion = P
     
     ## set effective alpha level for use in standard R packages based on desired confidence and whether 1 or 2 sided
     alpha <- (1-conf)/sided
-
-    ## name of variable passed in
-    xname <- deparse(substitute(x))
 
     ## initialize parameters
     xmean <- mean(x)         # may get overwritten later
@@ -96,7 +135,7 @@ hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', bre
             scale <- NA
         } else {
             if (wfit == 'mle') {
-                tol_out_weib <- mle.weibull.tol(x, side.which=side, sided=sided, conf=conf, P=P)
+                tol_out_weib <- mle.weibull.tol(x, xcen, side.which=side, sided=sided, conf=conf, P=P)
                 shape <- tol_out_weib$params$shape
                 scale <- tol_out_weib$params$scale
                 tolerance_limit_weib.l <- tol_out_weib$tolerance$tol.lower
@@ -124,17 +163,15 @@ hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', bre
         
     if (grepl('j', type)) {
         ## ## Johnson distribution calculations
-        fit.j <- mle.johnsonsu(x)
-        jparms <- fit.j$parms.compare
         if (jfit[[1]] == 'mle' | isTRUE(tolerance)) {
-            jparms   <- fit.j$parms
+            fit.j <- mle.johnsonsu(x, xcen)
+            jparms <- fit.j$parms
             if (isTRUE(tolerance)) {
-                tol_out_john <- mle.johnsonsu.tol(x, param=jparms,
+                tol_out_john <- mle.johnsonsu.tol(x, xcen, param=jparms,
                                                   side.which=side, sided=sided, P=P, conf=conf, 
                                                   plots=FALSE, debug=FALSE)
                 tolerance_limit_john.l <- tol_out_john$tolerance$tol.lower
                 tolerance_limit_john.u <- tol_out_john$tolerance$tol.upper
-                tol_out_john <- tol_out_john$tolerance
             }                
         } else if (jfit == 'SuppDists') {
             jparms <- jparms[jparms$description == 'SuppDists::JohnsonFit(x)', 1:5]
@@ -146,8 +183,8 @@ hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', bre
     }
     
     ## create vectors with density distributions
-    xmin <- min(x)
-    xmax <- max(x)
+    xmin <- min(x, x.avg, na.omit=TRUE)
+    xmax <- max(x, x.avg, na.omit=TRUE)
     if (isTRUE(tolerance)) {
         if (side != 'lower') {
             if (grepl('n', type)) xmax <- max(xmax, tolerance_limit_norm.u, na.rm=TRUE)
@@ -171,26 +208,26 @@ hist_nwj <- function(x, type='nwj', nfit='standard', wfit='mle', jfit='mle', bre
     ## obtain histogram parameters but suppress plot
     if (is.null(breaks)) {
         ## breaks not specified so figure out what to use
-        out <- hist(x, plot=FALSE)
+        out <- hist(x.hist, plot=FALSE)
         breaks <- length(out$breaks)
     }
     ## hist needed with number of breaks to be used to get density for max height of histogram
-    out <- hist(x, breaks=breaks, plot=FALSE)
+    out <- hist(x.hist, breaks=breaks, plot=FALSE)
     maxdensity <- max(xdensity_norm, xdensity_weib, xdensity_john, out$density, na.rm=TRUE)
     ymax <- max(out$density, maxdensity)
     ## create plot
-    if (is.null(main)) main <- paste('Histogram of', xname, sep=" ")
+    if (is.null(main)) main <- paste('Histogram of', xlabel, sep=" ")
     if (length(breaks) == 1) {
-        hist(x, breaks=breaks,
-             xlab = xname,
+        hist(x.hist, breaks=breaks,
+             xlab = xlabel,
              xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
              ylim=c(0,maxdensity),
              freq=FALSE,
              main=main,
              plot=plot)
     } else {
-        hist(x, breaks=breaks,
-             xlab = xname,
+        hist(x.hist, breaks=breaks,
+             xlab = xlabel,
              xlim=c(xmin,xmax+(xmax-xmin)/length(breaks)), 
              ylim=c(0,maxdensity),
              freq=FALSE,
