@@ -70,6 +70,9 @@ os <- .Platform$OS.type
 ## install.packages('xts')
 ## install.packages('quantmod')
 ## install.packages('pracma')      # needed for pracma::newtonRaphson()
+## install.packages('ExtDist')     # needed for Johnson SU distribution
+## install.packages('SuppDists')   # needed for Johnson SU distribution
+## install.packages('maxLik')      # needed for MLE (Maximum Likelihood Estimate) fits
 
 ##----------------------------------------------------------------------------
 
