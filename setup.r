@@ -73,6 +73,7 @@ os <- .Platform$OS.type
 ## install.packages('ExtDist')     # needed for Johnson SU distribution
 ## install.packages('SuppDists')   # needed for Johnson SU distribution
 ## install.packages('maxLik')      # needed for MLE (Maximum Likelihood Estimate) fits
+## install.packages('expandFunctions') # needed for warning.reset()
 
 ##----------------------------------------------------------------------------
 
