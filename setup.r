@@ -41,39 +41,41 @@ os <- .Platform$OS.type
 
 ### INSTALL PACKAGES
 ##  Two options
-##      Install from terminal if using conda (this made installing rstudio easy but all packages not supported)
-##      Install inside R using (may be faster in R than rstudio), e.g.:
+##
+##  (1) Install from Anaconda GUI, Anaconda Prompt, or terminal
+##      (this made installing rstudio easy but all packages not supported)
+##      Example: conda install r-readxl
+##
+##  (2) Install inside R using (faster in R than rstudio), e.g.:
 ##             install.packages("r-plotly")
 
-### INSTALL PACKAGES WITH CONDA
-## input following into terminal (or Anaconda Prompt)
-## conda install r-essentials  # not sure if this is needed
-## conda install r-readxl
-## conda install r-ggplot2     
-## conda install r-plotly      
-## conda install r-RColorBrewer
-## conda install r-dplyr 
-## conda install r-reticulate
-## conda install r-matlib      <-- worked on chromebook but windows required conda install -c conda-forge r-matlib
-## conda install r-qualityTools     <-- may have needed conda install -c conda-forge r-qualityTools
-##
-## Following list would not install so will source r functions instead
-## conda install r-rgl
-## conda install r-tolerance    # finally available on ChromeOS in 8/2021
-## conda install r-IAPWS95
-##
-## Following not tried with Conda but installed inside JL or RStudtio
+## ## install.packages("essentials")   # not sure if this is needed
+## install.packages("ggplot2")     
+## install.packages("plotly")      
+## install.packages("RColorBrewer")
+## install.packages("dplyr") 
+## install.packages("reticulate")
+## install.packages("matlib")
+## install.packages("rgl")
+## install.packages("IAPWS95")
 ## install.packages("DT")
-## install.packages('tolerance')   # worked on Windows in Rstudio
-## install.packages('DescTools')   # needed for Closest() used in plotfit; requires R >= 4.0.0
+## install.packages('tolerance')
+## install.packages('DescTools')       # need for Closest() used in plotfit; requires R >= 4.0.0
 ## install.packages('superml')
 ## install.packages('xts')
 ## install.packages('quantmod')
-## install.packages('pracma')      # needed for pracma::newtonRaphson()
-## install.packages('ExtDist')     # needed for Johnson SU distribution
-## install.packages('SuppDists')   # needed for Johnson SU distribution
-## install.packages('maxLik')      # needed for MLE (Maximum Likelihood Estimate) fits
-## install.packages('expandFunctions') # needed for warning.reset()
+## install.packages('pracma')          # need for pracma::newtonRaphson()
+## install.packages('ExtDist')         # need for Johnson SU distribution
+## install.packages('SuppDists')       # need for Johnson SU distribution
+## install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
+## install.packages('expandFunctions') # need for warning.reset()
+## install.packages('purrr')           # need for pmap
+
+## ## qualityTools no longer supported; had a good qqplot() function
+## ## can get an old version if needed
+## remotes::install_version('qualityTools', '1.55')  # google search shows v1.55 is latest
+## library(qualityTools)  # need for qqplots <-- REMOVED FROM CRAN BECAUSE NOT BEING MAINTAINED
+
 
 ##----------------------------------------------------------------------------
 
@@ -85,13 +87,7 @@ os <- .Platform$OS.type
 ##    plotly
 ##    IAPWS95
 ##    rgl
-##
-## of the above, only would load inside R
-##    install.packages("qualityTools")
-##    may also have installed plotly inside R
-## for qualityTOols, may need to rerun following:
-## remotes::install_version('qualityTools', '1.55')  # google search shows v1.55 is latest
-## library(qualityTools)  # need for qqplots <-- REMOVED FROM CRAN BECAUSE NOT BEING MAINTAINED
+
 library(matlib)
 library(tibble)
 library(readxl)
@@ -108,6 +104,14 @@ library(DT)
 library(stringi)       # need for stri_split_fixed function
 library(stringr)       # need for str_extract function
 library(tolerance)
+library(purrr)
+
+## ## fonts
+## install.packages('extrafont')       # need to use font families
+## library(extrafont)
+## font_import()                       # only need to run once then comment out
+## fonts()                             # use to list available fonts
+## usage: loadfonts(device='win', quiet=TRUE)
 
 ## print version of R
 R.Version()$version.string
