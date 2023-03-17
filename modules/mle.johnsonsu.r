@@ -164,6 +164,7 @@ mle.johnsonsu <- function(x=NA, xcen=NA, param='auto', plots=FALSE, debug=FALSE)
                           xcen  = xcen,
                           debug = debug,
                           constraints = constraints,
+                          method = 'BFGS',
                           iterlim = 2000)
     parms.mle      <- as.list(out$estimate)
     parms.mle$type <- 'SU'
