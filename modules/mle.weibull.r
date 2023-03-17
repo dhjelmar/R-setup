@@ -142,6 +142,7 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, 
                           xcen  = xcen,
                           debug = debug,
                           constraints = constraints,
+                          method = 'BFGS',
                           iterlim = 2000)
     parms.mle <- as.list(out$estimate)
     shape  <- parms.mle$shape
