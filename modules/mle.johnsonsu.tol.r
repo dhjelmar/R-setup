@@ -160,13 +160,14 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
         constraints <- list(ineqA=A, ineqB=B)
         out.qdxl <- NA
         out.qdxl <- maxLik::maxLik(loglik.johnsonsu.q,
-                                        start = unlist(quant.param),  # quant, delta, xi, lambda
-                                        x     = x,
-                                        xcen  = xcen,
-                                        P     = P,
-                                        debug = debug,
-                                        constraints = constraints,
-                                        iterlim = 2000)
+                                   start = unlist(quant.param),  # quant, delta, xi, lambda
+                                   x     = x,
+                                   xcen  = xcen,
+                                   P     = P,
+                                   debug = debug,
+                                   constraints = constraints,
+                                   method = 'BFGS',
+                                   iterlim = 2000)
         print(summary(out.qdxl))
         convergence.qdxl <- if (out.qdxl$code == 0) {'successful'}
                             else                    {out.qdxl$message}
@@ -253,6 +254,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
                                       P     = P,
                                       debug = debug,
                                       constraints = constraints,
+                                      method = 'BFGS',
                                       iterlim = 2000)
             ## print(summary(out.dxl))
             if (out.dxl$code == 0) {
@@ -424,7 +426,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
 
             investigate <- function() {
                 qvec <- seq(1.05, 1.1, by=0.002)
-                a <- df.int(rows=length(qvec), columns=c('quantile', 'loglik'))
+                a <- df.init(rows=length(qvec), columns=c('quantile', 'loglik'))
                 for (ii in 1:length(qvec)) {
                     a[ii,1] <- qvec[ii]
                     a[ii,2] <- loglik.fixedq(quant=qvec[ii], data=x, xcen=xcen,
