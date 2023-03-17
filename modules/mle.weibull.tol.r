@@ -100,7 +100,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
     out.all$convergence <- out$convergence
     out.all$optimizer    <- 'maxLik'
     out.all$max.function <- 'loglik.weibull'
-    out.all$fit.params   <- 'gamma, shape'
+    out.all$fit.params   <- 'scale, shape'
     cat('convergence for best estimate parameters:', out.all$convergence, '\n')
     cat('\n')
    
@@ -162,6 +162,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                                    P     = P,
                                    debug = debug,
                                    constraints = constraints,
+                                   method = 'BFGS',
                                    iterlim = 2000)
         print(summary(out.qs))
         convergence.qs <- if (out.qs$code == 0) {'successful'}
@@ -244,6 +245,7 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
                                     P     = P,
                                     debug = debug,
                                     constraints = constraints,
+                                    method = 'BFGS',
                                     iterlim = 2000)
             if (out.s$code == 0) {
                 params.s      <- as.list(out.s$estimate)
