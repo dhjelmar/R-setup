@@ -109,14 +109,22 @@ mle.normal <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, d
     params.compare <- fastmerge(params.compare, temp)
     
     ##-----------------------------------------------------------------------------
-    ## determine best fit using nll
+    ## determine best fit using log likelihood
     ## print('Attempting MLE fit on regular parameters')
+    ## define constraints for xbar and sdev
+    ## need constraint that stdev > 0; no constraint needed for xbar
+    ## A %*% param + B > 0
+    ## row 1: stdev > 0
+    A <- matrix(c(0,1), 1, 2, byrow=TRUE)
+    B <- 0
+    constraints <- list(ineqA=A, ineqB=B)
     out <- NA
     out <- maxLik::maxLik(loglik.normal,
                           start = unlist(param),
                           x     = x,
                           xcen  = xcen,
                           debug = debug,
+                          method = 'BFGS',
                           iterlim = 2000)
     parms.mle <- as.list(out$estimate)
     xbar <- parms.mle$xbar
