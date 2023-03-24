@@ -184,7 +184,7 @@ mle.weibull <- function(x=NA, xcen=NA, param='auto', plots=FALSE, plot3d=FALSE, 
             for (i2 in 1:length(param2)) {
                 j <- j+1
                 loglik.plot[j, 1] <- param1[i1]
-                loglik.plot[j, 2] <- param1[i2]
+                loglik.plot[j, 2] <- param2[i2]
                 loglik.plot[j, 3] <- loglik.weibull(x, xcen, param=c(loglik.plot$param1[j], loglik.plot$param2[j]))
             }
         }
@@ -221,7 +221,7 @@ mle.weibull.test <- function() {
         curve(stats::dweibull(x, parms2$shape, parms2$scale), min(x), max(x), col='blue', type='p', add=TRUE)
         ## add legend
         legend('topright', 
-               legend=c('known', 'all',   'censored'),
+               legend=c('known', 'all as known',   'censored'),
                col   =c('black', 'red', 'blue'),
                lty   =c( 1     ,  1   ,  NA),
                pch   =c( NA    ,  NA  ,  1))
@@ -252,6 +252,24 @@ mle.weibull.test <- function() {
 
     ## plot the fit
     out.fit <- mle.weibull(x, xcen, plot3d=TRUE)
-
+    
+    ## the following just recreates the 3d plot made above
+    loglik <- df.init(0, c('param1', 'param2', 'loglik'))
+    param1 <- seq(out.fit$parms[[1]]/1.05, out.fit$parms[[1]]*1.05, length.out=100)
+    param2 <- seq(out.fit$parms[[2]]/1.05, out.fit$parms[[2]]*1.05, length.out=100)
+    j <- 0
+    for (i1 in 1:length(param1)) {
+      for (i2 in 1:length(param2)) {
+        j <- j+1
+        loglik[j, 1] <- param1[i1]
+        loglik[j, 2] <- param2[i2]
+        loglik[j, 3] <- loglik.weibull(x, xcen, param=c(loglik$param1[j], loglik$param2[j]))
+      }
+    }
+    rgl::plot3d(loglik, xlab='shape', ylab='scale', zlab='loglik')
+    rgl::points3d(x=out.fit$parms.compare[3, 1],
+                  y=out.fit$parms.compare[3, 2],
+                  z=out.fit$parms.compare[3, 3],
+                  col='red', size=10, add=TRUE)
 }
 
