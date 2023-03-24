@@ -1,71 +1,67 @@
 # R-setup
 
-# MY FUNCTIONS PLUS A FEW NOTES
-
-## MY FUNCTIONS
-cd(directory) = unix cd  command instead of setwd
-
-estbound      = prints useful regression estimates into a table
-
-fastmerge(d1,d2) = merges 2 dataframes with potentially different columns
-
-ggcorplot(df) = better correlation plot than pairs(df)
-
-ggplotRegression(fit) = plot fit and supporting data
-
-histplus  = plot histogram with normal mean and limits <-- delete this?
-
-histplus2 = plot histogram with mean and limits for normal or Weibull
-
-hist_nw   = histogram with normal and Weibull distributions
-
-hist_nwj  = histogram with normal, Weibull, and Johnson distributions
-
-inv       = inverse of a matrix
-
-last(vector)  = returns last entry in vector (short for x(length(x))
-
-ls(directory) = unix ls  command instead of list.files(directory)
-
-pairsdf(df,var) = for dataframe df, plot all variables in vector var against eachother
-
-plot_interactive(df,'x','y') = interactive plot and table
-
-plotfit       = creates scatter plot with linear regression and 95% confidence bounds
-
-plotfitcol    = same as plotfit    but colors points based on a continuous variable
-
-plotfitcold   = same as plotfitcol but colors points based on a discrete variable
-
-plotspace(r,c)= define plots per window by defining rows and columns
-
-predictfit    = combine dataframe with regression output
-
-printdf       = print specific # of rows and variables from dataframe
-
-pwd()         = unix pwd command instead of getwd
-
-qqplot_dlh    = attempt to get qqplot for Johnson with confidence limits (not currently successful)
-
-qqplot_nwj    = side by side qqplots for normal, Weibull, and Johnson distributions and upper tolerance limits
-
-scaledf       = scale (and center) a dataframe
-
-set_plot_dimensions(width,height) = sets plot dimensions
-
-tolerance     = not needed if can install R tolerance package
-                (copied from tolerance package)
-
-unscaledf     = unscale (and uncenter) a dataframe
-
-
-## WORKS IN PROGRESS
-plotres
-
-plotxy
+## FUNCTIONS
+addfit                = adds data and a fit to an existing plot
+cd                    = alias to setwd
+closestdata           = 
+df.duplicates         = identifies duplicates in a dataframe
+df.init               = initialize a dataframe
+droplevels.all        = drops all levels for a factored parameter
+estbound              = prints useful regression estimates to a table
+fastmerge(df1,df2)    = merges 2 dataframes with potentially different columns	 
+ggcorplot	      = better correlation plot than pairs(df)			 
+ggplotRegression(fit) = plot fit and supporting data				 
+hist_nwj	      = histogram with normal, Weibull, and Johnson distributions
+holes_bruteforce      = 
+holes_liu_dlh         = 
+holes_liu_functions   = functions used in other holes functions
+holes_liu             = 
+interpolate           = interpolation function
+inv                   = inverse of a matrix
+is.nothing            = test for any form of empty
+john_z                = transforms data set x to z assuming Johnson distribution
+ls                    = alias to list.files(directory)
+mindistance           = returns the minimum distance between a point and the nearest point in a dataframe
+mle.johnsonsu         = MLE (maximum likelihood estimate) of Johnson SU distribution
+                        handles known and censored data
+mle.johnsonsu.tol     = tolerance limit for Johnson SU distribution (uses MLE)
+                        handles known and censored data
+mle.normal            = MLE (maximum likelihood estimate) of normal distribution
+                        handles known and censored data
+mle.normal.tol	      = tolerance limit for normal distribution (uses MLE)      
+                        handles known and censored data
+mle.weibull           = MLE (maximum likelihood estimate) of Weibull distribution
+                        handles known and censored data
+mle.weibull.tol	      = tolerance limit for Weibull distribution (uses MLE)      
+                        handles known and censored data
+moi                   = calculates 1st moment of intertia
+newton.raphson        = Newton Raphson optimization routine
+newton.raaphson.target= wrapper on pracma::newtonRaphson() to allow non-zero target value
+nonparametric.tol     = non-parameteric (a.k.a. distribution free) tolerance limit
+operators             = similar to %in% but preserves matching order
+pairsdf               = variation on standard pairs function
+plotdf                = create plot from dataframe (have not used this in a while; not sure there is any advantage over plotfit)
+plotfit               = x-y plot with labeling and fitting options
+plot_interactive      = x-y plot with ability to use mouse to identify points
+plotres               = plots residuals (THIS IS AN ABANDONED WORK IN PROGRESS)
+plotspace(r,c)        = define plots per window by defining rows and columns
+predictfit            = combine dataframe with regression output
+printdf               = print specific # of rows and variables from dataframe
+pwd()                 = unix pwd command instead of getwd
+qqplot_nwj            = wrapper on qqplot_nwj_only with planned but not coded functionality for censored data
+qqplot_nwj_xonly      = qqplots for normal, Weibull, and Johnson distributions and upper tolerance limits
+readall               = reads Excel, csv, and other format input
+scaledf               = scale (and center) a dataframe
+set_plot_dimensions   = sets plot dimensions (set_plot_dimensions(width,height))
+shinyplot             = creates an interactive x-y plot
+stopexecution         = stops execution
+unscaledf             = unscale (and uncenter) a dataframe
+warning.reset         = clears warnings in memory
 
 
-## OTHER USEFUL FUNCTIONS THAT ARE PART OF R
+#############################################################################
+
+## USEFUL FUNCTIONS THAT ARE PART OF R
 library(help="package")  = useful for seeing info on a package
 
 names(df)     = lists all variables in dataframe
