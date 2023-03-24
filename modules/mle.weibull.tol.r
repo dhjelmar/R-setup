@@ -156,14 +156,14 @@ mle.weibull.tol <- function(x, xcen=NA, param='auto',
         constraints <- list(ineqA=A, ineqB=B)
         out.qs <- NA
         out.qs <- maxLik::maxLik(loglik.weibull.q,
-                                   start = unlist(quant.param),  # quant, shape
-                                   x     = x,
-                                   xcen  = xcen,
-                                   P     = P,
-                                   debug = debug,
-                                   constraints = constraints,
-                                   method = 'BFGS',
-                                   iterlim = 2000)
+                                 start = unlist(quant.param),  # quant, shape
+                                 x     = x,
+                                 xcen  = xcen,
+                                 P     = P,
+                                 debug = debug,
+                                 constraints = constraints,
+                                 method = 'BFGS',
+                                 iterlim = 2000)
         print(summary(out.qs))
         convergence.qs <- if (out.qs$code == 0) {'successful'}
                           else                  {out.qs$message}
