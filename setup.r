@@ -154,7 +154,7 @@ if (os == "windows") {
 } else if (os == 'unix') {
     setup.path <- c(##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS and Debian
         ##"~/ProgramFiles/R_packages/rgl/R",       # available on Debian
-        "~/GitHub_repos/R-setup/modules")          # these are my modules
+        "~/Documents/GitHub_repos/R-setup/modules")          # these are my modules
 } else {
     ## assume Colab (.Platform returns NULL)
     setup.path <- c("/content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules")
