@@ -1,4 +1,4 @@
-hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='mle',
+hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
                      xlabel=NA, hist.xavg=FALSE, breaks=NULL,
                      tolerance=TRUE, side='upper', sided=1, P=0.99, conf=0.99,
                      main=NULL, subtitle='yes', suppress='no', plot=TRUE) {
@@ -13,13 +13,13 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
     ##             (default changes to TRUE if x=NA)
     ##           = TRUE plots x and average xcen values on histogram
     ## breaks = number of bins used in the histogram (default auto determines number)
-    ## nfit  = 'standard' uses mean(x) and sd(x) for parameters
-    ##       = 'mle' uses maximum likelihood estimate
+    ## nfit  = 'mle' uses maximum likelihood estimate (required for censored data)
+    ##       = 'standard' uses mean(x) and sd(x) for parameters
     ##       = vector or list for user supplied parameters (order: mean, sd; 1st 2 parameters used; names not used)
-    ## wfit  = 'mle' uses maximum likelihood estimate
+    ## wfit  = 'mle' uses maximum likelihood estimate (required for censored data)
     ##       = 'exttol.int' uses tolerance::exttol.int to determine shape and scale
     ##       = vector or list for user supplied parameters (order: shape, scale; 1st 2 parameters used; names not used)
-    ## jfit  = 'mle' uses maximum likelihood estimate
+    ## jfit  = 'mle' uses maximum likelihood estimate (required for censored data)
     ##       = 'SuppDists' uses SuppDists::JohnsonFit
     ##       = 'ExtDist'   uses ExtDist::eJohnsonSU 
     ##       = vector or list for user supplied parameters (order: gamma, delta, xi, lambda; 1st 4 parameters used; names not used)
@@ -29,7 +29,6 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
     ##                              lambda  = 6.95,
     ##                              type    = 'SU')
     ##               mle.johnsonsu(mtcars$mpg, jfit=jparms)
-    ## mle  = TRUE uses maximum likelihood estimate for fit and likelihood ratio for tolerance limit
     ## main = title for histogram (default is "Histogram of ...")
     ## subtitle = 'yes' = puts description of lines in subtitle
     ##          = 'no'  = subtitle is blank
@@ -51,7 +50,7 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
         x.add    <- xcen.val[xcen.val[[1]] == xcen.val[[2]],][[1]] # known values from xcen, if any
         x        <- as.numeric(na.omit(c(x, x.add)))               # new set of known values
         xcen.lowhigh <- xcen.val[xcen.val[[1]] != xcen.val[[2]],]  # censored rows with no NAme
-        xcen <- rbind(xcen.lowhjigh, xcen.na)                      # new set of censored rows
+        xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set of censored rows
         names(xcen) <- c('x.low', 'x.high')                        # rename
 
         ## calcualte average xcen value (ignoring NA) to use in estimating parameters
@@ -78,8 +77,8 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
     alpha <- (1-conf)/sided
 
     ## initialize parameters
-    xmean <- mean(x)         # may get overwritten later
-    xsd   <- sd(x)           # may get overwritten later
+    xmean <- NA
+    xsd   <- NA
     shape <- NA
     scale <- NA
     jparms <- NA
@@ -98,13 +97,20 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
     
     if (grepl('n', type)) {
         ## normal distribution calculations
-	if (nfit == 'mle') {
+      	if (nfit == 'mle') {
             out.fit <- mle.normal(x, xcen)
-            xmean <- out.fit$xbar
-            xsd   <- out.fit$sdev
-            tol_out_norm <- NA
-            tolerance_limit_norm.l <- NA
-            tolerance_limit_norm.u <- NA
+            xmean <- out.fit$parms$xbar
+            xsd   <- out.fit$parms$sdev
+            tol_out_norm <- mle.normal.tol(x, xcen, side.which=side, sided=sided, conf=conf, P=P)
+            tolerance_limit_norm.l <- tol_out_norm$tolerance$tol.lower
+            tolerance_limit_norm.u <- tol_out_norm$tolerance$tol.upper
+
+        } else if (nfit == 'standard') {
+            xmean <- mean(x)
+            xsd   <- sd(x)
+            tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=sided)
+            tolerance_limit_norm.l <- tol_out_norm[[4]]
+            tolerance_limit_norm.u <- tol_out_norm[[5]]
 
         } else if (is.numeric(nfit[[1]])) {
             ## user supplied parameters
@@ -115,11 +121,17 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
             tolerance_limit_norm.u <- NA
 
         } else {
-            xmean <- mean(x)
-            xsd   <- sd(x)
-            tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=sided)
-            tolerance_limit_norm.l <- tol_out_norm[[4]]
-            tolerance_limit_norm.u <- tol_out_norm[[5]]
+            ## no other method programmed
+            xmean <- NA
+            xsd   <- NA
+            tol_out_norm <- NA
+            tolerance_limit_norm.l <- NA
+            tolerance_limit_norm.u <- NA
+            cat('#########################################################################\n')
+            cat('#                                                                       #\n')
+            cat('# FATAL ERROR: Need to set nfit to "mle", "standard", or numeric vector #\n')
+            cat('#                                                                       #\n')
+            cat('#########################################################################\n')
         }
     }
         
@@ -140,6 +152,7 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
                 scale <- tol_out_weib$params$scale
                 tolerance_limit_weib.l <- tol_out_weib$tolerance$tol.lower
                 tolerance_limit_weib.u <- tol_out_weib$tolerance$tol.upper
+
             } else if (wfit == 'exttol.int') {
                 tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=proportion,
                                                        side=sided, dist="Weibull")
@@ -147,16 +160,23 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
                 scale   <- tol_out_weib$'shape.2'
                 tolerance_limit_weib.l <- tol_out_weib[[5]]
                 tolerance_limit_weib.u <- tol_out_weib[[6]]
+
             } else if (is.numeric(wfit[[1]])) {
                 ## user supplied parameters
                 shape <- wfit[[1]]
                 scale <- wfit[[2]]
                 tol_out_weib <- NA
+
             } else {
                 ## no other method programmed
                 shape <- NA
                 scale <- NA
                 tol_out_weib <- NA
+                cat('##########################################################################\n')
+                cat('#                                                                        #\n')
+                cat('# FATAL ERROR: Need to set wfit to "mle", "extol.int", or numeric vector #\n')
+                cat('#                                                                        #\n')
+                cat('##########################################################################\n')
             }
         }
     }
@@ -173,12 +193,25 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='standard', wfit='mle', jfit='
                 tolerance_limit_john.l <- tol_out_john$tolerance$tol.lower
                 tolerance_limit_john.u <- tol_out_john$tolerance$tol.upper
             }                
+
         } else if (jfit == 'SuppDists') {
             jparms <- jparms[jparms$description == 'SuppDists::JohnsonFit(x)', 1:5]
+
         } else if (jfit == 'ExtDist') {
             jparms <- jparms[jparms$description == 'ExtDist', 1:5]
-        } else {
+
+        } else if (is.numeric(jfit[[1]])) {
+            ## user supplied parameters
             jparms <- jfit
+
+        } else {
+            ## no other method programmed
+            jparms <- NA
+            cat('#####################################################################################\n')
+            cat('#                                                                                   #\n')
+            cat('# FATAL ERROR: Need to set jfit to "mle", "SuppDists", "ExtDist", or numeric vector #\n')
+            cat('#                                                                                   #\n')
+            cat('#####################################################################################\n')
         }            
     }
     
@@ -343,4 +376,20 @@ hist_nwj_test <- function() {
     out.qq.norm <- qqplot_nwj(x, type='n')
     out.qq.weib <- qqplot_nwj(x, type='w')
     out.qq.john <- qqplot_nwj(x, type='j')
+    
+    ## test use with censored data
+    plotspace(2,2)
+    ## first plot histogram of only x
+    out1 <- hist_nwj(x)
+    ## next plot with fit of x and similar xcen
+    xcen <- data.frame(x.low=runif(200, min(x), mean(x)), x.high=runif(200, mean(x), max(x)))
+    out2 <- hist_nwj(x, xcen, main='Histogram of x; Fits to x and similar xcen')
+    ## next plot with fit of x and high xcen
+    xcen <- data.frame(x.low=rep((mean(x)+max(x))/2, 200), 
+                       x.high=runif(200, (mean(x)+max(x))/2, 1.2*max(x)))
+    out3 <- hist_nwj(x, xcen, main='Histogram of x; Fits to x and high xcen')
+    print(out1$tol_out_norm$tolerance)
+    print(out2$tol_out_norm$tolerance)
+    print(out3$tol_out_norm$tolerance)
+  
 }
