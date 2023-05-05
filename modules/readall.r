@@ -34,7 +34,7 @@ readall <- function(datasource,
             df <- read.table(datasource, header=FALSE, sep=",", skip=data.start.row-1, stringsAsFactors=FALSE, na.strings=na)
         } else {
             ## read header
-            hd <- read.table(datasource, header=TRUE,  sep=",", skip=header.row-1, stringsAsFactors=FALSE, na.strings=na)
+            hd <- read.table(datasource, header=TRUE,  sep=",", skip=header.row-1, stringsAsFactors=FALSE, na.strings=na, check.names=FALSE)
             ## read data
             df <- read.table(datasource, header=FALSE, sep=",", skip=data.start.row-1, stringsAsFactors=FALSE, na.strings=na)
             ## assign header names to columns
