@@ -495,7 +495,7 @@ mle.johnsonsu.tol <- function(x, xcen=NA, param='auto',
 
 
 mle.johnsonsu.tol.test <- function() {
-    source('setup.r')
+    ## source('setup.r')
 
     ##-------------------------------------------------------------------
     ## create Johnson SU dataset
@@ -635,7 +635,8 @@ mle.johnsonsu.tol.test <- function() {
     print(fit4)
    
     ## many low censored points (throwing errors?)
-    xnum <-length(x)
+    ## xnum <-length(x)   # xnum = 100 was too many censored points for optimization
+    xnum <- 100
     x.low  <- NA
     x.high <- 2.2
     xcen <- data.frame(x.low=rep(x.low,xnum), x.high=rep(x.high,xnum))
@@ -656,7 +657,7 @@ mle.johnsonsu.tol.test <- function() {
     xcen <- rbind(xcen1, xcen2, xcen3)
     
     out.tol <- mle.johnsonsu.tol(x, xcen, plots=TRUE)
-    out.qq <- qqplot_censored(x, xcen)
+    ## out.qq <- qqplot_censored(x, xcen)
     
 }
 
