@@ -306,7 +306,7 @@ plotfit <- function(xx,
             names(eq) <- legendnames
         }
         legendprint <- data.frame(legendnames, color = cols$color)
-        if (interval == 'nolne') {
+        if (interval == 'noline') {
             return(list(legend = legendprint))
         } else {
             return(list(fits = fits, legend = legendprint, pred=pred))
