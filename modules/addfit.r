@@ -1,4 +1,6 @@
-addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, pch=1, vlines=NULL) {
+addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, lty=1, pch=1, vlines=NULL) {
+    ## lty only used for interval = 'mean' and 'line'
+    
     ## plot points
     points(xx, yy, pch=pch, col=col)
 
@@ -26,21 +28,24 @@ addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, pc
         new.xx <- seq(min(xx, na.rm=TRUE), max(xx, na.rm=TRUE), len=100)
     }
     if (interval == 'mean') {
-        lines(new.xx, slope * new.xx + intercept, lwd=2, col=col)
+        lines(new.xx, slope * new.xx + intercept, lty=lty, lwd=2, col=col)
         pred <- NA
     } else if (interval == 'line') {
         newdf <- data.frame(xx,yy)
         newdf <- newdf[order(newdf$xx),]
         xx <- newdf$xx
         yy <- newdf$yy
-        lines(xx, yy, lwd=2, col=col)
+        lines(xx, yy, lty=lty, lwd=2, col=col)
         pred <- NA
-    } else {
+    } else if (interval == 'confidence' | interval == 'prediction') {
         pred <- predict(fit, new=data.frame(xx=new.xx), interval=interval, level=1-alpha/sided)
         pred <- cbind(new.xx, pred)
         lines(new.xx, pred[,"fit"], lwd=2, col=col)
         lines(new.xx, pred[,"lwr"], lty=3, col=col)
         lines(new.xx, pred[,"upr"], lty=3, col=col)
+    } else {
+        ## add no line
+        pred <- NA
     }
         
     ## print results of fit
