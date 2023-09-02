@@ -115,12 +115,15 @@ qqplot_censored <- function(x, xcen, type='j', plotit='q') {
     ## QQ Plot comparing ECDF to CDF
     with(dfk, plot(Fhat, cdf, xlab='Estimated CDF from Observations', ylab='Theoretical CDF from Fit', main='QQ Plot'))
     abline(0,1, col='red')
-    
-    ## the following is something I thought would work but it does not
+  }
+  
+  if (grepl('d', plotit)) {
+    ## dlh view of how this would be done
     ## create QQ Plot
-    ## df$xtheoretical <- with(df, stats::qweibull(ppoints(length(i)), shape=wparms$shape, scale=wparms$scale))
-    ## with(df, plot(zj, xtheoretical, xlab='Observed value, x', ylab='Expected Value', main='DLH QQ Plot'))
-    ## abline(0,1, col='red')
+    df$xtheoretical <- with(df, stats::qweibull(ppoints(length(i)), shape=wparms$shape, scale=wparms$scale))
+    with(df, plot(zj, xtheoretical, xlab='Observed value, x', ylab='Expected Value', main='DLH QQ Plot'))
+    abline(0,1, col='red')
+    
   }
 }
 
@@ -165,6 +168,7 @@ x 	type
   xcen <- data.frame(x.low=x.low, x.high=x.high)
   qqplot_censored(x,xcen,plotit='xheq')
   
+  
   ## install.packages('EnvStats')
   df <- EnvStats::Olympic.NH4.df
   df$x <- log(df$NH4.mg.per.L)
@@ -192,9 +196,11 @@ x 	type
   x.low  <- 0
   x.high <- df[df$type == 'Censored', 'x']
   xcen <- data.frame(x.low=x.low, x.high=x.high)
-  qqplot_censored(x, xcen, type='n', plotit='xheq')  
-  qqplot_censored(x, xcen, type='w', plotit='xheq')   
-  qqplot_censored(x, xcen, type='j', plotit='xheq') 
+  plotspace(2,2)
+  qqplot_censored(x, xcen, type='n', plotit='q')  
+  qqplot_censored(x, xcen, type='w', plotit='q')   
+  qqplot_censored(x, xcen, type='j', plotit='q') 
+  qqplot_censored(x, xcen, type='j', plotit='r') 
   
   
   ## R Package containing over 120 data sets used in the text Statistical Methods 
