@@ -28,7 +28,7 @@ addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, lt
         new.xx <- seq(min(xx, na.rm=TRUE), max(xx, na.rm=TRUE), len=100)
     }
     if (interval == 'mean') {
-        lines(new.xx, slope * new.xx + intercept, lty=lty, lwd=2, col=col)
+        lines(new.xx, as.numeric(slope) * as.numeric(new.xx) + as.numeric(intercept), lty=lty, lwd=2, col=col)
         pred <- NA
     } else if (interval == 'line') {
         newdf <- data.frame(xx,yy)
