@@ -37,7 +37,7 @@ addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, lt
         yy <- newdf$yy
         lines(xx, yy, lty=lty, lwd=2, col=col)
         pred <- NA
-    } else if (interval == 'confidence' | interval == 'prediction') {
+    } else if (interval == 'conf' | interval == 'pred') {
         pred <- predict(fit, new=data.frame(xx=new.xx), interval=interval, level=1-alpha/sided)
         pred <- cbind(new.xx, pred)
         lines(new.xx, pred[,"fit"], lwd=2, col=col)
