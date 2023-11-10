@@ -76,8 +76,10 @@ readall <- function(datasource,
                     ## read to end of file
                     df <- read_excel(datasource, sheet=sheet, col_names=TRUE, skip=header.row-1, na=na, guess_max=1E6)
                 } else {
-                    ## add 1 to n_max to read header plus specified number of data rows
-                    df <- read_excel(datasource, sheet=sheet, col_names=TRUE, skip=header.row-1, n_max=n_max+1, na=na, guess_max=1E6)
+                    ## ## add 1 to n_max to read header plus specified number of data rows
+                    ## df <- read_excel(datasource, sheet=sheet, col_names=TRUE, skip=header.row-1, n_max=n_max+1, na=na, guess_max=1E6)
+                    ## read header plus specified number of data rows
+                    df <- read_excel(datasource, sheet=sheet, col_names=TRUE, skip=header.row-1, n_max=n_max, na=na, guess_max=1E6)
                 }
             } else {
                 ## lines between header row and data
@@ -109,7 +111,10 @@ readall <- function(datasource,
     }
 
     ## use regular expression to replace space, parenthesis, /, +, -, and comma with _
-    if (rename == TRUE) names(df) <- gsub(" |\\(|\\)|\\/|\\+|\\-|\\,", "_", names(df))
+    if (rename == TRUE) {
+        names(df) <- gsub(" |\\(|\\)|\\/|\\+|\\-|\\,", "_", names(df))
+        names(df) <- gsub(".", "_", names(df), fixed=TRUE)
+    }
 
     if (!is.null(col.names)) names(df) <- col.names
     
