@@ -1,4 +1,4 @@
-qqplot_nwj_xonly <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NULL) {
+qqplot_nwj_xonly <- function(x, type='nwj', nfit='mle', wfit='mle', jfit='mle', mainadder=NULL) {
     ## creates normal, Weibull and/or Johnson SU qq plots
 
     ## input: x    = vector of data
@@ -11,11 +11,24 @@ qqplot_nwj_xonly <- function(x, type='nwj', wfit='mle', jfit='mle', mainadder=NU
     wparms <- NULL
     jparms <- NULL
     if (grepl('n', type)) {
+      
+        ## obtain normal parameters
+        if (nfit == 'mle') {
+          out.fit <- mle.normal(x)
+          xmean <- out.fit$parms$xbar
+          xsd   <- out.fit$parms$sdev
+        } else if (nfit == 'standard') {
+          xmean <- mean(x)
+          xsd   <- sd(x)
+        } else if (is.numeric(nfit[[1]])) {
+          ## user supplied parameters
+          xmean <- nfit[[1]]
+          xsd   <- nfit[[2]]
+        }
+        nparms <- list(mean=xmean, sd=xsd)
+      
         ## make normal QQ plot
         main <- paste('Normal QQ Plot', mainadder, sep=" ")
-        ## qualityTools package not being maintained so replaced here
-        ## nparms <- qualityTools::qqPlot(x, "normal",  col='black', main=main)
-        nparms <- list(mean=mean(x), sd=sd(x))
         x <- sort(x, na.last=NA)
         xtheoretical <- qnorm(ppoints(length(x)), mean = mean(x), sd = sd(x))
         main <- paste('Normal QQ Plot', mainadder, sep=" ")
