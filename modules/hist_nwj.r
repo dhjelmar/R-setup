@@ -9,7 +9,7 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
     ##        (1st column = low value or NA; 2nd column = high value or NA)
     ## P = coverage proportion (tolerance interval only)
     ## conf = confidence used for tolerance limit
-    ## hist.xavg = FALSE (default) only plots x on hitogram
+    ## hist.xavg = FALSE (default) only plots x on histogram
     ##             (default changes to TRUE if x=NA)
     ##           = TRUE plots x and average xcen values on histogram
     ## breaks = number of bins used in the histogram (default auto determines number)
@@ -35,6 +35,8 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
     ##          = user specified, single line subtitle
     ## suppress = 'yes' creates plot but does not return calculated values to the screen
     ##            (e.g., fit parameters and tolerance limits)
+    ## plot = TRUE (default) creates histogram plot
+    ##      = FALSE does not create histogram plot
 
     if (is.na(xlabel)) {
         ## no label supplied so instead use name of variable passed in
@@ -53,7 +55,7 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
         xcen <- rbind(xcen.lowhigh, xcen.na)                      # new set of censored rows
         names(xcen) <- c('x.low', 'x.high')                        # rename
 
-        ## calcualte average xcen value (ignoring NA) to use in estimating parameters
+        ## calculate average xcen value (ignoring NA) to use in estimating parameters
         ## from packages that do not have censor capability
         xcen.avg <- rowMeans(xcen, na.rm=TRUE)
 
@@ -216,8 +218,8 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
     }
     
     ## create vectors with density distributions
-    xmin <- min(x, x.avg, na.omit=TRUE)
-    xmax <- max(x, x.avg, na.omit=TRUE)
+    xmin <- min(x, x.avg, na.rm=TRUE)
+    xmax <- max(x, x.avg, na.rm=TRUE)
     if (isTRUE(tolerance)) {
         if (side != 'lower') {
             if (grepl('n', type)) xmax <- max(xmax, tolerance_limit_norm.u, na.rm=TRUE)
@@ -248,46 +250,47 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
     out <- hist(x.hist, breaks=breaks, plot=FALSE)
     maxdensity <- max(xdensity_norm, xdensity_weib, xdensity_john, out$density, na.rm=TRUE)
     ymax <- max(out$density, maxdensity)
-    ## create plot
-    if (is.null(main)) main <- paste('Histogram of', xlabel, sep=" ")
-    if (length(breaks) == 1) {
-        hist(x.hist, breaks=breaks,
-             xlab = xlabel,
-             xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
-             ylim=c(0,maxdensity),
-             freq=FALSE,
-             main=main,
-             plot=plot)
-    } else {
-        hist(x.hist, breaks=breaks,
-             xlab = xlabel,
-             xlim=c(xmin,xmax+(xmax-xmin)/length(breaks)), 
-             ylim=c(0,maxdensity),
-             freq=FALSE,
-             main=main,
-             plot=plot,
-             xaxt='n')                           # do not plot and label the x-axis
-        axis(side=1, at=breaks, labels=breaks)   # use breaks vector for x-axis instead
-    }
-    if (subtitle == 'yes') {
-        n <- w <- j <- NULL
-        if (grepl('n', type)) n <- 'red = normal,'
-        if (grepl('w', type)) w <- 'blue = Weibull,'
-        if (grepl('j', type)) j <- 'black = Johnson SU'
-        ## subtitle <- list('line color: red = normal, blue = Weibull, black = Johnson SU',
-        ##                  'line type: solid = distribution or mean, dashed = bound')
-        subtitle <- list(paste('line color:', n, w, j, sep=' '),
-                         'line type: solid = distribution or mean; dashed = bound')
-        mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col='black')
-    } else if (subtitle == 'no') {
-        ## skip subitile
-    } else {
-        ## use user specified subitile
-        mtext(subtitle)
-    }
-
 
     if (isTRUE(plot)) {
+
+        ## create plot
+        if (is.null(main)) main <- paste('Histogram of', xlabel, sep=" ")
+        if (length(breaks) == 1) {
+            hist(x.hist, breaks=breaks,
+                 xlab = xlabel,
+                 xlim=c(xmin,xmax+(xmax-xmin)/breaks), 
+                 ylim=c(0,maxdensity),
+                 freq=FALSE,
+                 main=main,
+                 plot=plot)
+        } else {
+            hist(x.hist, breaks=breaks,
+                 xlab = xlabel,
+                 xlim=c(xmin,xmax+(xmax-xmin)/length(breaks)), 
+                 ylim=c(0,maxdensity),
+                 freq=FALSE,
+                 main=main,
+                 plot=plot,
+                 xaxt='n')                           # do not plot and label the x-axis
+            axis(side=1, at=breaks, labels=breaks)   # use breaks vector for x-axis instead
+        }
+        if (subtitle == 'yes') {
+            n <- w <- j <- NULL
+            if (grepl('n', type)) n <- 'red = normal,'
+            if (grepl('w', type)) w <- 'blue = Weibull,'
+            if (grepl('j', type)) j <- 'black = Johnson SU'
+            ## subtitle <- list('line color: red = normal, blue = Weibull, black = Johnson SU',
+            ##                  'line type: solid = distribution or mean, dashed = bound')
+            subtitle <- list(paste('line color:', n, w, j, sep=' '),
+                             'line type: solid = distribution or mean; dashed = bound')
+            mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col='black')
+        } else if (subtitle == 'no') {
+            ## skip subitile
+        } else {
+            ## use user specified subitile
+            mtext(subtitle)
+        }
+
         
         ## add distributions
         if (grepl('n', type)) lines(x=xrange, y=xdensity_norm, col='red',   lty=1)
@@ -342,7 +345,9 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
         }
     }    
 
-    return(list(side = side,
+    return(list(known = x,
+                censored = xcen,
+                side = side,
                 sided = sided,
                 proportion = proportion,
                 alpha = alpha,
