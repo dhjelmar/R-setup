@@ -1,4 +1,5 @@
-qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle', mainadder=NULL) {
+qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle', 
+                       mainadder=NULL, plotit='xhceq', plotcen=FALSE) {
     ## creates normal, Weibull and/or Johnson SU qq plots
     
     ## input: x    = vector of data
@@ -6,12 +7,11 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='
 
     if (!is.data.frame(xcen)) {
         ## no censored data were supplied, so:
-	##    - use standard qqplot_nwj function
-	##    - no reason to use mle fit for normal (and not currently supported by qqplot_nwj_xonly)
-        out <- qqplot_nwj_xonly(x, type=type, wfit=wfit, jfit=jfit, mainadder=mainadder)
+        out <- qqplot_nwj_xonly(x, type=type, nfit=nfit, wfit=wfit, jfit=jfit, mainadder=mainadder)
         return(out)
 
     } else {
+        ## censored data are supplied; known data (x) may have been also supplied
         ## redefine xcen with specific names and only 2 columns if more were included
         x.low  <- xcen[[1]]
         x.high <- xcen[[2]]
@@ -42,9 +42,17 @@ qqplot_nwj <- function(x=NA, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='
 
     }
 
-    ## create qqplot of only x (known) data
-    out <- qqplot_nwj_xonly(x, type=type, wfit=wfit, jfit=jfit,
-                            mainadder=paste(mainadder, '; censored data, if any, ignored', sep=''))
+    if (nrow(xcen) == 0) {
+        ## xcen was provided but only contained known data
+        ## create qqplot of only x (known) data
+        out <- qqplot_nwj_xonly(x, type=type, nfit=nfit, wfit=wfit, jfit=jfit, mainadder=mainadder)
+
+    } else {
+        ## xcen contains censored data
+        out <- qqplot_censored(x, xcen, type=type, nfit=nfit, wfit=wfit, jfit=jfit,
+                               mainadder=mainadder, plotit=plotit, plotcen=plotcen)
+        
+    }
     return(list(out=out, x=x, xcen=xcen, xall=xall))
 
 
