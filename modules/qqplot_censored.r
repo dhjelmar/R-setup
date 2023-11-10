@@ -229,11 +229,14 @@ qqplot_censored <- function(x=NA, xcen=NA, xcen0=NA, type='n', nfit='mle', wfit=
             ## addfit(df[df$type == 'Known',]$index, df[df$type == 'Known',]$xplot, pch=16, interval='noline')
             ## legend('topleft', legend=c('Censored', 'Known'), pch=c(1,16))
 
-            plot(df$xprime, ylim=range(df$x.low, df$x.high))
-            points(df[df$type == 'Known',]$index, df[df$type == 'Known',]$xprime, pch=16)
-            lines(df$x.low)
-            lines(df$x.high)
-            legend('topleft', legend=c('Censored (lines for range)', 'Known'), pch=c(1,16))
+            ## plot(df$xprime, ylim=range(df$x.low, df$x.high))
+            ## points(df[df$type == 'Known',]$index, df[df$type == 'Known',]$xprime, pch=16)
+            ## lines(df$x.low)
+            ## lines(df$x.high)
+            ## legend('topleft', legend=c('Censored (lines for range)', 'Known'), pch=c(1,16))
+            
+            plotbar(y=df$xprime, ylow=df$x.low, yhigh=df$x.high, ylab='x')
+            
         }
 
         ## ##########################################################
