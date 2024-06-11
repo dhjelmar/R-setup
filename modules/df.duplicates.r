@@ -11,8 +11,15 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', target=NA, param=NA
     ## options: target   = NA (default) looks for duplicates of all rows in df
     ##                   = vector looks for duplicates only of supplied target
     ##          param    = vector of parameters to use from within df and target
+  
+    ## output: returns single dataframe of duplicates if target is specified
+    ##         returns multiple dataframes if target is not specified
+    ##              - kept rows
+    ##              - removed rows
+    ##              - original dataframe but renumbered
 
     ## renumber df
+    df <- as.data.frame(df)      # converts to dataframe if was a tibble
     rownames(df) <- 1:nrow(df)
     df.renum <- df
 
@@ -82,7 +89,8 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', target=NA, param=NA
                 ## use fractional tolerance
                 tol.col.i <- tol*target.col.i
                 out[,i] <- unlist(lapply(df.out.col.i, function(x) dplyr::near(x, target.col.i,
-                                                                               tol=tol*max(x+target.col.i, 1E-6))))
+                                                                            ## tol=tol*max(x+target.col.i, 1E-6))))
+                                                                               tol=tol*max(tol.col.i, 1E-6))))
             } else {
                 ## use absolute tolerance
                 tol.col.i <- tol
@@ -145,7 +153,7 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', target=NA, param=NA
         df.kept    <- df[-dups.to.remove.all,]
         df.removed <- df[ dups.to.remove.all,]
     }
-    
+
     return(list(df.kept=df.kept, df.removed=df.removed, df.renum=df.renum))
     
 }
