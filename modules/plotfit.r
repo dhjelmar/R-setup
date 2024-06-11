@@ -105,7 +105,7 @@ plotfit <- function(xx,
     } else {
         ## color palette provided rather than defining one color for each point
         ## sort the dataframe by byvar
-        df <- df[order(df$byvar),]
+        df <- df[gtools::mixedorder(df$byvar),]
         ## expand color vector to identify color for every point
         cols  <- data.frame(byvar=unique(c(as.character(df$byvar))))
         if (nrow(cols) <= length(color)) {
@@ -128,7 +128,7 @@ plotfit <- function(xx,
         df <- data.frame(xx=df$xx, yy=df$yy, byvar=df$byvar, color=df$color)
     }
     ## sort the dataframe by byvar
-    df    <- df[order(df$byvar),]
+    df    <- df[gtools::mixedorder(df$byvar),]
     ## replace inputs with sorted order inputs
     xx    <- df$xx
     yy    <- df$yy
