@@ -1,37 +1,27 @@
-pairsdf <- function(df, var, hist='yes', color='black', fit='panel.line', main=NULL) {
+pairsdf <- function(df, var=names(df), upr='panel.line', diag='panel.hist', lwr='panel.cor',
+                    col.points='black', col.line='red', main=NULL) {
     ## usage: pairsdf(mtcars, c('mpg', 'cyl', 'disp'))
-    ##        pairsdf(iris, hist='yes', col=iris$Species)
-    ##        pairsdf(iris, c('Sepal.Length', 'Petal.Width', 'Petal.Length'),
-    ##                hist='yes', col=iris$Species)
-    ## options: fit = 'panel.line' (default) plots linear fit against data
-    ##              = 'panel.smooth' plots standard R 'panel.smooth' function against data
+    ##        pairsdf(iris, col.points=iris$Species, col.line='blue')
+    ## options: upr/lwr = for upper (or lower) panels:
+    ##                      - 'panel.line' (default) plots linear fit against data
+    ##                      - 'panel.smooth' plots standard R 'panel.smooth' function against data
+    ##                      - 'points' just plots the data points (this is the standard pairs() default)
+    ##          diag = 'panel.hist' (default) plots histogram on each diagonal panel
+    ##               = NULL only plots the variable name on each diagonal (this is the standard pairs() default)
     dfcompare <- subset(df,select=var)
-    if (hist == 'no') {
-        pairs(dfcompare, col=color)
-    } else {
-        ## add histograms, fits, and correlation coefficients
-        if (color == 'black') {
-            ## default is black
-            ## drop the color so histogram is not solid black
-            pairs(dfcompare,
-                  lower.panel=panel.cor,
-                  upper.panel=panel.smooth, 
-                  diag.panel=panel.hist)
-        } else {
-            pairs(dfcompare,
-                  lower.panel=panel.cor,
-                  upper.panel=panel.smooth, 
-                  diag.panel=panel.hist,
-                  col=color)
-        }
-    }
+    pairs(dfcompare,
+          upper.panel=upr, 
+          diag.panel=diag,
+          lower.panel=lwr,
+          col.points=col.points,
+          col.line=col.line)
 }
 
 ##----------------------------------------------------------------------------
 
 panel.line <- function (x, y, col = par("col"), bg = NA, pch = par("pch"), 
-    cex = 1, col.line = 'red', span = 2/3, iter = 3, ...) {
-    points(x, y, pch = pch, col = col, bg = bg, cex = cex)
+    cex = 1, col.points = 'black', col.line = 'red', span = 2/3, iter = 3, ...) {
+    points(x, y, pch = pch, col=col.points, col.line = 'red', bg = bg, cex = cex)
     ok <- is.finite(x) & is.finite(y)
     ## the following commented out is what panel.smooth does
     ##if (any(ok))
@@ -73,12 +63,17 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
     text(0.5, 0.5, txt, cex = cex.cor * r)
 }
 
-## pairs(iris,
-##       lower.panel=panel.cor,
-##       upper.panel=panel.smooth, 
-##       diag.panel=panel.hist)
-## pairs(iris,
-##       lower.panel=panel.cor,
-##       upper.panel=panel.smooth, 
-##       diag.panel=panel.hist,
-##       col=iris$Species)
+pairsdf_test <- function() {
+  pairs(iris,
+        lower.panel=panel.cor,
+        upper.panel=panel.line, 
+        diag.panel=panel.hist)
+  pairs(iris,
+        lower.panel=panel.cor,
+        upper.panel=panel.line, 
+        diag.panel=panel.hist,
+        col=iris$Species)
+  pairsdf(iris)
+  pairsdf(iris)
+  pairsdf(iris, col.points=iris$Species, col.line='blue')
+}
