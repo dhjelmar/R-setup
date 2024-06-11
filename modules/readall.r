@@ -135,8 +135,11 @@ readall_test <- function() {
    df <- read.table(text=mydata, header=TRUE, na.strings=c(NA, 'NA', 'na', 'NaN', 'n/a'))
    print(df)
    df <- readall(mydata, suppress=TRUE)
-   df <- readall('test.xlsx', header.row=2, data.end.row=5)
-   df <- readall('test.xlsx', range='b2:d11')
+   print(df)
+   df <- readall('readall.xlsx', header.row=2, data.end.row=5)
+   print(df)
+   df <- readall('readall.xlsx', range='b2:e5')
+   print(df)
    df <- readall('readall.xlsx', range='b2:e5', col.names=c('fred', 'Ethyl Mertz', 'lucy', 'desi'))
-   df
+   print(df)
 }
