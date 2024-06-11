@@ -1,8 +1,10 @@
-pairsdf <- function(df, var, hist='yes', color='black') {
+pairsdf <- function(df, var, hist='yes', color='black', fit='panel.line', main=NULL) {
     ## usage: pairsdf(mtcars, c('mpg', 'cyl', 'disp'))
     ##        pairsdf(iris, hist='yes', col=iris$Species)
     ##        pairsdf(iris, c('Sepal.Length', 'Petal.Width', 'Petal.Length'),
     ##                hist='yes', col=iris$Species)
+    ## options: fit = 'panel.line' (default) plots linear fit against data
+    ##              = 'panel.smooth' plots standard R 'panel.smooth' function against data
     dfcompare <- subset(df,select=var)
     if (hist == 'no') {
         pairs(dfcompare, col=color)
@@ -22,6 +24,27 @@ pairsdf <- function(df, var, hist='yes', color='black') {
                   diag.panel=panel.hist,
                   col=color)
         }
+    }
+}
+
+##----------------------------------------------------------------------------
+
+panel.line <- function (x, y, col = par("col"), bg = NA, pch = par("pch"), 
+    cex = 1, col.line = 'red', span = 2/3, iter = 3, ...) {
+    points(x, y, pch = pch, col = col, bg = bg, cex = cex)
+    ok <- is.finite(x) & is.finite(y)
+    ## the following commented out is what panel.smooth does
+    ##if (any(ok))
+    ##    lines(stats::lowess(x[ok], y[ok], f = span, iter = iter), 
+    ##        col = col.smooth, ...)
+    if (any(ok)) {
+        ## perform fit
+        xx <- x[ok]
+        yy <- y[ok]
+        fit <- lm(yy~xx)
+        intercept <- fit$coefficients[[1]]
+        slope     <- fit$coefficients[[2]]
+        lines(xx, as.numeric(slope) * as.numeric(xx) + as.numeric(intercept), lty=1, lwd=2, col=col.line)
     }
 }
 
