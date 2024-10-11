@@ -40,36 +40,38 @@
 os <- .Platform$OS.type
 
 ### INSTALL PACKAGES
-##  Two options
-##
-##  (1) Install from Anaconda GUI, Anaconda Prompt, or terminal
-##      (this made installing rstudio easy but all packages not supported)
-##      Example: conda install r-readxl
-##
-##  (2) Install inside R using (faster in R than rstudio), e.g.:
-##             install.packages("r-plotly")
+##  Do not use Anaconda for R packages. Packages are often not available and it complicates things.
+##  For info, it is faster to install many packages in R than rstudio.
+
+##  If using a project:
+##        Create .Rprofile file in top level folder of project containing single line: .libPaths("./libs")
+##        Create libs folder
+##        Install packages to libs folder
 
 ## ## install.packages("essentials")   # not sure if this is needed
-## install.packages("ggplot2")     
-## install.packages("plotly")      
-## install.packages("RColorBrewer")
-## install.packages("dplyr") 
-## install.packages("reticulate")
-## install.packages("matlib")
-## install.packages("rgl")
-## install.packages("IAPWS95")
-## install.packages("DT")
-## install.packages('tolerance')
-## install.packages('DescTools')       # need for Closest() used in plotfit; requires R >= 4.0.0
-## install.packages('superml')
-## install.packages('xts')
-## install.packages('quantmod')
-## install.packages('pracma')          # need for pracma::newtonRaphson()
-## install.packages('ExtDist')         # need for Johnson SU distribution
-## install.packages('SuppDists')       # need for Johnson SU distribution
-## install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
-## install.packages('expandFunctions') # need for warning.reset()
-## install.packages('purrr')           # need for pmap
+install.packages("ggplot2")
+# plotly failed. Need to first install: sudo apt install libcurl4-openssl-dev
+install.packages("plotly")      
+install.packages("RColorBrewer")
+install.packages("dplyr") 
+install.packages("reticulate")
+# install.packages("matlib")   # did not install on Debian 12k
+install.packages("rgl")
+install.packages("IAPWS95")
+install.packages("DT")
+install.packages('tolerance')
+install.packages('DescTools')       # need for Closest() used in plotfit; requires R >= 4.0.0
+install.packages('superml')
+install.packages('xts')
+install.packages('quantmod')
+install.packages('pracma')          # need for pracma::newtonRaphson()
+# ExtDist failed. Need to insatll cmake first: sudo apt install cmake
+install.packages('ExtDist')         # need for Johnson SU distribution
+install.packages('SuppDists')       # need for Johnson SU distribution
+install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
+install.packages('expandFunctions') # need for warning.reset()
+install.packages('purrr')           # need for pmap
+install.packages('rpy2')
 
 ## ## qualityTools no longer supported; had a good qqplot() function
 ## ## can get an old version if needed
@@ -88,7 +90,7 @@ os <- .Platform$OS.type
 ##    IAPWS95
 ##    rgl
 
-library(matlib)
+#library(matlib)  # did not install on Debian 12
 library(tibble)
 library(readxl)
 library(ggplot2)       # alternative to base plots (used by plotly)
@@ -154,7 +156,7 @@ if (os == "windows") {
 } else if (os == 'unix') {
     setup.path <- c(##"~/ProgramFiles/R_packages/tolerance/R", # now available on ChromeOS and Debian
         ##"~/ProgramFiles/R_packages/rgl/R",       # available on Debian
-        "~/Documents/GitHub_repos/R-setup/modules")          # these are my modules
+        "~/Documents/GitHub/R-setup/modules")          # these are my modules
 } else {
     ## assume Colab (.Platform returns NULL)
     setup.path <- c("/content/gdrive/MyDrive/Colab Notebooks/github_dhjelmar/R-setup/modules")
