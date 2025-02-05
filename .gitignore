@@ -1,4 +1,10 @@
+.Rprofile
+.Rproj.user
 .Rhistory
+.RData
+.Ruserdata
+R-setup.Rproj
+libs
 *~
 *.rold
 readall.xlsx
