@@ -70,6 +70,7 @@ os <- .Platform$OS.type
 ## install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
 ## install.packages('expandFunctions') # need for warning.reset()
 ## install.packages('purrr')           # need for pmap
+## install.packages('gtools')          # need for mixedorder() sort function
 
 ## ## qualityTools no longer supported; had a good qqplot() function
 ## ## can get an old version if needed
