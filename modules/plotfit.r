@@ -84,6 +84,7 @@ plotfit <- function(xx,
     yycol  <- 2
     bycol  <- 3
     colcol <- 4
+    pchcol <- 5
     if (is.na(byvar[1])) {
         df       <- na.omit( data.frame(xx, yy) )
         ## expand byvar=NA for every point
@@ -95,38 +96,54 @@ plotfit <- function(xx,
     ## write points back out
     xx <- df$xx
     yy <- df$yy
-        
-    if (length(color) == length(xx)) {
-        ## color provided for each datapoint
-        ## create cols dataframe with byvar and color columns
-        df$color <- color
-        cols     <- select(df, byvar, color) 
     
+    ## color palette provided rather than defining one color for each point
+    ## sort the dataframe by byvar
+    df <- df[gtools::mixedorder(df$byvar),]
+    ## create color and pch vector to identify color for every point
+    cols  <- data.frame(byvar=unique(c(as.character(df$byvar))))
+    if ((length(color) == 1) | (length(unique(byvar)) == 1)) {
+        ## use same color for every point
+        cols$col <- color[[1]]
+    } else if (nrow(cols) <= length(color)) {
+        ## user supplied color list has sufficient unique colors for plot
+        cols$color <- color[1:nrow(cols)]
     } else {
-        ## color palette provided rather than defining one color for each point
-        ## sort the dataframe by byvar
-        df <- df[gtools::mixedorder(df$byvar),]
-        ## expand color vector to identify color for every point
-        cols  <- data.frame(byvar=unique(c(as.character(df$byvar))))
-        if (nrow(cols) <= length(color)) {
-            ## palette has sufficient unique colors for plot
-            cols$color <- color[1:nrow(cols)]
-        } else {
-            ## too many colors for palette so ramp
-            ## define color palette
-            pal   <- colorRampPalette(color)                  
-            ncol  <- length(unique(byvar))
-            color <- pal(ncol)
-            ## to see colors
-            ## scales::show_col(use)
-            ## add column for color to dataframe
-            cols$color <- color
-        }
-        ## merge with the original dataframe to add column for color
-        df <- merge(df, cols, by="byvar")
-        ## put order of columns back
-        df <- data.frame(xx=df$xx, yy=df$yy, byvar=df$byvar, color=df$color)
+        ## more colors needed than in user input so use color pallet
+        pal   <- colorRampPalette(color)                  
+        ncol  <- length(unique(byvar))
+        color <- pal(ncol)
+        ## to see colors
+        ## scales::show_col(use)
+        ## add column for color to dataframe
+        cols$color <- color
     }
+    ## merge with the original dataframe to add column for color
+    df <- merge(df, cols, by="byvar")
+
+    ## create color and pch vector to identify color for every point
+    symbols  <- data.frame(byvar=unique(c(as.character(df$byvar))))
+    if ((length(pch) == 1) | (length(unique(byvar)) == 1)) {
+      ## use same pch for every point
+      symbols$pch <- pch[[1]]
+    } else if (nrow(symbols) <= length(symbols)) {
+      ## input pch list has sufficient symbols for plot
+      symbols$pch <- pch[1:nrow(pch)]
+    } else {
+      ## more pch needed than defined
+      npch  <- length(unique(byvar))
+      pch   <- seq(1, nrow(npch), 1)
+      ## to see colors
+      ## scales::show_col(use)
+      ## add column for pch to dataframe
+      symbols$pch    <- pch
+    }
+    ## merge with the original dataframe to add column for pch
+    df <- merge(df, symbols, by="byvar")
+    
+    ## put order of columns back
+    df <- data.frame(xx=df$xx, yy=df$yy, byvar=df$byvar, color=df$color, pch=df$pch)
+    
     ## sort the dataframe by byvar
     df    <- df[gtools::mixedorder(df$byvar),]
     ## replace inputs with sorted order inputs
@@ -137,7 +154,9 @@ plotfit <- function(xx,
     ## without it, the legend was wrong because it used the levels
     ## which had the colors in the wrong order
     df$color <- as.character(df$color) 
+    df$pch <- as.numeric(df$pch) 
     color <- df$color
+    pch <- df$pch
     
     
     ##-----------------------------------------------------------------------------
@@ -223,7 +242,7 @@ plotfit <- function(xx,
         vpair <- c(vlines[i*2-1], vlines[i*2])
         if (interval != 'noline') {
             ## add points and fit to plot
-            out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], pch=pch, vlines=vpair,
+            out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], pch=symbols$pch[i], vlines=vpair,
                             interval=interval, alpha=alpha, sided=sided)
             eq[i] <- out$equation
             pred[i] <- list(out$pred)
@@ -305,7 +324,7 @@ plotfit <- function(xx,
             eq <- as.list(eq)
             names(eq) <- legendnames
         }
-        legendprint <- data.frame(legendnames, color = cols$color)
+        legendprint <- data.frame(legendnames, color = cols$color, symbols = symbols$pch)
         if (interval == 'noline') {
             return(list(legend = legendprint))
         } else {
@@ -317,21 +336,24 @@ plotfit <- function(xx,
 
 testplots <- function() {
     ## source('/home/dlhjel/GitHub_repos/R-setup/setup.r')
-    source('F:/Documents/01_Dave/Programs/GitHub_home/R-setup/setup.r')
+    ## source('F:/Documents/01_Dave/Programs/GitHub_home/R-setup/setup.r')
+    source('~/Documents/GitHub/R-setup/modules/plotspace.r')
+    source('~/Documents/GitHub/R-setup/modules/addfit.r')
+    source('~/Documents/GitHub/R-setup/modules/is.nothing.r')
     df <- mtcars
     plotspace(1,3)
-    plotfit(df$hp, df$mpg)
-    plotfit(df$hp, df$mpg, df$cyl)
-    with(df, plotfit(hp, mpg, cyl))
+    plotfit(df$hp, df$mpg, main='test 1')
+    plotfit(df$hp, df$mpg, df$cyl, main='test 2')
+    with(df, plotfit(hp, mpg, cyl, main='test 3'))
     
     plotspace(1,2)
-    plotfit(df$hp, df$mpg, df$cyl, multifit=TRUE)
+    plotfit(df$hp, df$mpg, df$cyl, multifit=TRUE, main='test 4')
     plotfit(df$hp,         df$mpg,         df$cyl, 
             'horsepower', 'miles per gal', 'cylinders',
             multifit=TRUE,
-            vlines=c(50,120,  NA,NA,   100,350),
+            vlines=c(50,120,  NA,NA,   100,400),
             xlimspec=c(0,500),
-            main='my title')
+            main='test 5')
     
     df1 <- df
     df1$type <- 'type1'
@@ -342,21 +364,30 @@ testplots <- function() {
     df <- rbind(df1, df2)
     
     plotspace(1,2)    
-    plotfit(df$hp, df$mpg, df$type)
-    plotfit(df$hp, df$mpg, df$type, multifit=TRUE, vlines=c(30,350,  100,450))
+    plotfit(df$hp, df$mpg, df$type, main='test 6')
+    plotfit(df$hp, df$mpg, df$type, multifit=TRUE, vlines=c(30,350,  100,450), main='test 7')
     
     df[58:64,]$type <- 'type is 3'
-    plotfit(df$hp, df$mpg, df$type)
-    out <- plotfit(df$hp, df$mpg, df$type, multifit=TRUE)
+    plotfit(df$hp, df$mpg, df$type, main='test 8')
+    out <- plotfit(df$hp, df$mpg, df$type, multifit=TRUE, main='test 9')
 
     plotspace(1,3)
-    plotfit(df$mpg, df$disp, df$drat)
-    plotfit(df$mpg, df$disp, df$drat, bynom=5)
-    plotfit(df$mpg, df$disp, df$drat, bynom=c(2.76, 3.302, 3.845, 4.387, 4.93))
+    plotfit(df$mpg, df$disp, df$drat, main='test 10')
+    plotfit(df$mpg, df$disp, df$drat, bynom=5, main='test 11')
+    plotfit(df$mpg, df$disp, df$drat, bynom=c(2.76, 3.302, 3.845, 4.387, 4.93), main='test 12')
 
     plotspace(1,3)
-    plotfit(mtcars$wt, mtcars$mpg, mtcars$qsec)
-    with(mtcars, plotfit(wt, mpg, qsec, bynom=seq(14, 24, 2)))
+    plotfit(mtcars$wt, mtcars$mpg, mtcars$qsec, main='test 13')
+    with(mtcars, plotfit(wt, mpg, qsec, bynom=seq(14, 24, 2), main='test 14'))
     with(mtcars, plotfit(wt, mpg, qsec, bynom=seq(14, 24, 2),
-                         color=c('black', 'darkviolet', 'blue', 'green', 'red')))
+                         color=c('black', 'darkviolet', 'blue', 'green', 'red'),
+                         main='test 15'))
+    
+    plotspace(1,3)
+    plotfit(mtcars$wt, mtcars$mpg, mtcars$qsec, pch=c(16,11,4), main='test 16')   # should overwrite pch with many different symbols
+    with(mtcars, plotfit(wt, mpg, qsec, bynom=seq(14, 24, 2), pch=c(14,24,2), main='test 17'))    # again, overwrite
+    with(mtcars, plotfit(wt, mpg, qsec, bynom=seq(14, 24, 2), pch=c(0, 0, 16, 2, 3, 4, 5, 6),
+                         color=c('black', 'darkviolet', 'blue', 'green', 'red'),
+                         main='test 18'))          # uses specificed pch because number >= unique(byvar)
 }
+testplots()
