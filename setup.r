@@ -48,31 +48,34 @@ os <- .Platform$OS.type
 ##        Create libs folder
 ##        Install packages to libs folder
 
-## ## install.packages("essentials")   # not sure if this is needed
-install.packages("ggplot2")
-# plotly failed. Need to first install: sudo apt install libcurl4-openssl-dev
-install.packages("plotly")      
-install.packages("RColorBrewer")
-install.packages("dplyr") 
-install.packages("reticulate")
-# install.packages("matlib")   # did not install on Debian 12k
-install.packages("rgl")
-install.packages("IAPWS95")
-install.packages("DT")
-install.packages('tolerance')
-install.packages('DescTools')       # need for Closest() used in plotfit; requires R >= 4.0.0
-install.packages('superml')
-install.packages('xts')
-install.packages('quantmod')
-install.packages('pracma')          # need for pracma::newtonRaphson()
-# ExtDist failed. Need to insatll cmake first: sudo apt install cmake
-install.packages('ExtDist')         # need for Johnson SU distribution
-install.packages('SuppDists')       # need for Johnson SU distribution
-install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
-install.packages('expandFunctions') # need for warning.reset()
-install.packages('purrr')           # need for pmap
-install.packages('rpy2')
-## install.packages('gtools')          # need for mixedorder() sort function
+install <- FALSE
+if (install) {
+    ## ## install.packages("essentials")   # not sure if this is needed
+    install.packages("ggplot2")
+    # plotly failed. Need to first install: sudo apt install libcurl4-openssl-dev
+    install.packages("plotly")      
+    install.packages("RColorBrewer")
+    install.packages("dplyr") 
+    install.packages("reticulate")
+    # install.packages("matlib")   # did not install on Debian 12k
+    install.packages("rgl")
+    install.packages("IAPWS95")
+    install.packages("DT")
+    install.packages('tolerance')
+    install.packages('DescTools')       # need for Closest() used in plotfit; requires R >= 4.0.0
+    install.packages('superml')
+    install.packages('xts')
+    install.packages('quantmod')
+    install.packages('pracma')          # need for pracma::newtonRaphson()
+    # ExtDist failed. Need to insatll cmake first: sudo apt install cmake
+    install.packages('ExtDist')         # need for Johnson SU distribution
+    install.packages('SuppDists')       # need for Johnson SU distribution
+    install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
+    install.packages('expandFunctions') # need for warning.reset()
+    install.packages('purrr')           # need for pmap
+    install.packages('rpy2')
+    ## install.packages('gtools')          # need for mixedorder() sort function
+}
 
 ## ## qualityTools no longer supported; had a good qqplot() function
 ## ## can get an old version if needed

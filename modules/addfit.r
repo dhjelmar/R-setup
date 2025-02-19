@@ -1,9 +1,11 @@
-addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, lty=1, pch=1, vlines=NULL) {
+addfit <- function(xx, yy, col='black', interval='conf', alpha=0.05, sided=2, lty=1, pch=1, vlines=NULL, addpoints=TRUE) {
     ## lty only used for interval = 'mean' and 'line'
     
-    ## plot points
-    points(xx, yy, pch=pch, col=col)
-
+    if (addpoints) {
+        ## plot points
+        points(xx, yy, pch=pch, col=col)
+    }
+    
     ## put points in dataframe and remove any pairs that do not have values
     df <- na.omit( data.frame(xx,yy) )
 
