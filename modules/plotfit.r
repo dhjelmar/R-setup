@@ -406,7 +406,7 @@ testplots <- function() {
                          color=c('black', 'darkviolet', 'blue', 'darkgreen', 'red'),
                          main='test 18: 1 fit; spec pch + color'))          # uses specificed pch because number >= unique(byvar)
 }
-testplots()
+#testplots()
 #source('D:/Documents/01_Dave/Programs/GitHub_home/R-setup/modules/addfit.r')
 #df <- mtcars
 #plotspace(1,3)
