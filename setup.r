@@ -39,6 +39,8 @@
 ## identify operating system
 os <- .Platform$OS.type
 
+##----------------------------------------------------------------------------
+
 ### INSTALL PACKAGES
 ##  Do not use Anaconda for R packages. Packages are often not available and it complicates things.
 ##  For info, it is faster to install many packages in R than rstudio.
@@ -52,12 +54,13 @@ install <- FALSE
 if (install) {
     ## ## install.packages("essentials")   # not sure if this is needed
     install.packages("ggplot2")
+    sudo apt install libcurl4-openssl-dev
     # plotly failed. Need to first install: sudo apt install libcurl4-openssl-dev
     install.packages("plotly")      
     install.packages("RColorBrewer")
     install.packages("dplyr") 
     install.packages("reticulate")
-    # install.packages("matlib")   # did not install on Debian 12k
+    install.packages("matlib")   # did not install on Debian 12k
     install.packages("rgl")
     install.packages("IAPWS95")
     install.packages("DT")
@@ -73,8 +76,9 @@ if (install) {
     install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
     install.packages('expandFunctions') # need for warning.reset()
     install.packages('purrr')           # need for pmap
-    install.packages('rpy2')
-    ## install.packages('gtools')          # need for mixedorder() sort function
+    install.packages('rpy2')            # NOT AVAILABLE FOR R v4.2.2 ON LMDE
+    install.packages('gtools')          # need for mixedorder() sort function
+    install.packages('rsm')             # response surfaces
 }
 
 ## ## qualityTools no longer supported; had a good qqplot() function
