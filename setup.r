@@ -19,27 +19,13 @@
 ##             conda install r-plotly
 ##        
 ##     Source local .r and .R scripts
-##        Some of these are R packages that wold not install with conda
+##        Some of these are R packages that wold not install otherwise
 ##        Some of these are R functions I wrote
-
-##----------------------------------------------------------------------------
-
-## If launch from Conda, may not be able to read some *.r files.
-## To fix, set the encoding by default to UTF-8 as follows:
-##  
-## 1. click on Tools (2nd option starting by the left on the top menu).
-## 2. choose Global Options.
-## 3. An option box will appear. There choose "code" on the left menu.
-## 4. Under code, choose Savings and change the Default Text Encoding to UTF-8.
-##
-## Now the files that were open as blank should appear with code.
 
 ##----------------------------------------------------------------------------
 
 ## identify operating system
 os <- .Platform$OS.type
-
-##----------------------------------------------------------------------------
 
 ### INSTALL PACKAGES
 ##  Do not use Anaconda for R packages. Packages are often not available and it complicates things.
@@ -54,13 +40,12 @@ install <- FALSE
 if (install) {
     ## ## install.packages("essentials")   # not sure if this is needed
     install.packages("ggplot2")
-    sudo apt install libcurl4-openssl-dev
     # plotly failed. Need to first install: sudo apt install libcurl4-openssl-dev
     install.packages("plotly")      
     install.packages("RColorBrewer")
     install.packages("dplyr") 
     install.packages("reticulate")
-    install.packages("matlib")   # did not install on Debian 12k
+    # install.packages("matlib")   # did not install on Debian 12k
     install.packages("rgl")
     install.packages("IAPWS95")
     install.packages("DT")
@@ -76,9 +61,11 @@ if (install) {
     install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
     install.packages('expandFunctions') # need for warning.reset()
     install.packages('purrr')           # need for pmap
-    install.packages('rpy2')            # NOT AVAILABLE FOR R v4.2.2 ON LMDE
-    install.packages('gtools')          # need for mixedorder() sort function
-    install.packages('rsm')             # response surfaces
+    install.packages('rpy2')
+    ## install.packages('gtools')          # need for mixedorder() sort function
+    if (os == 'windows') {
+        install.packages("installr")
+    }
 }
 
 ## ## qualityTools no longer supported; had a good qqplot() function
@@ -175,3 +162,19 @@ for (f in r_files) {
     source(f)
 }
 
+#################################################
+## TO UPDATE R AND RSTUDIO
+update_R = FALSE
+if ((os == 'windows') & (update_r)) {
+    ## following is only for Windows and should update R, Rstudio, and installed packages
+    installr::updateR()
+    ## for Linux, need to do this manually
+    ## - install new version of R
+    ## - install new version of Rstudio
+    ## - find location of new base R packages
+    ## - copy non-base R packages from old R installation to new version installation
+    ## - run: update.packages()
+    ## - check that you got what you think you did
+    ##   - version
+    ##   - packageStatus()
+}
