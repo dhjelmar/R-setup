@@ -36,16 +36,16 @@ os <- .Platform$OS.type
 ##        Create libs folder
 ##        Install packages to libs folder
 
-install <- FALSE
+install <- FALSE    # instead of changeing this to TRUE, it may be better to Ctrl-enter each install.packages command
 if (install) {
     ## ## install.packages("essentials")   # not sure if this is needed
     install.packages("ggplot2")
-    # plotly failed. Need to first install: sudo apt install libcurl4-openssl-dev
+    # plotly failed in LMDE installation. Need to first install: sudo apt install libcurl4-openssl-dev
     install.packages("plotly")      
     install.packages("RColorBrewer")
     install.packages("dplyr") 
     install.packages("reticulate")
-    # install.packages("matlib")   # did not install on Debian 12k
+    install.packages("matlib")   # did not install on Debian 12k
     install.packages("rgl")
     install.packages("IAPWS95")
     install.packages("DT")
@@ -164,7 +164,7 @@ for (f in r_files) {
 
 #################################################
 ## TO UPDATE R AND RSTUDIO
-update_R = FALSE
+update_r = FALSE
 if ((os == 'windows') & (update_r)) {
     ## following is only for Windows and should update R, Rstudio, and installed packages
     installr::updateR()
