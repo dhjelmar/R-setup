@@ -89,8 +89,7 @@ df.duplicates <- function(df, tol=0.01, tol.type='fraction', target=NA, param=NA
                 ## use fractional tolerance
                 tol.col.i <- tol*target.col.i
                 out[,i] <- unlist(lapply(df.out.col.i, function(x) dplyr::near(x, target.col.i,
-                                                                            ## tol=tol*max(x+target.col.i, 1E-6))))
-                                                                               tol=tol*max(tol.col.i, 1E-6))))
+                                                                               tol=max(tol.col.i, 1E-6))))
             } else {
                 ## use absolute tolerance
                 tol.col.i <- tol

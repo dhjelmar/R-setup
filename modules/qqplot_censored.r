@@ -1,3 +1,7 @@
+# something else to try: EnvStats::qqPlotCensored()
+# https://www.rdocumentation.org/packages/EnvStats/versions/2.3.1/topics/qqPlotCensored
+
+
 qqplot_censored <- function(x=NA, xcen=NA, xcen0=NA, type='n', nfit='mle', wfit='mle', jfit='mle', 
                             algorithm='NLOPT_LN_COBYLA', onebyone=FALSE,
                             xtol_rel =1.0e-4, stopval=0.005, maxeval=500000,

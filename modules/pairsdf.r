@@ -14,7 +14,8 @@ pairsdf <- function(df, var=names(df), upr='panel.line', diag='panel.hist', lwr=
           diag.panel=diag,
           lower.panel=lwr,
           col.points=col.points,
-          col.line=col.line)
+          col.line=col.line,
+          main=main)
 }
 
 ##----------------------------------------------------------------------------
@@ -67,13 +68,10 @@ pairsdf_test <- function() {
   pairs(iris,
         lower.panel=panel.cor,
         upper.panel=panel.line, 
-        diag.panel=panel.hist)
-  pairs(iris,
-        lower.panel=panel.cor,
-        upper.panel=panel.line, 
         diag.panel=panel.hist,
-        col=iris$Species)
-  pairsdf(iris)
-  pairsdf(iris)
-  pairsdf(iris, col.points=iris$Species, col.line='blue')
+        main='pairs(iris, lower.panel=panel.cor, upper.panel=panel.line, diag.panel=panel.hist, main=main)')
+  pairsdf(iris, main='pairsdf(iris, main=main)')
+  pairsdf(iris, col.points=iris$Species, col.line='blue',
+          main="pairsdf(iris, col.points=iris$Species, col.line='blue', main=main)")
 }
+#pairsdf_test()

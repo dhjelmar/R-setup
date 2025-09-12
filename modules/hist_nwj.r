@@ -62,6 +62,9 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
     } else {
         xcen.avg <- NA
     }
+    
+    # strip out any remaining NA from x (NA should already be gone from xcen)
+    x <- as.numeric( na.omit(x) )
     x.avg <- as.numeric( na.omit( c(x, xcen.avg) ) )
 
     ## if there are no known values, use average of censored values for histogram
@@ -99,7 +102,7 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
     
     if (grepl('n', type)) {
         ## normal distribution calculations
-      	if (nfit == 'mle') {
+      	if (nfit[[1]] == 'mle') {
             out.fit <- mle.normal(x, xcen)
             xmean <- out.fit$parms$xbar
             xsd   <- out.fit$parms$sdev
@@ -107,7 +110,7 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
             tolerance_limit_norm.l <- tol_out_norm$tolerance$tol.lower
             tolerance_limit_norm.u <- tol_out_norm$tolerance$tol.upper
 
-        } else if (nfit == 'standard') {
+        } else if (nfit[[1]] == 'standard') {
             xmean <- mean(x)
             xsd   <- sd(x)
             tol_out_norm <- tolerance::normtol.int(x, alpha = alpha, P=proportion, side=sided)
@@ -148,14 +151,14 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
             shape <- NA
             scale <- NA
         } else {
-            if (wfit == 'mle') {
+            if (wfit[[1]] == 'mle') {
                 tol_out_weib <- mle.weibull.tol(x, xcen, side.which=side, sided=sided, conf=conf, P=P)
                 shape <- tol_out_weib$params$shape
                 scale <- tol_out_weib$params$scale
                 tolerance_limit_weib.l <- tol_out_weib$tolerance$tol.lower
                 tolerance_limit_weib.u <- tol_out_weib$tolerance$tol.upper
 
-            } else if (wfit == 'exttol.int') {
+            } else if (wfit[[1]] == 'exttol.int') {
                 tol_out_weib <-  tolerance::exttol.int(x, alpha=alpha, P=proportion,
                                                        side=sided, dist="Weibull")
                 shape   <- tol_out_weib$'shape.1'
@@ -196,10 +199,10 @@ hist_nwj <- function(x, xcen=NA, type='nwj', nfit='mle', wfit='mle', jfit='mle',
                 tolerance_limit_john.u <- tol_out_john$tolerance$tol.upper
             }                
 
-        } else if (jfit == 'SuppDists') {
+        } else if (jfit[[1]] == 'SuppDists') {
             jparms <- jparms[jparms$description == 'SuppDists::JohnsonFit(x)', 1:5]
 
-        } else if (jfit == 'ExtDist') {
+        } else if (jfit[[1]] == 'ExtDist') {
             jparms <- jparms[jparms$description == 'ExtDist', 1:5]
 
         } else if (is.numeric(jfit[[1]])) {
@@ -392,7 +395,7 @@ hist_nwj_test <- function() {
     ## next plot with fit of x and high xcen
     xcen <- data.frame(x.low=rep((mean(x)+max(x))/2, 200), 
                        x.high=runif(200, (mean(x)+max(x))/2, 1.2*max(x)))
-    out3 <- hist_nwj(x, xcen, main='Histogram of x; Fits to x and high xcen')
+    out3 <- hist_nwj(x, xcen, conf=0.95, P=0.95, main='Histogram of x; Fits to x and high xcen')
     print(out1$tol_out_norm$tolerance)
     print(out2$tol_out_norm$tolerance)
     print(out3$tol_out_norm$tolerance)

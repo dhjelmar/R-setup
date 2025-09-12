@@ -55,13 +55,14 @@ if (install) {
     install.packages('xts')
     install.packages('quantmod')
     install.packages('pracma')          # need for pracma::newtonRaphson()
-    # ExtDist failed. Need to insatll cmake first: sudo apt install cmake
+    # ExtDist failed. Need to install cmake first: sudo apt install cmake
     install.packages('ExtDist')         # need for Johnson SU distribution
     install.packages('SuppDists')       # need for Johnson SU distribution
     install.packages('maxLik')          # need for MLE (Maximum Likelihood Estimate) fits
     install.packages('expandFunctions') # need for warning.reset()
     install.packages('purrr')           # need for pmap
     install.packages('rpy2')
+    # install.packages('car')             # used in qqplot_nwj_tests(); install of car had non-zero exit status
     ## install.packages('gtools')          # need for mixedorder() sort function
     if (os == 'windows') {
         install.packages("installr")

@@ -1,4 +1,4 @@
-my.findcol <- function(mylist, target, index=FALSE) {
+findcol <- function(mylist, target, index=FALSE) {
     '
     Identifies parameters or indices matching target substring in mylist.
     
@@ -21,10 +21,10 @@ my.findcol <- function(mylist, target, index=FALSE) {
     }
 }
 
-mylist <- c('asdfred', 2, 'jkl;', 'fred')
-my.findcol(mylist, 'jk')
-my.findcol(mylist, 2)
-my.findcol(mylist, 'l;', index=TRUE)
-my.findcol(mylist, 'fred')
-my.findcol(mylist, 'fred', index=TRUE)
+#mylist <- c('asdfred', 2, 'jkl;', 'fred')
+#findcol(mylist, 'jk')
+#findcol(mylist, 2)
+#findcol(mylist, 'l;', index=TRUE)
+#findcol(mylist, 'fred')
+#findcol(mylist, 'fred', index=TRUE)
 

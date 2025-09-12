@@ -42,6 +42,11 @@ plotfit <- function(xx,
     if (is.null(ylabel)) ylabel   <- deparse(substitute(yy))
     if (is.null(bylabel)) bylabel <- deparse(substitute(byvar))
 
+    ##-----------------------------------------------------------------------------
+    # change xx, yy, and byvar to vector if not entered that way (more robust)
+    xx <- unlist(xx)
+    yy <- unlist(yy)
+    byvar <- unlist(byvar)
     
     ##-----------------------------------------------------------------------------
     ## if bynom vector is specified, map byvar to closest bynom value for color and legend
@@ -259,8 +264,13 @@ plotfit <- function(xx,
         vpair <- c(vlines[i*2-1], vlines[i*2])
         if (interval != 'noline') {
             ## add fit to plot
-            out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], vlines=vpair,
-                            interval=interval, alpha=alpha, sided=sided, addpoints=FALSE)
+            if (nfit ==1) {
+                out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col='black', vlines=vpair,
+                                interval=interval, alpha=alpha, sided=sided, addpoints=FALSE)
+            } else {
+                out   <- addfit(dfi[[xxcol]], dfi[[yycol]], col=cols$color[i], vlines=vpair,
+                                interval=interval, alpha=alpha, sided=sided, addpoints=FALSE)
+            }
             eq[i] <- out$equation
             pred[i] <- list(out$pred)
             
@@ -291,7 +301,11 @@ plotfit <- function(xx,
             ## subtitle <- list(eq1, eq2)
             ## mtext(subtitle, side=3, line=c(0.75, 0), cex=.75, col=color)
             lineloc = lineloc - 0.75
-            mtext(eq[i], side=3, line=lineloc, cex=0.75, col=cols$color[i])
+            if (nfit ==1) {
+                mtext(eq[i], side=3, line=lineloc, cex=0.75, col='black')
+            } else {
+                mtext(eq[i], side=3, line=lineloc, cex=0.75, col=cols$color[i])
+            }
         }
     }
 

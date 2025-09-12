@@ -7,6 +7,9 @@ qqplot_nwj_xonly <- function(x, type='nwj', nfit='mle', wfit='mle', jfit='mle', 
     nplots <- nchar(type)
     if (nplots != 1) par(mfrow=c(1, nplots))
 
+    # strip out any remaining NA from x
+    x <- as.numeric( na.omit(x) )
+    
     nparms <- NULL
     wparms <- NULL
     jparms <- NULL
@@ -123,9 +126,15 @@ qqplot_nwj_tests <- function() {
     par(mfrow=c(2,2))
 
     ## comparisons for normal qq plot using same method as for Johnson SU qqplot
+    # using base R
+    qqnorm(x, pch = 1, frame = FALSE)
+    qqline(x, col = "steelblue", lwd = 2)
     ## qualityTools::qqPlot(x, "normal",  col='black')
-    car::qqPlot(x, envelope=0.95, xlab='Expected Quantile', ylab='Observed Value', 
-                main='Normal Distribution QQ Plot using car::qqPlot()')
+    # I like the car package the best but it had an installation problem
+    # car::qqPlot(x, envelope=0.95, xlab='Expected Quantile', ylab='Observed Value', 
+    #             main='Normal Distribution QQ Plot using car::qqPlot()')
+    EnvStats::qqPlot(x, add.line=TRUE,
+                main='Normal Distribution QQ Plot using EnvStats::qqPlot()')
     xtheoretical <- qnorm(ppoints(length(x)), mean = mean(x), sd = sd(x))
     plot(x, xtheoretical, xlab='Observed value, x', ylab='Expected Value',
          main='Normal Distribution QQ Plot using qnorm(ppoints())')
