@@ -110,3 +110,51 @@ nonparametric.tol.test <- function() {
     if (nonparametric.tol(1:80, P=0.95, tol.index=79, truncate=TRUE)$df$conf == 0.9139) test <- 'success'
     cat('test 8 = ', test, '\n')
 }
+# nonparametric.tol.test()
+
+nonparametric_highpoints <- function(x, conf=0.99, P=0.99) {
+    # function used in nonparametric_highpoints_plot()
+    highpoints <- rep(NA, length(x))
+    for (i in 1:length(x)) {
+        out <- nonparametric.tol(x[i], conf=conf, P=P)
+        if (is.null(out$df$high.points)) {
+            highpoints[i] <- 0
+        } else {
+            highpoints[i] <- out$df$high.points
+        }
+    }
+    return(highpoints)
+}
+
+nonparametric_highpoints_plot <- function(x=seq(459,3000,1), conf=0.99, P=0.99, type='l') {
+    #' creates a plot of allowable highpoints as a function of the number of datapoints
+    #' 
+    #' input: x    = a list of datapoint counts to be considered
+
+    high <- df.init(0,columns=c('datapoints', 'highpoints', 'change'))
+    for (i in 1:length(x)) {
+        high[i,1] <- x[i]
+        high[i,2] <- nonparametric_highpoints(x[i], conf=conf, P=P)
+    }   
+    high['change'] <- 0
+    for (i in 2:length(x)) {
+        if (high[i,2] > high[i-1,2]) {
+            high[i,3] <- 1
+        }
+    }
+    datapoints <- high$datapoints
+    highpoints <- high$highpoints
+    plot(datapoints, highpoints, type=type)
+    
+    ## dataframe of datapoint counts where the number of high points increased
+    change <- high[high$change == 1,]
+    row.names(change) <- NULL
+    change$additional_datapoints <- c(diff(change$datapoints,1), NA)
+    
+    change$change <- NULL
+    
+    return(list(high=high, change=change))
+}
+# out <- nonparametric_highpoints_plot()
+# head(out$high)
+# head(out$change)
