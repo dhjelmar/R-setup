@@ -14,8 +14,8 @@ loglik.normal.q.set <- function(x=NA, xcen=NA, param=sdev, quant, P, debug=FALSE
 }
 
 mle.normal.tol <- function(x, xcen=NA, param='auto',
-                           side.which='upper', sided=1, conf=0.99, alpha.eff=NULL, P=0.99,
-                           plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL) {
+                           side.which='upper', sided=1, conf=0.99, alpha=NULL, P=0.99,
+                           plots=FALSE, plots.nr=FALSE, debug=FALSE, main=NULL, old=TRUE) {
     
     ## normal distribution
     ## MLE (Maximum Likelihood Estimate) fit to determine parameters
@@ -33,15 +33,23 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
     ##        side.which = 'upper' or 'lower' (not used if sided = 2)
     ##        sided = 1 (default) means 1-sided tolerance limit
     ##              = 2 means 2-sided tolerance limit
-    ##        conf  = confidence used to determine chi-square
-    ##        alpha.eff = NULL (default) sets effective alpha, alpha.eff = 2*(1-conf)/sided, for use with qchisq();
-    ##                    Staticticians define alpha as 1 - confidence, but functions and tables require
-    ##                    use of an effective alpha that may be different.
-    ##                    e.g., if 1-sided conf = 99%:
-    ##                          alpha.eff = 2(1-0.99)/1 = 0.02
-    ##                          chi-square = qchisq(1-alpha.eff,1) = 5.411894
-    ##                                     = 2-sided 98% confidence limit
-    ##                                     = 1-sided 99% confidence limit <- which is needed
+    ##        conf  = 1 - alpha = confidence used to determine chi-square
+    ##
+    ##        old:
+    ##            alpha.eff = NULL (default) sets effective alpha, alpha.eff = 2*(1-conf)/sided, for use with qchisq();
+    ##
+    ##        new:
+    ##            alpha = NULL (default) sets effective alpha, alpha = 1-conf, for use with qchisq(1-2*(alpha/sided),1);
+    ##
+    ##                    e.g., if want 1-sided conf = 99%:
+    ##                          sided = 1
+    ##                          alpha = (1-0.99) = 0.01
+    ##                          chi-square = qchisq(1-2*alpha/sided,1) = 5.411894
+    ##
+    ##                    e.g., if want 2-sided conf = 99%
+    ##                          sided = 2
+    ##                          alpha = 1-0.01 = 0.01
+    ##                          chi-square = qchisq(1-2*alpha/sided,1) = 6.634897
     ##              = # uses input value to overwrite value based on conf
     ##        P     = proportion (or coverage)
     ##              = any value if 1-sided
@@ -65,12 +73,12 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
     }
     x.avg <- as.numeric( na.omit( c(x, xcen.avg) ) )
 
-    if (is.null(alpha.eff)) {
-        ## set alpha.eff level for chi-square for use in confidence limit calculation
-        alpha.eff <- 2*(1-conf)/sided
+    if (is.null(alpha)) {
+        ## set alpha level for chi-square(1-2*alpha,1) for use in confidence limit calculation
+        alpha <- (1-conf)*sided
     } else {
-        ## calculate confidence limit from alpha.eff used in chi-square
-        conf <- 1 - alpha.eff * sided/2
+        ## calculate confidence limit from alpha
+        conf <- 1 - alpha / sided
     }
     
     ## if (isTRUE(plots) & sided == 2) par(mfrow=c(1,2))
@@ -96,7 +104,7 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
     cat('\n')
    
     ##-----------------------------------------------------------------------------
-    ## find confidence limit at level alpha.eff for requested coverage, P
+    ## find confidence limit at level alpha for requested coverage, P
     tol.limits <- NA
     tol.approx <- NA
     ## params.q.save <- NA
@@ -126,7 +134,12 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
         ## calculate confidence limits using LR (Likelihood Ratio)
         ## confidene limit is defined at likelihood that is lower than max by chi-squared
         loglik.max <- loglik.normal.q(x, xcen, quant.param, P)
-        loglik.tol <- loglik.max - qchisq(1 - alpha.eff, 1)/2   # qchisq(1-0.02, 1) = 5.411894
+        if (old) {
+            alpha.eff <- 2*(1-conf)/sided
+            loglik.tol <- loglik.max - qchisq(1 - alpha.eff, 1)/2   # qchisq(1-0.02, 1) = 5.411894
+        } else {
+            loglik.tol <- loglik.max - qchisq(1 - 2*(alpha/sided), 1)/2   # qchisq(1-0.02, 1) = 5.411894
+        }
         cat('P =', P, 'MLE =', loglik.max, '; tolerance limit at MLE =', loglik.tol, '\n')
         temp <- data.frame(sdev=sdev, xbar=xbar,
                            quant=quant.P.orig, P=P, loglik=loglik.max, convergence=NA,
@@ -191,18 +204,18 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
         dof    <- length(x.avg) - 2    # 2 independent fitting parameters in Normal
         student.t <- qt(1 - (1-conf)/sided, dof)  # 2.3326 for dof=598
         if (is.nothing(standard.error) | standard.error == Inf) standard.error <- 0.001 * quant.P
-        quant.P.alpha.eff.l.guess <- quant.P - student.t * standard.error
-        quant.P.alpha.eff.u.guess <- quant.P + student.t * standard.error
+        quant.P.alpha.l.guess <- quant.P - student.t * standard.error
+        quant.P.alpha.u.guess <- quant.P + student.t * standard.error
         cat('Initial guesses for confidence interval for P=', P, '\n')
-        cat(quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess, '\n\n')
-        tol.approx <- c(tol.approx, quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess)
+        cat(quant.P.alpha.l.guess, quant.P.alpha.u.guess, '\n\n')
+        tol.approx <- c(tol.approx, quant.P.alpha.l.guess, quant.P.alpha.u.guess)
 
 
         ##----------------------
         if (isTRUE(plots)) {
-            quant.dif <- quant.P.alpha.eff.u.guess - quant.P
-            xmin <- quant.P.alpha.eff.l.guess - 1.1*quant.dif
-            xmax <- quant.P.alpha.eff.u.guess + 1.1*quant.dif
+            quant.dif <- quant.P.alpha.u.guess - quant.P
+            xmin <- quant.P.alpha.l.guess - 1.1*quant.dif
+            xmax <- quant.P.alpha.u.guess + 1.1*quant.dif
             xplot <- seq(xmin, xmax, length.out=101)
             yplot <- NA
             plot(quant.P.save[k], loglik.max, col='blue', pch=16, cex=2,
@@ -211,7 +224,7 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
                  ylim=range(loglik.max, loglik.tol),
                  main=main)
             abline(h=loglik.tol)
-            abline(v=c(quant.P.alpha.eff.l.guess, quant.P.alpha.eff.u.guess), col='red', lty=2)
+            abline(v=c(quant.P.alpha.l.guess, quant.P.alpha.u.guess), col='red', lty=2)
         }
         
         ##----------------------
@@ -322,12 +335,12 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
 
         ## determine confidence bound as point where the likelihood ratio equals loglik.tol
         cat('Attempting MLE fit on alternate parameters for P=', P, 'to find quant where loglik corresponds to tolerance limit\n')
-        quant.P.alpha.eff.l <- NA
-        quant.P.alpha.eff.u <- NA
+        quant.P.alpha.l <- NA
+        quant.P.alpha.u <- NA
         if (side.which == 'lower' | (P < 0.5 & sided == 2)) {
             ## find lower tolerance limit
             out.nrl <- newton.raphson(f = loglik.fixedq,
-                                      xguess = quant.P.alpha.eff.l.guess,
+                                      xguess = quant.P.alpha.l.guess,
                                       ytarget = loglik.tol,
                                       data    = x,
                                       xcen = xcen,
@@ -339,12 +352,12 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
                                       nrelax = 10,
                                       plots=plots.nr,
                                       plot.add=TRUE)
-            quant.P.alpha.eff.l <- out.nrl$root
-            if (is.null(quant.P.alpha.eff.l)) { quant.P.alpha.eff.l <- NA }
+            quant.P.alpha.l <- out.nrl$root
+            if (is.null(quant.P.alpha.l)) { quant.P.alpha.l <- NA }
         } else {
             ## find upper tolerance limit
             out.nru <- newton.raphson(f = loglik.fixedq,
-                                      xguess = quant.P.alpha.eff.u.guess,
+                                      xguess = quant.P.alpha.u.guess,
                                       ytarget = loglik.tol,
                                       data   = x,
                                       xcen   = xcen,
@@ -356,19 +369,19 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
                                       nrelax = 10,
                                       plots=plots.nr,
                                       plot.add=TRUE)
-            quant.P.alpha.eff.u <- out.nru$root
-            if (is.null(quant.P.alpha.eff.u)) { quant.P.alpha.eff.u <- NA }
+            quant.P.alpha.u <- out.nru$root
+            if (is.null(quant.P.alpha.u)) { quant.P.alpha.u <- NA }
         }
         cat('Final confidence interval for P=', P, '\n')
-        cat(quant.P.alpha.eff.l, quant.P.alpha.eff.u, '\n\n')
+        cat(quant.P.alpha.l, quant.P.alpha.u, '\n\n')
 
         ## collect tolerance limit calculations (i.e., for 1-P and P)
-        tol.limits <- c(tol.limits, quant.P.alpha.eff.l, quant.P.alpha.eff.u)
+        tol.limits <- c(tol.limits, quant.P.alpha.l, quant.P.alpha.u)
         
         if (isTRUE(plots)) {
             ## plot intersection with log likelihood curve
-            if (!is.na(quant.P.alpha.eff.l)) points(quant.P.alpha.eff.l, loglik.tol, col='red', pch=16, cex=2)
-            if (!is.na(quant.P.alpha.eff.u)) points(quant.P.alpha.eff.u, loglik.tol, col='red', pch=16, cex=2)
+            if (!is.na(quant.P.alpha.l)) points(quant.P.alpha.l, loglik.tol, col='red', pch=16, cex=2)
+            if (!is.na(quant.P.alpha.u)) points(quant.P.alpha.u, loglik.tol, col='red', pch=16, cex=2)
         }
 
     }
@@ -392,7 +405,7 @@ mle.normal.tol <- function(x, xcen=NA, param='auto',
     P <- P.in
 
     ## collect tolerance values in dataframe similar to extol.int for normal
-    tolerance <- data.frame(sided, alpha.eff=alpha.eff, conf, P, tol.lower, tol.upper)
+    tolerance <- data.frame(sided, alpha=alpha, conf, P, tol.lower, tol.upper)
 
     ## print final parameter comparison and tolerance limits
     print(as.data.frame(params.save))
